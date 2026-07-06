@@ -1,5 +1,13 @@
 # Autonomous Changelog
 
+## 2026-07-07 — AUTO-001
+
+- Task ID: AUTO-001
+- Summary: Added the initial Python package scaffold, `forge` CLI entry point, README setup notes, smoke test, and decisions log.
+- Validation completed: Static review completed; runtime test execution was not available in this tool environment.
+- Commit hash: pending final commit lookup
+- Follow-up notes: Run the documented pytest command in the next checkout-capable run and proceed to AUTO-002.
+
 ## 2026-07-07 — Bootstrap
 
 - Task ID: Bootstrap
