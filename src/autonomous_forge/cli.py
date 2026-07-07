@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 from pathlib import Path
 
+from autonomous_forge.inventory import build_repository_inventory
 from autonomous_forge.plan import (
     PlanParseError,
     PlanSelectionError,
@@ -106,6 +107,16 @@ def build_parser() -> argparse.ArgumentParser:
         "--timestamp",
         default=None,
         help="optional ISO-8601 timestamp to make preview output deterministic",
+    )
+
+    inventory_parser = subparsers.add_parser(
+        "inventory",
+        help="print read-only repository health inventory signals",
+    )
+    inventory_parser.add_argument(
+        "--root",
+        default=".",
+        help="repository root to inspect for file-presence signals",
     )
     return parser
 
@@ -210,6 +221,11 @@ def _print_run_summary(plan_path: Path, policy_path: Path, timestamp: str | None
     return 0
 
 
+def _print_inventory(root_path: Path) -> int:
+    print(build_repository_inventory(root_path))
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     """Run the Forge CLI."""
     parser = build_parser()
@@ -235,6 +251,9 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.command == "run-summary":
         return _print_run_summary(Path(args.plan), Path(args.policy), args.timestamp)
+
+    if args.command == "inventory":
+        return _print_inventory(Path(args.root))
 
     parser.print_help()
     return 0

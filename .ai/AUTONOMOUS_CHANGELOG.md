@@ -1,5 +1,13 @@
 # Autonomous Changelog
 
+## 2026-07-07 — AUTO-014
+
+- Task ID: AUTO-014
+- Summary: Added a read-only `forge inventory` command that reports deterministic present/missing file-presence signals for the documented repository health inventory scope.
+- Validation completed: Static implementation review completed against AUTO-014 acceptance criteria; runtime test execution was unavailable in this automation environment.
+- Commit hash: pending final commit lookup
+- Follow-up notes: Reassess Roadmap v2 before adding any broader inspection or persistence behavior.
+
 ## 2026-07-07 — AUTO-013
 
 - Task ID: AUTO-013
@@ -68,7 +76,7 @@
 
 - Task ID: AUTO-006
 - Summary: Added contributor development guidance for local setup, tests, task discipline, safe file handling, safety boundaries, and commit-message expectations.
-- Validation completed: Static documentation review completed; runtime test execution was not available in this automation environment.
+- Validation completed: Static documentation review completed; runtime test execution was unavailable in this automation environment.
 - Commit hash: pending final commit lookup
 - Follow-up notes: Roadmap v1 is complete. Reassess the repository and prepare Roadmap v2 before implementing new work.
 

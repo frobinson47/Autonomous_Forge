@@ -19,11 +19,12 @@ Autonomous Forge is pre-alpha. The repository now contains:
 - A documented repository policy format with a conservative example policy.
 - A read-only `forge policy` command for parsing policy section readiness.
 - A read-only `forge run-summary` command for previewing the documented local run-summary format.
+- A read-only `forge inventory` command for repository health file-presence signals.
 - Documented command output contracts in `docs/COMMANDS.md`.
 - A documented local run-summary format in `docs/RUN_SUMMARIES.md` for future preview/write behavior.
-- A documented repository health inventory scope in `docs/HEALTH_INVENTORY.md` for future read-only inventory work.
+- A documented repository health inventory scope in `docs/HEALTH_INVENTORY.md`.
 - Contributor development guidance in `CONTRIBUTING.md`.
-- Smoke tests for CLI help, task parsing, eligible task selection, roadmap linting, report behavior, policy parsing, and run-summary preview output.
+- Smoke tests for CLI help, task parsing, eligible task selection, roadmap linting, report behavior, policy parsing, run-summary preview output, and inventory output.
 
 ## Planned direction
 
@@ -41,7 +42,8 @@ The MVP roadmap focuses on practical, reviewable automation:
 10. Define a local run-summary format before any command is allowed to write execution history.
 11. Preview the documented run-summary format without writing files.
 12. Define repository health inventory scope before adding an inventory command.
-13. Keep contributor setup and safety guidance clear as the CLI evolves.
+13. Print read-only repository health file-presence signals without scoring or scanning.
+14. Keep contributor setup and safety guidance clear as the CLI evolves.
 
 ## Repository policy boundaries
 
@@ -111,6 +113,14 @@ forge run-summary --plan .ai/AUTONOMOUS_PLAN.md --policy .forge/policy.md
 
 The command is read-only. It prints the documented run-summary fields to standard output, including selected task, policy status, validation plan, validation result, changed-files summary placeholder, commit placeholder, and notes. It does not write execution history files.
 
+## Inspect repository health inventory
+
+```bash
+forge inventory --root .
+```
+
+The command is read-only. It reports deterministic file-presence signals for the documented repository health inventory scope. It does not calculate a score, scan secrets, read environment variables, call networks, run external commands, enforce policy decisions, or change repository files.
+
 ## Command output contracts
 
 See `docs/COMMANDS.md` for the current command purposes, expected output patterns, exit-code expectations, and safety limitations.
@@ -121,7 +131,7 @@ See `docs/RUN_SUMMARIES.md` for the local run-summary format. Autonomous Forge c
 
 ## Repository health inventory
 
-See `docs/HEALTH_INVENTORY.md` for the proposed scope and safety boundaries of a future read-only repository inventory command.
+See `docs/HEALTH_INVENTORY.md` for the implemented read-only inventory command scope and safety boundaries.
 
 ## Run tests
 

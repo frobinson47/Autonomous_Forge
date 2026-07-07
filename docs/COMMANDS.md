@@ -9,7 +9,7 @@ These contracts describe implemented behavior only. They are intentionally plain
 - Commands write results to standard output.
 - Commands return exit code `0` when the requested read-only inspection succeeds.
 - Commands return exit code `2` for missing required input files or malformed roadmap/policy input.
-- Commands should not create, edit, delete, commit, push, run external commands, call networks, or enforce policy decisions.
+- Commands should not create, edit, delete, commit, push, run external commands, call networks, read environment variables, scan secrets, or enforce policy decisions.
 - Output is human-readable and may be extended conservatively, but existing status phrases should remain stable when practical.
 
 ## `forge`
@@ -83,13 +83,11 @@ Inputs:
 
 Expected successful output:
 
-- The selected TODO task in this format:
-
 ```text
 AUTO-### [P#/TODO] Task title
 ```
 
-- If no eligible TODO task exists:
+If no eligible TODO task exists:
 
 ```text
 No eligible TODO task found.
@@ -224,3 +222,39 @@ Exit codes:
 - `2` when the plan file is missing, malformed, or contains an unsupported priority for selection.
 
 Safety limits: prints a preview only; it does not create history files, run validation, inspect diffs, commit, push, or change repository files.
+
+## `forge inventory`
+
+Purpose: print repository health inventory file-presence signals for the documented local scope.
+
+Inputs:
+
+- `--root`: repository root to inspect, defaulting to `.`.
+
+Expected successful output:
+
+```text
+Repository health inventory
+Mode: read-only
+Scope: file-presence signals only
+.ai/AUTONOMOUS_PLAN.md: present|missing
+.ai/AUTONOMOUS_STATE.md: present|missing
+.ai/AUTONOMOUS_CHANGELOG.md: present|missing
+.ai/DECISIONS.md: present|missing
+.forge/policy.md: present|missing
+README.md: present|missing
+CONTRIBUTING.md: present|missing
+LICENSE: present|missing
+pyproject.toml: present|missing
+src/: present|missing
+tests/: present|missing
+docs/: present|missing
+Health score: not calculated
+Notes: Inventory does not enforce policy, scan secrets, read environment variables, call networks, or run external commands.
+```
+
+Exit codes:
+
+- `0` when the inventory is built, including repositories with missing expected paths.
+
+Safety limits: reports file-presence signals only; it does not read file contents, calculate a score, scan secrets, read environment variables, call networks, run external commands, enforce policy decisions, or change repository files.

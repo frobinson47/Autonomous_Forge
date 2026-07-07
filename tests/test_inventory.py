@@ -1,0 +1,46 @@
+from autonomous_forge.cli import main
+from autonomous_forge.inventory import build_repository_inventory, collect_inventory_signals
+
+
+def test_collect_inventory_signals_reports_present_and_missing_paths(tmp_path):
+    (tmp_path / ".ai").mkdir()
+    (tmp_path / ".ai" / "AUTONOMOUS_PLAN.md").write_text("# Plan\n", encoding="utf-8")
+    (tmp_path / "src").mkdir()
+
+    signals = collect_inventory_signals(
+        tmp_path,
+        required_paths=(".ai/AUTONOMOUS_PLAN.md", "src/", "tests/"),
+    )
+
+    assert [(signal.path, signal.present) for signal in signals] == [
+        (".ai/AUTONOMOUS_PLAN.md", True),
+        ("src/", True),
+        ("tests/", False),
+    ]
+
+
+def test_build_repository_inventory_is_read_only_and_deterministic(tmp_path):
+    (tmp_path / "README.md").write_text("# Example\n", encoding="utf-8")
+
+    output = build_repository_inventory(tmp_path)
+
+    assert "Repository health inventory" in output
+    assert "Mode: read-only" in output
+    assert "README.md: present" in output
+    assert ".ai/AUTONOMOUS_PLAN.md: missing" in output
+    assert "Health score: not calculated" in output
+    assert "scan secrets" in output
+
+
+def test_inventory_command_prints_read_only_summary(tmp_path, capsys):
+    (tmp_path / ".ai").mkdir()
+    (tmp_path / ".ai" / "AUTONOMOUS_PLAN.md").write_text("# Plan\n", encoding="utf-8")
+
+    assert main(["inventory", "--root", str(tmp_path)]) == 0
+
+    output = capsys.readouterr().out
+    assert "Repository health inventory" in output
+    assert "Mode: read-only" in output
+    assert ".ai/AUTONOMOUS_PLAN.md: present" in output
+    assert ".ai/AUTONOMOUS_STATE.md: missing" in output
+    assert "Health score: not calculated" in output

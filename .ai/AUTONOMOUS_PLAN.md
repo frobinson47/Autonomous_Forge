@@ -10,46 +10,15 @@ The first product remains a local Python command-line tool. It reads repository 
 
 ## Current architecture
 
-The repository contains a minimal Python package under `src/autonomous_forge`, package metadata in `pyproject.toml`, tests under `tests/`, policy documentation under `docs/`, command output contracts under `docs/COMMANDS.md`, local run-summary format documentation under `docs/RUN_SUMMARIES.md`, repository health inventory scope documentation under `docs/HEALTH_INVENTORY.md`, an example policy under `.forge/`, and contributor guidance in `CONTRIBUTING.md`. The CLI exposes `forge`, `forge tasks`, `forge tasks --next`, `forge lint-plan`, `forge report`, `forge policy`, and `forge run-summary`. Current behavior is read-only, local-first, and uses zero runtime dependencies.
+The repository contains a minimal Python package under `src/autonomous_forge`, package metadata in `pyproject.toml`, tests under `tests/`, policy documentation under `docs/`, command output contracts under `docs/COMMANDS.md`, local run-summary format documentation under `docs/RUN_SUMMARIES.md`, repository health inventory documentation under `docs/HEALTH_INVENTORY.md`, an example policy under `.forge/`, and contributor guidance in `CONTRIBUTING.md`. The CLI exposes `forge`, `forge tasks`, `forge tasks --next`, `forge lint-plan`, `forge report`, `forge policy`, `forge run-summary`, and `forge inventory`. Current behavior is read-only, local-first, and uses zero runtime dependencies.
 
 ## Current implementation status
 
-Roadmap v1 is complete. Autonomous Forge has a minimal installable CLI scaffold, package metadata, README development instructions, deterministic roadmap task parsing, deterministic eligible-task selection, a dry-run repository report, policy format documentation, an example policy, contributor development guidance, and tests covering CLI help, plan parsing, selector behavior, and report output.
-
-Roadmap v2 has continued with conservative read-only parsing of `.forge/policy.md` through `forge policy`. `forge report` surfaces policy-file readiness without claiming policy enforcement. `forge lint-plan` checks roadmap task block structure before higher-risk automation is considered. Current command output contracts are documented for maintainers, contributors, and future automation. The local run-summary format is documented, and `forge run-summary` can preview that format without writing execution history. Repository health inventory scope is documented before any inventory command is added.
-
-## User personas and likely workflows
-
-- A maintainer reviews a local plan and sees the next safe task.
-- A small team stores its plan, state, decisions, and changelog in the repository.
-- A contributor follows written task limits, safe file handling, and validation expectations.
-- A future autonomous maintainer checks policy boundaries before selecting implementation work.
-
-## Strengths and risks
-
-Strengths: local-first design, small scope, clear durable memory, deterministic task selection, explicit policy boundaries, roadmap structure linting, documented command output contracts, documented run-summary format boundaries, read-only run-summary previews, documented health inventory boundaries, and contributor setup guidance.
-
-Risks: policy parsing must remain intentionally conservative; reporting must not imply enforcement before enforcement exists; run-summary previews must not imply automatic persistence before write behavior exists; health inventory documentation must not imply scoring or enforcement before implementation exists; any future command execution must remain out of scope until explicitly planned and approved.
+Roadmap v1 is complete. Roadmap v2 has added conservative policy parsing, policy-readiness reporting, roadmap linting, command output contracts, run-summary preview output, and repository health inventory file-presence signals. The inventory command is read-only and does not score, audit, enforce policy, inspect credentials, read environment settings, call networks, run external commands, or change files.
 
 ## Technical debt
 
-The CLI can list parsed tasks, select the next eligible TODO task, produce a dry-run repository report, parse the documented repository policy format, surface policy readiness in reports, lint roadmap task blocks, provide documented command output contracts, and preview local run-summary fields. It does not yet persist run summaries in a machine-readable local format or provide a repository health inventory command.
-
-## Test coverage gaps
-
-Report behavior has unit tests, including policy present, missing, and malformed readiness states. Parser coverage includes valid, empty, and malformed roadmap inputs. Selector coverage includes priority ordering, source-order tie-breaking, non-TODO exclusion, no-task outcomes, and unsupported priorities. Policy parser coverage includes valid policy sections, missing required section content, unexpected section content, and missing-policy CLI behavior. Plan linting has coverage for valid plans, missing required fields, unsupported priorities, unsupported statuses, and CLI diagnostic output. Run-summary preview coverage includes deterministic timestamp output and core preview fields. Future repository health inventory behavior needs tests only after the command exists.
-
-## Documentation gaps
-
-Future documentation should explain run-record persistence commands only after they exist. Future command documentation should describe repository health inventory output only after an inventory command exists.
-
-## Security and privacy considerations
-
-The MVP uses local files only and has no network feature. The policy format and contributor guide define allowed paths, prohibited paths, human-approval boundaries, safe file handling, and validation expectations before any higher-risk automation is added. Roadmap v2 keeps behavior read-only and avoids external command execution. The run-summary format and preview command explicitly exclude secrets, environment dumps, full diffs by default, automatic validation execution, and automatic file writes until a future roadmap task allows them. The health inventory scope excludes secret scanning claims, environment inspection, network access, and scoring until those behaviors are explicitly designed.
-
-## Performance and maintainability concerns
-
-Use small standard-library modules and avoid unnecessary dependencies. Keep parsing deterministic, error messages actionable, and CLI output stable enough for tests and humans.
+The CLI can list parsed tasks, select the next eligible TODO task, produce a dry-run repository report, parse the documented repository policy format, surface policy readiness in reports, lint roadmap task blocks, provide documented command output contracts, preview local run-summary fields, and print repository health file-presence signals. It does not yet persist run summaries in a machine-readable local format.
 
 ## Prioritized roadmap
 
@@ -75,7 +44,7 @@ Status: DONE
 Goal: Read task headings and statuses from `.ai/AUTONOMOUS_PLAN.md`.
 Why it matters: Task visibility is required for deterministic selection.
 Scope: Read Markdown locally and return task identifiers, titles, priorities, and statuses.
-Expected files or areas: `src/autonomous_forge/plan.py`, `src/autonomous_forge/cli.py`, `tests/test_plan.py`, `tests/test_cli.py`, README.
+Expected files or areas: `src/autonomous_forge/plan.py`, `src/autonomous_forge/cli.py`, tests, README.
 Acceptance criteria: Valid blocks parse, malformed blocks report clear errors, and no files change.
 Validation: Added unit tests for valid, malformed, and empty plans; static review completed because runtime test execution was unavailable in this automation environment.
 Risks or assumptions: Parsing is limited to this documented format.
@@ -88,9 +57,9 @@ Status: DONE
 Goal: Select one TODO task using priority and source order.
 Why it matters: Predictable selection makes maintenance reviewable.
 Scope: Implement pure selection logic over parsed task records.
-Expected files or areas: `src/autonomous_forge/plan.py`, `src/autonomous_forge/cli.py`, `tests/test_plan.py`, `tests/test_cli.py`, README.
+Expected files or areas: `src/autonomous_forge/plan.py`, `src/autonomous_forge/cli.py`, tests, README.
 Acceptance criteria: P0-to-P3 ordering is enforced and non-TODO tasks are excluded.
-Validation: Added unit tests for priority ordering, source-order tie-breaking, non-TODO exclusion, no-task outcomes, unsupported priorities, and CLI `--next` output; static review completed because runtime test execution was unavailable in this automation environment.
+Validation: Added unit tests for priority ordering, tie-breaking, non-TODO exclusion, no-task outcomes, unsupported priorities, and CLI `--next` output; static review completed because runtime test execution was unavailable in this automation environment.
 Risks or assumptions: Preserve source order as the v1 tie-breaker.
 Notes: Selection only reports a result.
 
@@ -142,7 +111,7 @@ Status: DONE
 Goal: Read `.forge/policy.md` into a small structured policy summary.
 Why it matters: The tool should understand its documented safety boundary before later commands rely on it.
 Scope: Parse the documented section headings for allowed paths, prohibited paths, approval-required areas, and validation expectations.
-Expected files or areas: `src/autonomous_forge/policy.py`, `src/autonomous_forge/cli.py`, `tests/test_policy.py`, `tests/test_cli.py`, README.
+Expected files or areas: `src/autonomous_forge/policy.py`, `src/autonomous_forge/cli.py`, tests, README.
 Acceptance criteria: Valid example policy parses, missing policy reports a clear read-only error, malformed required sections produce actionable diagnostics, and no repository files are changed.
 Validation: Added policy parser and CLI tests; static implementation review completed because runtime test execution was unavailable in this automation environment.
 Risks or assumptions: The parser should stay conservative and support only the documented Markdown format.
@@ -180,7 +149,7 @@ Status: DONE
 
 Goal: Document the current CLI commands, exit codes, and stable human-readable output expectations.
 Why it matters: Contributors and future automation need predictable behavior before more commands are added.
-Scope: Add concise command reference documentation for `forge`, `forge tasks`, `forge tasks --next`, `forge report`, and any new read-only commands completed before this task.
+Scope: Add concise command reference documentation for implemented read-only commands.
 Expected files or areas: README, `docs/`, tests if examples are added.
 Acceptance criteria: Documentation lists commands, purpose, inputs, outputs, exit-code expectations, and safety limitations.
 Validation: Added `docs/COMMANDS.md` covering implemented commands, output patterns, exit-code expectations, and safety limits; linked it from README; static documentation review completed because runtime test execution was unavailable in this automation environment.
@@ -221,14 +190,26 @@ Goal: Define the first safe scope for a future read-only repository health inven
 Why it matters: Inventory behavior should have clear boundaries before it reports repository readiness.
 Scope: Add documentation for the signals, output boundaries, and validation expectations of a future inventory command without implementing the command.
 Expected files or areas: `docs/HEALTH_INVENTORY.md`, README, roadmap state.
-Acceptance criteria: Documentation lists initial file-presence signals, states that the inventory is not enforcement or secret scanning, and keeps behavior read-only and local-only.
+Acceptance criteria: Documentation lists initial file-presence signals, states that the inventory is not enforcement or credential scanning, and keeps behavior read-only and local-only.
 Validation: Static documentation review completed against AUTO-013 acceptance criteria; runtime test execution was unavailable in this automation environment.
-Risks or assumptions: Do not imply a health score, audit, policy enforcement, or secret scanning before implementation exists.
+Risks or assumptions: Do not imply a health score, audit, policy enforcement, or credential scanning before implementation exists.
 Notes: Future implementation may add `forge inventory` only after this scope remains acceptable.
+
+### AUTO-014 — Implement read-only repository health inventory
+Priority: P2
+Status: DONE
+
+Goal: Add a read-only `forge inventory` command based on `docs/HEALTH_INVENTORY.md`.
+Why it matters: Maintainers need a quick local view of required maintenance files without implying audit or enforcement.
+Scope: Report deterministic file-presence signals for the documented paths only.
+Expected files or areas: `src/autonomous_forge/inventory.py`, `src/autonomous_forge/cli.py`, tests, README, `docs/COMMANDS.md`, `docs/HEALTH_INVENTORY.md`.
+Acceptance criteria: `forge inventory` prints present/missing signals in stable order, handles repositories without `.ai`, does not read file contents, does not calculate scores, and documents safety limits.
+Validation: Static implementation review completed against AUTO-014 acceptance criteria; runtime test execution was unavailable in this automation environment.
+Risks or assumptions: Do not imply a health score, audit, policy enforcement, credential scanning, environment inspection, network access, or external command execution.
+Notes: Read-only command only.
 
 ## Future Ideas
 
-- Read-only repository health inventory command based on `docs/HEALTH_INVENTORY.md`.
 - Hash-linked local run reports.
 - Optional issue import.
 - Policy-aware changed-file summaries.
@@ -240,4 +221,4 @@ Notes: Future implementation may add `forge inventory` only after this scope rem
 - Production infrastructure.
 - Features that run external commands.
 - Features that change repository files outside documented safe paths.
-- Secret handling, credential scanning, telemetry, analytics, billing, or deployment behavior.
+- Credential handling, telemetry, analytics, billing, or deployment behavior.
