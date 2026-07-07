@@ -1,5 +1,13 @@
 # Autonomous Changelog
 
+## 2026-07-07 — AUTO-009
+
+- Task ID: AUTO-009
+- Summary: Added read-only roadmap structure linting through `forge lint-plan`, including required task fields, supported priority values, supported status values, CLI diagnostics, tests, and README usage notes.
+- Validation completed: Static implementation review completed against AUTO-009 acceptance criteria; added unit and CLI coverage for valid plans, missing required fields, unsupported priorities, and unsupported statuses; runtime test execution was unavailable in this automation environment.
+- Commit hash: pending final commit lookup
+- Follow-up notes: Proceed to AUTO-010 next so command output contracts are documented after the new read-only command exists.
+
 ## 2026-07-07 — AUTO-008
 
 - Task ID: AUTO-008
