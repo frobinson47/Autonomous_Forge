@@ -10,11 +10,11 @@ The first version is a local Python command-line tool. It reads local project fi
 
 ## Current architecture
 
-The repository now contains a minimal Python package under `src/autonomous_forge`, package metadata in `pyproject.toml`, and tests under `tests/`. The initial CLI exposes a `forge` command and keeps behavior local-first with zero runtime dependencies.
+The repository now contains a minimal Python package under `src/autonomous_forge`, package metadata in `pyproject.toml`, and tests under `tests/`. The CLI exposes a `forge` command, a read-only `forge tasks` command backed by a deterministic roadmap parser, and keeps behavior local-first with zero runtime dependencies.
 
 ## Current implementation status
 
-AUTO-001 is complete. The project has a minimal installable CLI scaffold, package metadata, README development instructions, and a smoke test for help output.
+AUTO-001 and AUTO-002 are complete. The project has a minimal installable CLI scaffold, package metadata, README development instructions, a parser for roadmap task blocks, and tests covering CLI help and plan parsing behavior.
 
 ## User personas and likely workflows
 
@@ -24,15 +24,15 @@ AUTO-001 is complete. The project has a minimal installable CLI scaffold, packag
 
 ## Strengths and risks
 
-Strengths: local-first design, small scope, and clear history. Risk: plan parsing must remain easy to understand.
+Strengths: local-first design, small scope, and clear history. Risk: plan parsing must remain easy to understand and intentionally limited to the documented task block format.
 
 ## Technical debt
 
-The CLI currently only prints help and version information. Planner behavior is intentionally deferred to roadmap parser and selector tasks.
+The CLI can list parsed tasks, but it does not yet choose an eligible task or produce a complete repository report.
 
 ## Test coverage gaps
 
-Future parser, selector, and report behavior need unit tests. Current coverage is limited to the CLI help smoke test.
+Selector and report behavior need unit tests. Parser coverage now includes valid, empty, and malformed roadmap inputs.
 
 ## Documentation gaps
 
@@ -63,14 +63,14 @@ Notes: Keep runtime dependencies at zero.
 
 ### AUTO-002 — Parse autonomous plan task headings
 Priority: P1
-Status: TODO
+Status: DONE
 
 Goal: Read task headings and statuses from `.ai/AUTONOMOUS_PLAN.md`.
 Why it matters: Task visibility is required for deterministic selection.
 Scope: Read Markdown locally and return task identifiers, titles, priorities, and statuses.
-Expected files or areas: parser module, unit tests, CLI output.
+Expected files or areas: `src/autonomous_forge/plan.py`, `src/autonomous_forge/cli.py`, `tests/test_plan.py`, `tests/test_cli.py`, README.
 Acceptance criteria: Valid blocks parse, malformed blocks report clear errors, and no files change.
-Validation: Unit tests for valid, malformed, and empty plans.
+Validation: Added unit tests for valid, malformed, and empty plans; static review completed because runtime test execution was unavailable in this automation environment.
 Risks or assumptions: Parsing is limited to this documented format.
 Notes: Use deterministic parsing.
 
