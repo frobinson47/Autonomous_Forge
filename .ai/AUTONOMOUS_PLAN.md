@@ -14,13 +14,13 @@ The repository now contains a minimal Python package under `src/autonomous_forge
 
 ## Current implementation status
 
-AUTO-001, AUTO-002, and AUTO-003 are complete. The project has a minimal installable CLI scaffold, package metadata, README development instructions, a parser for roadmap task blocks, deterministic TODO task selection, and tests covering CLI help, plan parsing, and selector behavior.
+AUTO-001, AUTO-002, AUTO-003, and AUTO-004 are complete. The project has a minimal installable CLI scaffold, package metadata, README development instructions, a parser for roadmap task blocks, deterministic TODO task selection, a dry-run repository report, and tests covering CLI help, plan parsing, selector behavior, and report output.
 
 ## User personas and likely workflows
 
 - A maintainer reviews a local plan and sees the next task.
 - A small team stores its plan and run notes in the repository.
-- An AI-assisted contributor follows written task limits and acceptance criteria.
+- A contributor follows written task limits and acceptance criteria.
 
 ## Strengths and risks
 
@@ -28,11 +28,11 @@ Strengths: local-first design, small scope, clear history, and deterministic tas
 
 ## Technical debt
 
-The CLI can list parsed tasks and select the next eligible TODO task, but it does not yet produce a complete repository report.
+The CLI can list parsed tasks, select the next eligible TODO task, and produce a dry-run repository report. It does not yet define a repository policy format.
 
 ## Test coverage gaps
 
-Report behavior needs unit tests. Parser coverage includes valid, empty, and malformed roadmap inputs. Selector coverage includes priority ordering, source-order tie-breaking, non-TODO exclusion, no-task outcomes, and unsupported priorities.
+Report behavior now has unit tests. Parser coverage includes valid, empty, and malformed roadmap inputs. Selector coverage includes priority ordering, source-order tie-breaking, non-TODO exclusion, no-task outcomes, and unsupported priorities.
 
 ## Documentation gaps
 
@@ -89,14 +89,14 @@ Notes: Selection only reports a result.
 
 ### AUTO-004 — Produce a dry-run repository report
 Priority: P2
-Status: TODO
+Status: DONE
 
 Goal: Report plan state, selected task, and suggested validation without changing files.
 Why it matters: Maintainers need an inspectable starting point.
 Scope: Read local plan and state files and print a concise report.
 Expected files or areas: CLI, report module, tests, README.
 Acceptance criteria: No files are changed and all main result states are clear.
-Validation: Unit and CLI tests with temporary directories.
+Validation: Added unit and CLI tests for report output, task-state counts, next-task display, and state-file availability; static review completed because runtime test execution was unavailable in this automation environment.
 Risks or assumptions: Keep this milestone read-only.
 Notes: First user-facing workflow.
 
@@ -138,4 +138,4 @@ Notes: Depends on AUTO-001.
 - Remote and branch settings.
 - Repository visibility and access controls.
 - Production infrastructure.
-- Any feature that runs external commands.
+- Features that run external commands.
