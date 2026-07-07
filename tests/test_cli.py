@@ -24,3 +24,24 @@ Status: TODO
 
     output = capsys.readouterr().out
     assert "AUTO-010 [P1/TODO] Parse sample" in output
+
+
+def test_tasks_next_prints_only_selected_task(tmp_path, capsys):
+    plan = tmp_path / "AUTONOMOUS_PLAN.md"
+    plan.write_text(
+        """### AUTO-010 — Lower priority
+Priority: P2
+Status: TODO
+
+### AUTO-011 — Higher priority
+Priority: P1
+Status: TODO
+""",
+        encoding="utf-8",
+    )
+
+    assert main(["tasks", "--plan", str(plan), "--next"]) == 0
+
+    output = capsys.readouterr().out
+    assert "AUTO-011 [P1/TODO] Higher priority" in output
+    assert "AUTO-010" not in output
