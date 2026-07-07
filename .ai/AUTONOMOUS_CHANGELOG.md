@@ -1,5 +1,13 @@
 # Autonomous Changelog
 
+## 2026-07-07 — AUTO-008
+
+- Task ID: AUTO-008
+- Summary: Extended the read-only `forge report` output to include repository policy readiness as present/readable, missing, or malformed while avoiding any path enforcement claims.
+- Validation completed: Static implementation review completed against AUTO-008 acceptance criteria; added CLI coverage for present, missing, and malformed policy states; runtime test execution was unavailable in this automation environment.
+- Commit hash: pending final commit lookup
+- Follow-up notes: Proceed to AUTO-009 next so roadmap structure can be linted before adding more commands.
+
 ## 2026-07-07 — AUTO-007
 
 - Task ID: AUTO-007
