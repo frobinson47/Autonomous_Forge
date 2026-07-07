@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 from pathlib import Path
 
+from autonomous_forge.context import build_project_context
 from autonomous_forge.drift import read_drift_report
 from autonomous_forge.inventory import build_repository_inventory
 from autonomous_forge.session import (
@@ -210,6 +211,16 @@ def build_parser() -> argparse.ArgumentParser:
         "--root",
         default=".",
         help="repository root to find session files",
+    )
+
+    context_parser = subparsers.add_parser(
+        "context",
+        help="generate a comprehensive project context briefing",
+    )
+    context_parser.add_argument(
+        "--root",
+        default=".",
+        help="repository root to inspect",
     )
     return parser
 
@@ -427,6 +438,10 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.command == "resume":
         return _run_resume(Path(args.root))
+
+    if args.command == "context":
+        print(build_project_context(Path(args.root)))
+        return 0
 
     parser.print_help()
     return 0

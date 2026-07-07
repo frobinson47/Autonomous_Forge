@@ -9,7 +9,7 @@ These contracts describe implemented behavior only. They are intentionally plain
 - Commands write results to standard output.
 - Commands return exit code `0` when the requested read-only inspection succeeds.
 - Commands return exit code `2` for missing required input files or malformed roadmap/policy input.
-- Commands should not create, edit, delete, commit, push, run external commands, call networks, read environment variables, scan secrets, or enforce policy decisions.
+- Most commands should not create, edit, delete, commit, push, run external commands, call networks, read environment variables, scan secrets, or enforce policy decisions. Exceptions are noted per command.
 - Output is human-readable and may be extended conservatively, but existing status phrases should remain stable when practical.
 
 ## `forge`
@@ -258,3 +258,99 @@ Exit codes:
 - `0` when the inventory is built, including repositories with missing expected paths.
 
 Safety limits: reports file-presence signals only; it does not read file contents, calculate a score, scan secrets, read environment variables, call networks, run external commands, enforce policy decisions, or change repository files.
+
+## `forge drift`
+
+Purpose: detect consistency drift between the project's metadata files (plan, state, changelog, policy) and the repository.
+
+Inputs:
+
+- `--plan`: roadmap Markdown path, defaulting to `.ai/AUTONOMOUS_PLAN.md`.
+- `--state`: state Markdown path, defaulting to `.ai/AUTONOMOUS_STATE.md`.
+- `--changelog`: changelog Markdown path, defaulting to `.ai/AUTONOMOUS_CHANGELOG.md`.
+- `--policy`: policy Markdown path, defaulting to `.forge/policy.md`.
+- `--root`: repository root for policy path existence checks, defaulting to `.`.
+
+Expected successful output:
+
+```text
+Drift report
+Mode: read-only
+Result: no drift detected|<N> signal(s) detected
+[severity] (category) message
+...
+Notes: Drift detection does not enforce corrections, change files, or run external commands.
+```
+
+Signal categories: `state-plan`, `stale-state`, `changelog-plan`, `policy-repo`. Severity levels: `error`, `warn`, `info`.
+
+Exit codes:
+
+- `0` when the drift report is built, including when signals are detected.
+- `2` when the plan file is missing or malformed.
+
+Safety limits: reports drift signals only; it does not correct metadata, change files, run external commands, or enforce policy decisions. Missing optional files (state, changelog, policy) are handled gracefully — their checks are skipped.
+
+## `forge pause`
+
+Purpose: capture coding session context (git state and mental model) for handoff across interruptions.
+
+Inputs:
+
+- `--root`: repository root for git state capture and session file storage, defaulting to `.`.
+- `--working-on`: what you were working on.
+- `--tried`: what you tried so far.
+- `--stuck-on`: where you got stuck.
+- `--half-finished`: what is half-finished.
+- `--next-steps`: what to do next when resuming.
+- `--notes`: any additional notes.
+- `--timestamp`: optional ISO-8601 timestamp for deterministic output.
+
+Expected successful output:
+
+```text
+Session saved: .forge/sessions/session-<timestamp>.md
+```
+
+Exit codes:
+
+- `0` when the session is saved.
+
+Safety limits: **this command writes files** to `.forge/sessions/` and **runs `git` as a subprocess** to capture branch, status, log, and stash state. It does not commit, push, modify tracked files, or call networks. Session files are local working state and should be gitignored.
+
+## `forge resume`
+
+Purpose: replay the most recent session context as a structured briefing.
+
+Inputs:
+
+- `--root`: repository root to find session files, defaulting to `.`.
+
+Expected successful output:
+
+```text
+Session resume briefing
+Last paused: <ISO-8601 timestamp>
+Branch: <branch>
+Dirty files: <count>
+  <file>
+  ...
+Working on: <text>
+Next steps: <text>
+...
+Recent commits:
+  <hash> <message>
+  ...
+```
+
+If no session files exist:
+
+```text
+No session found.
+```
+
+Exit codes:
+
+- `0` when the briefing is printed or when no session exists.
+
+Safety limits: reads session files and prints a briefing only; it does not change files, run external commands, or call networks.
