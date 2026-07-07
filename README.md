@@ -13,7 +13,8 @@ Autonomous Forge is pre-alpha. The repository now contains:
 - A minimal Python package scaffold.
 - A `forge` console script entry point.
 - A roadmap task parser and read-only `forge tasks` command.
-- Smoke tests for CLI help and task parsing behavior.
+- Deterministic TODO task selection with `forge tasks --next`.
+- Smoke tests for CLI help, task parsing, and eligible task selection behavior.
 
 ## Planned direction
 
@@ -39,6 +40,14 @@ forge tasks --plan .ai/AUTONOMOUS_PLAN.md
 ```
 
 The command reads the roadmap and prints task IDs, priorities, statuses, and titles without changing files.
+
+## Select the next eligible task
+
+```bash
+forge tasks --plan .ai/AUTONOMOUS_PLAN.md --next
+```
+
+The selector only considers `TODO` tasks. It chooses the highest priority in `P0`, `P1`, `P2`, `P3` order and preserves roadmap source order when priorities tie.
 
 ## Run tests
 
