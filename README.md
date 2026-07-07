@@ -12,7 +12,8 @@ Autonomous Forge is pre-alpha. The repository now contains:
 - Durable autonomous planning files in `.ai/`.
 - A minimal Python package scaffold.
 - A `forge` console script entry point.
-- A smoke test for the CLI help output.
+- A roadmap task parser and read-only `forge tasks` command.
+- Smoke tests for CLI help and task parsing behavior.
 
 ## Planned direction
 
@@ -30,6 +31,14 @@ The MVP roadmap focuses on practical, reviewable automation:
 python -m pip install -e .
 forge --help
 ```
+
+## Inspect roadmap tasks
+
+```bash
+forge tasks --plan .ai/AUTONOMOUS_PLAN.md
+```
+
+The command reads the roadmap and prints task IDs, priorities, statuses, and titles without changing files.
 
 ## Run tests
 
