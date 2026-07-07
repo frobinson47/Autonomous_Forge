@@ -243,3 +243,30 @@ def test_policy_command_reports_missing_policy(tmp_path, capsys):
 
     output = capsys.readouterr().out
     assert "Policy file not found:" in output
+
+
+def test_run_summary_command_prints_read_only_preview(tmp_path, capsys):
+    plan = tmp_path / "AUTONOMOUS_PLAN.md"
+    policy = tmp_path / "policy.md"
+    plan.write_text(VALID_PLAN, encoding="utf-8")
+    policy.write_text(VALID_POLICY, encoding="utf-8")
+
+    assert main(
+        [
+            "run-summary",
+            "--plan",
+            str(plan),
+            "--policy",
+            str(policy),
+            "--timestamp",
+            "2026-07-07T15:00:00+04:00",
+        ]
+    ) == 0
+
+    output = capsys.readouterr().out
+    assert "Run timestamp: 2026-07-07T15:00:00+04:00" in output
+    assert "Selected task: AUTO-010 — Ready task" in output
+    assert "Task status before run: TODO" in output
+    assert "Policy status: present and readable" in output
+    assert "Validation result: not run" in output
+    assert "Commit: none" in output
