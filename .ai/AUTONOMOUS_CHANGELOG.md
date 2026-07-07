@@ -1,5 +1,13 @@
 # Autonomous Changelog
 
+## 2026-07-07 — AUTO-013
+
+- Task ID: AUTO-013
+- Summary: Added `docs/HEALTH_INVENTORY.md` defining the safe first scope for a future read-only repository health inventory, including file-presence signals, output boundaries, and validation expectations.
+- Validation completed: Static documentation review completed against AUTO-013 acceptance criteria; runtime test execution was unavailable in this automation environment.
+- Commit hash: pending final commit lookup
+- Follow-up notes: Implement a small read-only repository inventory command only if the documented scope remains acceptable.
+
 ## 2026-07-07 — AUTO-012
 
 - Task ID: AUTO-012
