@@ -60,6 +60,11 @@ def build_parser() -> argparse.ArgumentParser:
         default=".ai/AUTONOMOUS_STATE.md",
         help="path to the autonomous state file",
     )
+    report_parser.add_argument(
+        "--policy",
+        default=".forge/policy.md",
+        help="path to the repository policy file",
+    )
 
     policy_parser = subparsers.add_parser(
         "policy",
@@ -118,9 +123,9 @@ def _print_tasks(plan_path: Path, *, next_only: bool = False) -> int:
     return 0
 
 
-def _print_report(plan_path: Path, state_path: Path) -> int:
+def _print_report(plan_path: Path, state_path: Path, policy_path: Path) -> int:
     try:
-        print(read_repository_report(plan_path, state_path))
+        print(read_repository_report(plan_path, state_path, policy_path))
     except FileNotFoundError:
         print(f"Plan file not found: {plan_path}")
         return 2
@@ -159,7 +164,7 @@ def main(argv: list[str] | None = None) -> int:
         return _print_tasks(Path(args.plan), next_only=args.next)
 
     if args.command == "report":
-        return _print_report(Path(args.plan), Path(args.state))
+        return _print_report(Path(args.plan), Path(args.state), Path(args.policy))
 
     if args.command == "policy":
         return _print_policy(Path(args.policy))
