@@ -1,5 +1,13 @@
 # Autonomous Changelog
 
+## 2026-07-07 — AUTO-022
+
+- Task ID: AUTO-022
+- Summary: Added `forge sync` — one-way bridge from `.ai/AUTONOMOUS_PLAN.md` to Forgejo issues. Auto-detects repo from git remote, creates/updates issues with `[AUTO-xxx]` title prefix, applies status and priority labels, maps roadmap versions to milestones, closes DONE issues, reopens TODO issues. Uses only Python stdlib (urllib). Also created `/forge-sync` Claude Code skill.
+- Validation completed: 14 tests pass; full suite 110 tests pass. Live sync confirmed: 21 issues created on `frank/Autonomous-Forge`, 3 milestones auto-generated (Roadmap v1: 6, v2: 8, v3: 7), all DONE tasks closed with comments.
+- Commit hash: pending
+- Follow-up notes: Plan file remains the source of truth. Re-running sync is idempotent. First forge command that makes network API calls.
+
 ## 2026-07-07 — AUTO-021
 
 - Task ID: AUTO-021

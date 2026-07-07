@@ -395,3 +395,37 @@ Exit codes:
 - `2` when required input files are missing.
 
 Safety limits: **this command runs external commands** (validation suite via subprocess) and **writes files** to `.forge/runs/`. It runs `git` to detect changed files. It does NOT auto-commit, push, or modify tracked repository files. Blocked runs halt before validation. Run outcome files are local working state and should be gitignored.
+
+## `forge sync`
+
+Purpose: sync AUTO-xxx tasks from the plan file to Forgejo issues. One-way: plan is the source of truth, Forgejo is the mirror.
+
+Inputs:
+
+- `--root`: repository root, defaulting to `.`.
+- `--plan`: roadmap Markdown path (defaults to `.ai/AUTONOMOUS_PLAN.md`).
+- `--repo`: Forgejo `owner/repo` (auto-detected from git remote if omitted).
+- `--dry-run`: show what would be synced without making API calls.
+
+Expected successful output:
+
+```text
+Forge sync report
+Repo: <owner/repo>
+Tasks synced: <count>
+  Created: <count>
+  Updated: <count>
+  Up to date: <count>
+
+  AUTO-001: created (#1) — Task title
+  AUTO-002: up-to-date (#2) — Task title
+  ...
+```
+
+Exit codes:
+
+- `0` when the sync completes without errors.
+- `1` when API errors occur.
+- `2` when required input files are missing.
+
+Safety limits: **this command makes network API calls** to the Forgejo instance at `forgejo.familytechlab.com`. It creates and updates issues, labels, and milestones. It does NOT modify local files, commit, push, or change the plan file. Requires `FORGEJO_TOKEN` in environment or `~/.claude/.secrets.env`. The plan file remains the source of truth — Forgejo is the read-only mirror. Re-running is idempotent.

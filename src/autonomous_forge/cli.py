@@ -11,6 +11,7 @@ from autonomous_forge.drift import read_drift_report
 from autonomous_forge.init import format_init_result, init_forge
 from autonomous_forge.inventory import build_repository_inventory
 from autonomous_forge.run import execute_run, format_run_outcome, save_run_outcome
+from autonomous_forge.sync import execute_sync, format_sync_result
 from autonomous_forge.validate import format_validation_result, run_validation
 from autonomous_forge.session import (
     build_session_snapshot,
@@ -308,6 +309,31 @@ def build_parser() -> argparse.ArgumentParser:
         help="optional ISO-8601 timestamp for deterministic output",
     )
 
+    sync_parser = subparsers.add_parser(
+        "sync",
+        help="sync AUTO tasks to Forgejo issues (one-way: plan -> Forgejo)",
+    )
+    sync_parser.add_argument(
+        "--root",
+        default=".",
+        help="repository root",
+    )
+    sync_parser.add_argument(
+        "--plan",
+        default=None,
+        help="path to the autonomous roadmap file",
+    )
+    sync_parser.add_argument(
+        "--repo",
+        default=None,
+        help="Forgejo owner/repo (auto-detected from git remote)",
+    )
+    sync_parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="show what would be synced without making API calls",
+    )
+
     validate_parser = subparsers.add_parser(
         "validate",
         help="run validation command and report results",
@@ -585,6 +611,22 @@ def main(argv: list[str] | None = None) -> int:
             path = save_run_outcome(outcome, root)
             print(f"\nRun saved: {path}")
         return 1 if outcome.blocked else 0
+
+    if args.command == "sync":
+        root = Path(args.root)
+        plan_path = Path(args.plan) if args.plan else None
+        try:
+            result = execute_sync(
+                root,
+                plan_path=plan_path,
+                dry_run=args.dry_run,
+                repo_override=args.repo,
+            )
+        except FileNotFoundError as exc:
+            print(f"File not found: {exc}")
+            return 2
+        print(format_sync_result(result))
+        return 1 if result.errors else 0
 
     if args.command == "diff-check":
         root = Path(args.root)
