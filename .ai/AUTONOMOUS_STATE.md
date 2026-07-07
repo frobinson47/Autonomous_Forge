@@ -1,14 +1,14 @@
 # Autonomous State
 
-- Current roadmap version: v2
-- Current task ID: AUTO-014 — Implement read-only repository health inventory
+- Current roadmap version: v3
+- Current task ID: AUTO-016 — Capture and replay session context for handoff
 - Current task status: DONE
 - Current branch: main
-- Last run timestamp: 2026-07-07T16:58:09+04:00
-- Last successful commit hash: pending final commit lookup
-- Latest run summary: Added `forge inventory` with deterministic file-presence signals for the documented repository health inventory scope, plus command documentation and tests.
-- Files changed in the latest run: src/autonomous_forge/inventory.py, src/autonomous_forge/cli.py, tests/test_inventory.py, docs/COMMANDS.md, docs/HEALTH_INVENTORY.md, README.md, .ai/AUTONOMOUS_PLAN.md, .ai/AUTONOMOUS_STATE.md, .ai/AUTONOMOUS_CHANGELOG.md, .ai/DECISIONS.md.
-- Validation commands and results: Static implementation review completed against AUTO-014 acceptance criteria; planned validation command remains `PYTHONPATH=src python -m pytest`.
-- Current blockers: Runtime test execution is unavailable in this automation environment.
-- Known risks and assumptions: The inventory only checks documented path existence. No health score, audit claim, policy enforcement, secret scanning, environment inspection, network access, external command execution, automatic file writes, telemetry, deployment behavior, or branch protection bypass was added.
-- Recommended next task: Reassess Roadmap v2 and choose the next smallest read-only task only if it does not expand beyond local inspection.
+- Last run timestamp: 2026-07-07T14:23:00+00:00
+- Last successful commit hash: fdde137
+- Latest run summary: Added `forge drift` (metadata consistency detector) and `forge pause`/`forge resume` (session handoff). Also created universal Claude Code `/pause` and `/resume` skills.
+- Files changed in the latest run: src/autonomous_forge/drift.py, src/autonomous_forge/session.py, src/autonomous_forge/cli.py, tests/test_drift.py, tests/test_session.py, .gitignore, .githooks/pre-commit, .ai/AUTONOMOUS_PLAN.md, .ai/AUTONOMOUS_STATE.md, .ai/AUTONOMOUS_CHANGELOG.md.
+- Validation commands and results: `PYTHONPATH=src python -m pytest` — 54 tests pass (all drift and session tests confirmed at runtime).
+- Current blockers: None.
+- Known risks and assumptions: Session `pause` runs `git` as a subprocess — the first external command execution in the project. Session files are local-only and gitignored. The Claude Code skills (`/pause`, `/resume`) live in global config, not in this repo.
+- Recommended next task: Decide whether to add more Claude Code skill wrappers for existing forge commands, or focus on the next Python CLI capability.

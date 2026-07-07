@@ -10,15 +10,15 @@ The first product remains a local Python command-line tool. It reads repository 
 
 ## Current architecture
 
-The repository contains a minimal Python package under `src/autonomous_forge`, package metadata in `pyproject.toml`, tests under `tests/`, policy documentation under `docs/`, command output contracts under `docs/COMMANDS.md`, local run-summary format documentation under `docs/RUN_SUMMARIES.md`, repository health inventory documentation under `docs/HEALTH_INVENTORY.md`, an example policy under `.forge/`, and contributor guidance in `CONTRIBUTING.md`. The CLI exposes `forge`, `forge tasks`, `forge tasks --next`, `forge lint-plan`, `forge report`, `forge policy`, `forge run-summary`, and `forge inventory`. Current behavior is read-only, local-first, and uses zero runtime dependencies.
+The project has two interfaces: a Python CLI (`forge`) and Claude Code skills (`/pause`, `/resume`). The Python package lives under `src/autonomous_forge` with tests under `tests/`. The CLI exposes `forge tasks`, `forge tasks --next`, `forge lint-plan`, `forge report`, `forge policy`, `forge run-summary`, `forge inventory`, `forge drift`, `forge pause`, and `forge resume`. The Claude Code skills live in global config (`~/.claude/commands/`) and work in any repo. Session handoff files are stored in `.forge/sessions/` (gitignored). The project uses zero runtime dependencies; `forge pause` shells out to `git` for state capture.
 
 ## Current implementation status
 
-Roadmap v1 is complete. Roadmap v2 has added conservative policy parsing, policy-readiness reporting, roadmap linting, command output contracts, run-summary preview output, and repository health inventory file-presence signals. The inventory command is read-only and does not score, audit, enforce policy, inspect credentials, read environment settings, call networks, run external commands, or change files.
+Roadmaps v1 and v2 are complete (14 tasks). Roadmap v3 has added metadata drift detection and session handoff. All 54 tests pass at runtime. The session `pause` command is the first feature that writes files (session snapshots) and runs an external command (`git`).
 
 ## Technical debt
 
-The CLI can list parsed tasks, select the next eligible TODO task, produce a dry-run repository report, parse the documented repository policy format, surface policy readiness in reports, lint roadmap task blocks, provide documented command output contracts, preview local run-summary fields, and print repository health file-presence signals. It does not yet persist run summaries in a machine-readable local format.
+The CLI does not yet persist run summaries in a machine-readable local format. The `docs/COMMANDS.md` file does not document the `drift`, `pause`, or `resume` commands yet.
 
 ## Prioritized roadmap
 
@@ -208,11 +208,41 @@ Validation: Static implementation review completed against AUTO-014 acceptance c
 Risks or assumptions: Do not imply a health score, audit, policy enforcement, credential scanning, environment inspection, network access, or external command execution.
 Notes: Read-only command only.
 
+## Roadmap v3
+
+### AUTO-015 — Detect metadata consistency drift
+Priority: P1
+Status: DONE
+
+Goal: Add a read-only `forge drift` command that cross-checks plan, state, changelog, and policy files against each other and the repository.
+Why it matters: In a self-maintaining repo, drift between metadata and ground truth is the most dangerous failure mode.
+Scope: Detect state-vs-plan status mismatches, stale placeholder values, changelog references to nonexistent tasks, and policy paths pointing at missing directories.
+Expected files or areas: `src/autonomous_forge/drift.py`, `src/autonomous_forge/cli.py`, tests.
+Acceptance criteria: `forge drift` reports categorized signals with severity levels, handles missing optional files gracefully, and does not change any files.
+Validation: 13 unit and CLI tests pass; full suite (54 tests) passes with zero regressions. Runtime test execution confirmed.
+Risks or assumptions: Drift detection is observational only — no corrections are applied.
+Notes: First feature added by a human-AI pair rather than the original autonomous builder.
+
+### AUTO-016 — Capture and replay session context for handoff
+Priority: P1
+Status: DONE
+
+Goal: Add `forge pause` and `forge resume` commands that capture coding session context and replay it as a structured briefing.
+Why it matters: The hardest problem in solo dev is re-loading your brain after an interruption. Session handoff eliminates the ramp-up.
+Scope: Auto-capture git state (branch, dirty files, recent commits, stash). Accept mental-context fields (working on, tried, stuck on, half-finished, next steps, notes). Serialize to human-readable Markdown in `.forge/sessions/`. Deserialize and format as a resume briefing.
+Expected files or areas: `src/autonomous_forge/session.py`, `src/autonomous_forge/cli.py`, tests, `.gitignore`.
+Acceptance criteria: Roundtrip serialize/deserialize preserves all fields, save/load picks the most recent session, CLI commands work end-to-end, session files are gitignored.
+Validation: 11 unit and CLI tests pass; full suite (54 tests) passes with zero regressions. Runtime test execution confirmed.
+Risks or assumptions: Session files are local working state, not repo metadata. The `pause` command runs `git` as a subprocess — the first external command execution in the project.
+Notes: Also implemented as universal Claude Code skills (`/pause`, `/resume`) that synthesize mental context from conversation history rather than requiring CLI flags. The skills are the primary interface; the Python CLI is the engine and fallback.
+
 ## Future Ideas
 
 - Hash-linked local run reports.
 - Optional issue import.
 - Policy-aware changed-file summaries.
+- Claude Code skill variants for other forge commands (`/forge-report`, `/forge-drift`).
+- Cross-repo session handoff aggregation (resume across multiple projects).
 
 ## Do Not Change Without Explicit Human Approval
 

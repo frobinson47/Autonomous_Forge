@@ -1,5 +1,21 @@
 # Autonomous Changelog
 
+## 2026-07-07 — AUTO-016
+
+- Task ID: AUTO-016
+- Summary: Added `forge pause` and `forge resume` commands for session handoff — captures git state and mental context, serializes to Markdown, replays as a structured briefing. Also created universal Claude Code `/pause` and `/resume` skills that synthesize context from conversation history.
+- Validation completed: 11 session tests pass; full suite 54 tests pass. Runtime test execution confirmed.
+- Commit hash: fdde137
+- Follow-up notes: The Claude Code skills are the primary interface. The Python CLI is the engine and fallback for non-Claude-Code environments.
+
+## 2026-07-07 — AUTO-015
+
+- Task ID: AUTO-015
+- Summary: Added `forge drift` — a read-only metadata consistency detector that cross-checks plan, state, changelog, and policy files. Detects status mismatches, stale placeholders, phantom task references, and policy paths pointing at missing directories. Also installed pre-commit secret-leak guard.
+- Validation completed: 13 drift tests pass; full suite 54 tests pass. Runtime test execution confirmed.
+- Commit hash: 981d081
+- Follow-up notes: First feature added by a human-AI pair. First time all tests were actually executed at runtime (previous 14 tasks only had static review).
+
 ## 2026-07-07 — AUTO-014
 
 - Task ID: AUTO-014
