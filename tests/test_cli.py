@@ -1,6 +1,20 @@
 from autonomous_forge.cli import main
 
 
+VALID_POLICY = """## Allowed paths
+- `src/**`
+
+## Prohibited paths
+- `.env`
+
+## Human approval required
+- Adding network access.
+
+## Validation expectations
+- Run tests.
+"""
+
+
 def test_help_describes_dry_run_focus(capsys):
     assert main([]) == 0
 
@@ -50,6 +64,7 @@ Status: TODO
 def test_report_command_prints_read_only_summary(tmp_path, capsys):
     plan = tmp_path / "AUTONOMOUS_PLAN.md"
     state = tmp_path / "AUTONOMOUS_STATE.md"
+    policy = tmp_path / "policy.md"
     plan.write_text(
         """### AUTO-010 — Ready task
 Priority: P2
@@ -62,8 +77,19 @@ Status: DONE
         encoding="utf-8",
     )
     state.write_text("# State\n", encoding="utf-8")
+    policy.write_text(VALID_POLICY, encoding="utf-8")
 
-    assert main(["report", "--plan", str(plan), "--state", str(state)]) == 0
+    assert main(
+        [
+            "report",
+            "--plan",
+            str(plan),
+            "--state",
+            str(state),
+            "--policy",
+            str(policy),
+        ]
+    ) == 0
 
     output = capsys.readouterr().out
     assert "Autonomous Forge dry-run report" in output
@@ -71,13 +97,53 @@ Status: DONE
     assert "Plan tasks: 2" in output
     assert "Next eligible task: AUTO-010 [P2/TODO] Ready task" in output
     assert "State file: present" in output
+    assert "Policy file: present and readable" in output
 
 
-def test_policy_command_prints_read_only_summary(tmp_path, capsys):
+def test_report_command_marks_missing_policy(tmp_path, capsys):
+    plan = tmp_path / "AUTONOMOUS_PLAN.md"
+    state = tmp_path / "AUTONOMOUS_STATE.md"
+    missing_policy = tmp_path / "missing-policy.md"
+    plan.write_text(
+        """### AUTO-010 — Ready task
+Priority: P2
+Status: TODO
+""",
+        encoding="utf-8",
+    )
+    state.write_text("# State\n", encoding="utf-8")
+
+    assert main(
+        [
+            "report",
+            "--plan",
+            str(plan),
+            "--state",
+            str(state),
+            "--policy",
+            str(missing_policy),
+        ]
+    ) == 0
+
+    output = capsys.readouterr().out
+    assert "Policy file: missing" in output
+
+
+def test_report_command_marks_malformed_policy(tmp_path, capsys):
+    plan = tmp_path / "AUTONOMOUS_PLAN.md"
+    state = tmp_path / "AUTONOMOUS_STATE.md"
     policy = tmp_path / "policy.md"
+    plan.write_text(
+        """### AUTO-010 — Ready task
+Priority: P2
+Status: TODO
+""",
+        encoding="utf-8",
+    )
+    state.write_text("# State\n", encoding="utf-8")
     policy.write_text(
         """## Allowed paths
-- `src/**`
+src/**
 
 ## Prohibited paths
 - `.env`
@@ -90,6 +156,27 @@ def test_policy_command_prints_read_only_summary(tmp_path, capsys):
 """,
         encoding="utf-8",
     )
+
+    assert main(
+        [
+            "report",
+            "--plan",
+            str(plan),
+            "--state",
+            str(state),
+            "--policy",
+            str(policy),
+        ]
+    ) == 0
+
+    output = capsys.readouterr().out
+    assert "Policy file: malformed:" in output
+    assert "Unexpected content" in output
+
+
+def test_policy_command_prints_read_only_summary(tmp_path, capsys):
+    policy = tmp_path / "policy.md"
+    policy.write_text(VALID_POLICY, encoding="utf-8")
 
     assert main(["policy", "--policy", str(policy)]) == 0
 
