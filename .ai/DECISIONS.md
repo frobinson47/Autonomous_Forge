@@ -1,5 +1,13 @@
 # Autonomous Decisions
 
+## DEC-007 — 2026-07-07 — Preview run summaries before persistence
+
+Context: AUTO-011 documented the local run-summary format, and the project still prohibits automatic execution-history writes.
+Decision: Add `forge run-summary` as a read-only preview command that prints the documented fields without writing files, running validation, inspecting diffs, or creating commits.
+Alternatives considered: Add automatic history persistence immediately, leave the format documentation-only, or fold preview output into `forge report`.
+Consequences: Maintainers can inspect the future record shape with real plan and policy context while preserving the current read-only safety boundary.
+Human decision still required: No.
+
 ## DEC-006 — 2026-07-07 — Define run summaries before writing them
 
 Context: AUTO-011 introduces the local run-summary concept as part of durable repository memory, but the project does not yet allow automatic history-file writes.
