@@ -11,6 +11,7 @@ from autonomous_forge.plan import (
     parse_plan_tasks,
     select_eligible_task,
 )
+from autonomous_forge.report import read_repository_report
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -42,6 +43,21 @@ def build_parser() -> argparse.ArgumentParser:
         "--next",
         action="store_true",
         help="print only the next eligible TODO task",
+    )
+
+    report_parser = subparsers.add_parser(
+        "report",
+        help="print a read-only dry-run repository report",
+    )
+    report_parser.add_argument(
+        "--plan",
+        default=".ai/AUTONOMOUS_PLAN.md",
+        help="path to the autonomous roadmap file",
+    )
+    report_parser.add_argument(
+        "--state",
+        default=".ai/AUTONOMOUS_STATE.md",
+        help="path to the autonomous state file",
     )
     return parser
 
@@ -78,6 +94,18 @@ def _print_tasks(plan_path: Path, *, next_only: bool = False) -> int:
     return 0
 
 
+def _print_report(plan_path: Path, state_path: Path) -> int:
+    try:
+        print(read_repository_report(plan_path, state_path))
+    except FileNotFoundError:
+        print(f"Plan file not found: {plan_path}")
+        return 2
+    except (PlanParseError, PlanSelectionError) as exc:
+        print(f"Plan error: {exc}")
+        return 2
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     """Run the Forge CLI."""
     parser = build_parser()
@@ -91,6 +119,9 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.command == "tasks":
         return _print_tasks(Path(args.plan), next_only=args.next)
+
+    if args.command == "report":
+        return _print_report(Path(args.plan), Path(args.state))
 
     parser.print_help()
     return 0
