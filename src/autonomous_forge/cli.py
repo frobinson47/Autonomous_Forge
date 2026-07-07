@@ -6,8 +6,11 @@ import argparse
 from pathlib import Path
 
 from autonomous_forge.context import build_project_context
+from autonomous_forge.diffcheck import read_diff_report
 from autonomous_forge.drift import read_drift_report
+from autonomous_forge.init import format_init_result, init_forge
 from autonomous_forge.inventory import build_repository_inventory
+from autonomous_forge.validate import format_validation_result, run_validation
 from autonomous_forge.session import (
     build_session_snapshot,
     capture_git_snapshot,
@@ -221,6 +224,68 @@ def build_parser() -> argparse.ArgumentParser:
         "--root",
         default=".",
         help="repository root to inspect",
+    )
+
+    init_parser = subparsers.add_parser(
+        "init",
+        help="scaffold forge metadata into a repository",
+    )
+    init_parser.add_argument(
+        "--root",
+        default=".",
+        help="repository root to initialize",
+    )
+    init_parser.add_argument(
+        "--name",
+        default=None,
+        help="project name (defaults to directory name)",
+    )
+
+    diffcheck_parser = subparsers.add_parser(
+        "diff-check",
+        help="validate changed files against repository policy",
+    )
+    diffcheck_parser.add_argument(
+        "--root",
+        default=".",
+        help="repository root",
+    )
+    diffcheck_parser.add_argument(
+        "--policy",
+        default=None,
+        help="path to the repository policy file",
+    )
+    diffcheck_parser.add_argument(
+        "--staged",
+        action="store_true",
+        help="check only staged files",
+    )
+
+    validate_parser = subparsers.add_parser(
+        "validate",
+        help="run validation command and report results",
+    )
+    validate_parser.add_argument(
+        "--root",
+        default=".",
+        help="repository root",
+    )
+    validate_parser.add_argument(
+        "--cmd",
+        default=None,
+        dest="validate_cmd",
+        help="validation command (defaults to policy expectation or pytest)",
+    )
+    validate_parser.add_argument(
+        "--policy",
+        default=None,
+        help="path to the repository policy file",
+    )
+    validate_parser.add_argument(
+        "--timeout",
+        type=int,
+        default=300,
+        help="timeout in seconds (default: 300)",
     )
     return parser
 
@@ -442,6 +507,30 @@ def main(argv: list[str] | None = None) -> int:
     if args.command == "context":
         print(build_project_context(Path(args.root)))
         return 0
+
+    if args.command == "init":
+        from datetime import datetime, timezone
+
+        date = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+        result = init_forge(Path(args.root), project_name=args.name, date=date)
+        print(format_init_result(result))
+        return 0
+
+    if args.command == "diff-check":
+        root = Path(args.root)
+        policy_path = Path(args.policy) if args.policy else None
+        print(read_diff_report(root, policy_path=policy_path, staged_only=args.staged))
+        return 0
+
+    if args.command == "validate":
+        root = Path(args.root)
+        policy_path = Path(args.policy) if args.policy else None
+        result = run_validation(
+            root, command=args.validate_cmd,
+            policy_path=policy_path, timeout_seconds=args.timeout,
+        )
+        print(format_validation_result(result))
+        return 0 if result.passed else 1
 
     parser.print_help()
     return 0

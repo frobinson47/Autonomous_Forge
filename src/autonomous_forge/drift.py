@@ -136,11 +136,15 @@ def _check_policy_path_existence(
 
     for path_pattern in policy.allowed_paths:
         base = path_pattern.split("/")[0].rstrip("*")
-        if base and not (root / base).exists():
+        if not base:
+            continue
+        target = root / base
+        if not target.exists():
+            label = base if "." in base else f"{base}/"
             signals.append(DriftSignal(
                 category="policy-repo",
                 severity="info",
-                message=f"Allowed path pattern '{path_pattern}' — base '{base}/' does not exist.",
+                message=f"Allowed path pattern '{path_pattern}' — '{label}' does not exist.",
             ))
 
     return signals
