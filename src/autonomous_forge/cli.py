@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 from pathlib import Path
 
+from autonomous_forge.drift import read_drift_report
 from autonomous_forge.inventory import build_repository_inventory
 from autonomous_forge.plan import (
     PlanParseError,
@@ -118,6 +119,36 @@ def build_parser() -> argparse.ArgumentParser:
         default=".",
         help="repository root to inspect for file-presence signals",
     )
+
+    drift_parser = subparsers.add_parser(
+        "drift",
+        help="detect consistency drift between metadata files and the repository",
+    )
+    drift_parser.add_argument(
+        "--plan",
+        default=".ai/AUTONOMOUS_PLAN.md",
+        help="path to the autonomous roadmap file",
+    )
+    drift_parser.add_argument(
+        "--state",
+        default=".ai/AUTONOMOUS_STATE.md",
+        help="path to the autonomous state file",
+    )
+    drift_parser.add_argument(
+        "--changelog",
+        default=".ai/AUTONOMOUS_CHANGELOG.md",
+        help="path to the autonomous changelog file",
+    )
+    drift_parser.add_argument(
+        "--policy",
+        default=".forge/policy.md",
+        help="path to the repository policy file",
+    )
+    drift_parser.add_argument(
+        "--root",
+        default=".",
+        help="repository root to check policy path existence",
+    )
     return parser
 
 
@@ -226,6 +257,26 @@ def _print_inventory(root_path: Path) -> int:
     return 0
 
 
+def _print_drift(
+    plan_path: Path,
+    state_path: Path,
+    changelog_path: Path,
+    policy_path: Path,
+    root_path: Path,
+) -> int:
+    try:
+        print(
+            read_drift_report(plan_path, state_path, changelog_path, policy_path, root_path)
+        )
+    except FileNotFoundError:
+        print(f"Plan file not found: {plan_path}")
+        return 2
+    except (PlanParseError, PlanSelectionError) as exc:
+        print(f"Plan error: {exc}")
+        return 2
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     """Run the Forge CLI."""
     parser = build_parser()
@@ -254,6 +305,15 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.command == "inventory":
         return _print_inventory(Path(args.root))
+
+    if args.command == "drift":
+        return _print_drift(
+            Path(args.plan),
+            Path(args.state),
+            Path(args.changelog),
+            Path(args.policy),
+            Path(args.root),
+        )
 
     parser.print_help()
     return 0
