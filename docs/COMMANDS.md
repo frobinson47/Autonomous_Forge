@@ -1,6 +1,6 @@
 # Command Output Contracts
 
-Autonomous Forge commands are currently read-only. They inspect local files, print human-readable summaries, and do not modify repository files.
+Autonomous Forge commands inspect local files and print human-readable summaries. Most are read-only. Commands that write files or run external processes are noted explicitly.
 
 These contracts describe implemented behavior only. They are intentionally plain so contributors and future automation can rely on stable command purposes without assuming enforcement or execution features that do not exist yet.
 
@@ -354,3 +354,44 @@ Exit codes:
 - `0` when the briefing is printed or when no session exists.
 
 Safety limits: reads session files and prints a briefing only; it does not change files, run external commands, or call networks.
+
+## `forge run`
+
+Purpose: execute one autonomous improvement cycle — select a task, validate, diff-check, detect drift, and record the outcome.
+
+Inputs:
+
+- `--root`: repository root, defaulting to `.`.
+- `--plan`: roadmap Markdown path (defaults to `.ai/AUTONOMOUS_PLAN.md`).
+- `--policy`: policy Markdown path (defaults to `.forge/policy.md`).
+- `--cmd`: validation command override.
+- `--dry-run`: skip validation execution but still check policy and drift.
+- `--no-validate`: skip validation entirely.
+- `--no-save`: do not persist the run outcome to `.forge/runs/`.
+- `--timestamp`: optional ISO-8601 timestamp for deterministic output.
+
+Expected successful output:
+
+```text
+Forge run report
+Timestamp: <ISO-8601 timestamp>
+Selected task: <AUTO-### — title, or none>
+Policy: <present and readable|not found|malformed: reason>
+Drift signals: <count>
+Changed files: <count>
+Diff violations: <count>
+Validation: <PASSED|FAILED|skipped (dry run)>
+Command: <validation command>
+Status: <ready to commit|validation failed — do not commit|idle — no TODO tasks remaining|run complete>
+BLOCKED: <reason, if blocked>
+
+Run saved: .forge/runs/run-<timestamp>.md
+```
+
+Exit codes:
+
+- `0` when the run completes without being blocked.
+- `1` when the run is blocked (prohibited files, error-level drift).
+- `2` when required input files are missing.
+
+Safety limits: **this command runs external commands** (validation suite via subprocess) and **writes files** to `.forge/runs/`. It runs `git` to detect changed files. It does NOT auto-commit, push, or modify tracked repository files. Blocked runs halt before validation. Run outcome files are local working state and should be gitignored.

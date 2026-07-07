@@ -15,8 +15,9 @@ venv/
 .env.*
 !.env.example
 
-# Session handoff files (local working state)
+# Forge local working state
 .forge/sessions/
+.forge/runs/
 
 # OS and editors
 .DS_Store

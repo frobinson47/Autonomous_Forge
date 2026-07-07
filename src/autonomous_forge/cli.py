@@ -10,6 +10,7 @@ from autonomous_forge.diffcheck import read_diff_report
 from autonomous_forge.drift import read_drift_report
 from autonomous_forge.init import format_init_result, init_forge
 from autonomous_forge.inventory import build_repository_inventory
+from autonomous_forge.run import execute_run, format_run_outcome, save_run_outcome
 from autonomous_forge.validate import format_validation_result, run_validation
 from autonomous_forge.session import (
     build_session_snapshot,
@@ -259,6 +260,52 @@ def build_parser() -> argparse.ArgumentParser:
         "--staged",
         action="store_true",
         help="check only staged files",
+    )
+
+    run_parser = subparsers.add_parser(
+        "run",
+        help="execute one autonomous cycle: select, validate, diff-check, record",
+    )
+    run_parser.add_argument(
+        "--root",
+        default=".",
+        help="repository root",
+    )
+    run_parser.add_argument(
+        "--plan",
+        default=None,
+        help="path to the autonomous roadmap file",
+    )
+    run_parser.add_argument(
+        "--policy",
+        default=None,
+        help="path to the repository policy file",
+    )
+    run_parser.add_argument(
+        "--cmd",
+        default=None,
+        dest="run_cmd",
+        help="validation command override",
+    )
+    run_parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="skip validation execution",
+    )
+    run_parser.add_argument(
+        "--no-validate",
+        action="store_true",
+        help="skip validation entirely",
+    )
+    run_parser.add_argument(
+        "--no-save",
+        action="store_true",
+        help="do not persist the run outcome to .forge/runs/",
+    )
+    run_parser.add_argument(
+        "--timestamp",
+        default=None,
+        help="optional ISO-8601 timestamp for deterministic output",
     )
 
     validate_parser = subparsers.add_parser(
@@ -515,6 +562,29 @@ def main(argv: list[str] | None = None) -> int:
         result = init_forge(Path(args.root), project_name=args.name, date=date)
         print(format_init_result(result))
         return 0
+
+    if args.command == "run":
+        root = Path(args.root)
+        plan_path = Path(args.plan) if args.plan else None
+        policy_path = Path(args.policy) if args.policy else None
+        try:
+            outcome = execute_run(
+                root,
+                plan_path=plan_path,
+                policy_path=policy_path,
+                validate=not args.no_validate,
+                validate_command=args.run_cmd,
+                dry_run=args.dry_run,
+                timestamp=args.timestamp,
+            )
+        except FileNotFoundError as exc:
+            print(f"File not found: {exc}")
+            return 2
+        print(format_run_outcome(outcome))
+        if not args.no_save:
+            path = save_run_outcome(outcome, root)
+            print(f"\nRun saved: {path}")
+        return 1 if outcome.blocked else 0
 
     if args.command == "diff-check":
         root = Path(args.root)

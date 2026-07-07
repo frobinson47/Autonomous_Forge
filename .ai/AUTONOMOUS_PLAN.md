@@ -288,9 +288,21 @@ Validation: 8 tests pass; full suite (81 tests) passes. Runtime confirmed.
 Risks or assumptions: Runs external commands via subprocess. Handles PYTHONPATH portably. Timeout defaults to 300s.
 Notes: Exit code 0 on pass, 1 on fail. The first forge command that executes external processes.
 
+### AUTO-021 — Execute one autonomous improvement cycle
+Priority: P0
+Status: DONE
+
+Goal: Add `forge run` that ties together task selection, validation, diff-check, drift detection, and run recording into a single command.
+Why it matters: This is the autonomous loop — the command that makes the forge actually autonomous. It replaces manual orchestration of five separate commands with one cycle.
+Scope: Select next eligible task, check for drift blockers, validate changed files against policy, run test suite, record structured outcome to `.forge/runs/`.
+Expected files or areas: `src/autonomous_forge/run.py`, `src/autonomous_forge/cli.py`, tests.
+Acceptance criteria: Selects task, blocks on prohibited changes or error-level drift, runs validation (with dry-run and no-validate modes), saves run outcomes, CLI returns exit code 1 when blocked.
+Validation: 15 tests pass; full suite (96 tests) passes with zero regressions. Runtime confirmed.
+Risks or assumptions: Runs git and subprocess for validation. Does not auto-commit — that remains a human decision.
+Notes: Supports `--dry-run`, `--no-validate`, `--no-save`, `--cmd` override. Exit 0 on success, 1 on blocked.
+
 ## Future Ideas
 
-- `forge run` — the full autonomous loop: select task, execute, validate, diff-check, commit.
 - Hash-linked local run reports.
 - Optional issue import.
 - Cross-repo session handoff aggregation (resume across multiple projects).

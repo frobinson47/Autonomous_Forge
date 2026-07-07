@@ -1,5 +1,13 @@
 # Autonomous Changelog
 
+## 2026-07-07 — AUTO-021
+
+- Task ID: AUTO-021
+- Summary: Added `forge run` — the autonomous execution loop that ties task selection, validation, diff-check, drift detection, and run recording into a single command. Supports `--dry-run`, `--no-validate`, `--no-save`, and `--cmd` override. Blocked runs return exit code 1. Run outcomes persist to `.forge/runs/` (gitignored).
+- Validation completed: 15 tests pass; full suite 96 tests pass. Runtime confirmed.
+- Commit hash: pending
+- Follow-up notes: This is the capstone command — the forge can now run a complete autonomous cycle. It does not auto-commit; that remains a human decision or future explicit opt-in.
+
 ## 2026-07-07 — AUTO-020
 
 - Task ID: AUTO-020
