@@ -14,7 +14,7 @@ Autonomous Forge is pre-alpha. The repository now contains:
 - A `forge` console script entry point.
 - A roadmap task parser and read-only `forge tasks` command.
 - Deterministic TODO task selection with `forge tasks --next`.
-- A read-only `forge report` command for dry-run repository summaries.
+- A read-only `forge report` command for dry-run repository summaries and policy-readiness reporting.
 - A documented repository policy format with a conservative example policy.
 - A read-only `forge policy` command for parsing policy section readiness.
 - Contributor development guidance in `CONTRIBUTING.md`.
@@ -30,7 +30,8 @@ The MVP roadmap focuses on practical, reviewable automation:
 4. Produce a read-only dry-run repository report.
 5. Document repository policy boundaries before any higher-risk behavior.
 6. Parse the repository policy into a conservative read-only summary.
-7. Keep contributor setup and safety guidance clear as the CLI evolves.
+7. Surface policy readiness in dry-run reports without enforcing path decisions.
+8. Keep contributor setup and safety guidance clear as the CLI evolves.
 
 ## Repository policy boundaries
 
@@ -71,10 +72,10 @@ The selector only considers `TODO` tasks. It chooses the highest priority in `P0
 ## Produce a dry-run repository report
 
 ```bash
-forge report --plan .ai/AUTONOMOUS_PLAN.md --state .ai/AUTONOMOUS_STATE.md
+forge report --plan .ai/AUTONOMOUS_PLAN.md --state .ai/AUTONOMOUS_STATE.md --policy .forge/policy.md
 ```
 
-The report is read-only. It summarizes roadmap task counts, the next eligible task, state-file availability, and the suggested validation command without changing repository files.
+The report is read-only. It summarizes roadmap task counts, the next eligible task, state-file availability, policy-file readiness, and the suggested validation command without changing repository files. Policy readiness is only informational; the report does not enforce path decisions.
 
 ## Inspect repository policy
 
