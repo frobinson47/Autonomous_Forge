@@ -10,11 +10,11 @@ The first version is a local Python command-line tool. It reads local project fi
 
 ## Current architecture
 
-The repository now contains a minimal Python package under `src/autonomous_forge`, package metadata in `pyproject.toml`, and tests under `tests/`. The CLI exposes a `forge` command, a read-only `forge tasks` command backed by a deterministic roadmap parser, a `forge tasks --next` selection mode, and keeps behavior local-first with zero runtime dependencies.
+The repository now contains a minimal Python package under `src/autonomous_forge`, package metadata in `pyproject.toml`, tests under `tests/`, policy documentation under `docs/`, and an example policy under `.forge/`. The CLI exposes a `forge` command, a read-only `forge tasks` command backed by a deterministic roadmap parser, a `forge tasks --next` selection mode, and keeps behavior local-first with zero runtime dependencies.
 
 ## Current implementation status
 
-AUTO-001, AUTO-002, AUTO-003, and AUTO-004 are complete. The project has a minimal installable CLI scaffold, package metadata, README development instructions, a parser for roadmap task blocks, deterministic TODO task selection, a dry-run repository report, and tests covering CLI help, plan parsing, selector behavior, and report output.
+AUTO-001, AUTO-002, AUTO-003, AUTO-004, and AUTO-005 are complete. The project has a minimal installable CLI scaffold, package metadata, README development instructions, a parser for roadmap task blocks, deterministic TODO task selection, a dry-run repository report, policy format documentation, an example repository policy, and tests covering CLI help, plan parsing, selector behavior, and report output.
 
 ## User personas and likely workflows
 
@@ -24,15 +24,15 @@ AUTO-001, AUTO-002, AUTO-003, and AUTO-004 are complete. The project has a minim
 
 ## Strengths and risks
 
-Strengths: local-first design, small scope, clear history, and deterministic task selection. Risk: plan parsing must remain easy to understand and intentionally limited to the documented task block format.
+Strengths: local-first design, small scope, clear history, deterministic task selection, and explicit policy boundaries. Risk: plan and policy parsing must remain easy to understand and intentionally limited to documented formats.
 
 ## Technical debt
 
-The CLI can list parsed tasks, select the next eligible TODO task, and produce a dry-run repository report. It does not yet define a repository policy format.
+The CLI can list parsed tasks, select the next eligible TODO task, and produce a dry-run repository report. It does not yet parse or enforce repository policy files.
 
 ## Test coverage gaps
 
-Report behavior now has unit tests. Parser coverage includes valid, empty, and malformed roadmap inputs. Selector coverage includes priority ordering, source-order tie-breaking, non-TODO exclusion, no-task outcomes, and unsupported priorities.
+Report behavior now has unit tests. Parser coverage includes valid, empty, and malformed roadmap inputs. Selector coverage includes priority ordering, source-order tie-breaking, non-TODO exclusion, no-task outcomes, and unsupported priorities. Policy documentation has not yet been converted into parser tests.
 
 ## Documentation gaps
 
@@ -40,7 +40,7 @@ Contributor guidance should be expanded after more developer workflow commands e
 
 ## Security and privacy considerations
 
-The MVP uses local files only and has no network feature.
+The MVP uses local files only and has no network feature. The documented policy format defines allowed paths, prohibited paths, and human-approval boundaries before any higher-risk automation is added.
 
 ## Performance and maintainability concerns
 
@@ -102,14 +102,14 @@ Notes: First user-facing workflow.
 
 ### AUTO-005 — Document repository policy format
 Priority: P2
-Status: TODO
+Status: DONE
 
 Goal: Define a small readable policy file for future boundaries.
 Why it matters: Limits should be clear before later features are added.
 Scope: Specify a format and examples only.
 Expected files or areas: documentation, example policy, roadmap.
 Acceptance criteria: Documentation defines allowed paths, prohibited paths, and approval boundaries.
-Validation: Documentation review and example consistency check.
+Validation: Documentation and example consistency reviewed; runtime test execution was unavailable in this automation environment.
 Risks or assumptions: Policy semantics stay conservative.
 Notes: No runner is added in this task.
 
