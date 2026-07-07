@@ -1,14 +1,14 @@
 # Autonomous State
 
 - Current roadmap version: v3
-- Current task ID: AUTO-016 — Capture and replay session context for handoff
+- Current task ID: AUTO-020 — Run validation commands and report results
 - Current task status: DONE
 - Current branch: main
-- Last run timestamp: 2026-07-07T14:23:00+00:00
-- Last successful commit hash: fdde137
-- Latest run summary: Added `forge drift` (metadata consistency detector) and `forge pause`/`forge resume` (session handoff). Also created universal Claude Code `/pause` and `/resume` skills.
-- Files changed in the latest run: src/autonomous_forge/drift.py, src/autonomous_forge/session.py, src/autonomous_forge/cli.py, tests/test_drift.py, tests/test_session.py, .gitignore, .githooks/pre-commit, .ai/AUTONOMOUS_PLAN.md, .ai/AUTONOMOUS_STATE.md, .ai/AUTONOMOUS_CHANGELOG.md.
-- Validation commands and results: `PYTHONPATH=src python -m pytest` — 54 tests pass (all drift and session tests confirmed at runtime).
+- Last run timestamp: 2026-07-07T15:30:00+00:00
+- Last successful commit hash: 927cf15
+- Latest run summary: Added forge init, diff-check, validate, and context commands. Created /forge, /pause, /resume Claude Code skills. Updated docs/COMMANDS.md with all new commands.
+- Files changed in the latest run: src/autonomous_forge/init.py, src/autonomous_forge/diffcheck.py, src/autonomous_forge/validate.py, src/autonomous_forge/context.py, src/autonomous_forge/cli.py, src/autonomous_forge/drift.py, tests/test_init.py, tests/test_diffcheck.py, tests/test_validate.py, tests/test_context.py, docs/COMMANDS.md.
+- Validation commands and results: `PYTHONPATH=src python -m pytest` — 81 tests pass.
 - Current blockers: None.
-- Known risks and assumptions: Session `pause` runs `git` as a subprocess — the first external command execution in the project. Session files are local-only and gitignored. The Claude Code skills (`/pause`, `/resume`) live in global config, not in this repo.
-- Recommended next task: Decide whether to add more Claude Code skill wrappers for existing forge commands, or focus on the next Python CLI capability.
+- Known risks and assumptions: validate and diff-check run git/subprocess. Session files are local-only. Claude Code skills live in global config.
+- Recommended next task: Build `forge run` — the autonomous loop that ties select, execute, validate, diff-check, and commit together.

@@ -1,5 +1,33 @@
 # Autonomous Changelog
 
+## 2026-07-07 — AUTO-020
+
+- Task ID: AUTO-020
+- Summary: Added `forge validate` — runs the test suite or custom command, reports structured pass/fail. First forge command that executes external processes. Handles PYTHONPATH portably across platforms.
+- Validation completed: 8 tests pass; full suite 81 tests pass. Runtime confirmed.
+- Commit hash: 927cf15
+
+## 2026-07-07 — AUTO-019
+
+- Task ID: AUTO-019
+- Summary: Added `forge diff-check` — validates changed files against policy allowed/prohibited paths. The safety gate before autonomous commits.
+- Validation completed: 9 tests pass; full suite 81 tests pass. Runtime confirmed.
+- Commit hash: 927cf15
+
+## 2026-07-07 — AUTO-018
+
+- Task ID: AUTO-018
+- Summary: Added `forge init` — scaffolds `.ai/` and `.forge/` metadata into any repo. Creates plan, state, changelog, decisions, policy templates. Skips existing files.
+- Validation completed: 6 tests pass; full suite 81 tests pass. Runtime confirmed.
+- Commit hash: 927cf15
+
+## 2026-07-07 — AUTO-017
+
+- Task ID: AUTO-017
+- Summary: Added `forge context` — composes task summary, state, policy, drift, and inventory into a one-screen briefing. Also created `/forge` Claude Code skill. Updated `docs/COMMANDS.md` with drift, pause, resume docs.
+- Validation completed: 5 tests pass; full suite 81 tests pass. Runtime confirmed.
+- Commit hash: 6cdd884
+
 ## 2026-07-07 — AUTO-016
 
 - Task ID: AUTO-016

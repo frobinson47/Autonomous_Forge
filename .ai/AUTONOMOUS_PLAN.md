@@ -236,13 +236,65 @@ Validation: 11 unit and CLI tests pass; full suite (54 tests) passes with zero r
 Risks or assumptions: Session files are local working state, not repo metadata. The `pause` command runs `git` as a subprocess — the first external command execution in the project.
 Notes: Also implemented as universal Claude Code skills (`/pause`, `/resume`) that synthesize mental context from conversation history rather than requiring CLI flags. The skills are the primary interface; the Python CLI is the engine and fallback.
 
+### AUTO-017 — Generate project context briefing
+Priority: P1
+Status: DONE
+
+Goal: Add `forge context` that composes task summary, state, policy, drift, and inventory into a single briefing.
+Why it matters: Cold-starting agents or checking project status should take one command, not five.
+Scope: Compose existing modules (plan, state, policy, drift, inventory) into a unified context report.
+Expected files or areas: `src/autonomous_forge/context.py`, `src/autonomous_forge/cli.py`, tests.
+Acceptance criteria: One-screen output covering tasks, state, policy, drift, and health. Graceful handling of missing metadata.
+Validation: 5 tests pass; full suite passes. Runtime confirmed.
+Risks or assumptions: Composing existing modules only — no new data sources.
+Notes: Also created `/forge` Claude Code skill as the universal status command.
+
+### AUTO-018 — Scaffold forge metadata into any repository
+Priority: P1
+Status: DONE
+
+Goal: Add `forge init` that creates `.ai/` and `.forge/` metadata files in any repo.
+Why it matters: Without init, adopting the forge requires manually creating 5+ files. This makes it a one-command setup.
+Scope: Create plan, state, changelog, decisions, and policy templates. Append gitignore. Skip existing files.
+Expected files or areas: `src/autonomous_forge/init.py`, `src/autonomous_forge/cli.py`, tests.
+Acceptance criteria: Creates all metadata files, skips existing ones, appends to gitignore, uses project name in templates.
+Validation: 6 tests pass; full suite passes. Runtime confirmed.
+Risks or assumptions: Templates are conservative defaults — users should customize policy for their project.
+Notes: First command that creates files outside `.forge/sessions/`.
+
+### AUTO-019 — Validate changed files against policy boundaries
+Priority: P1
+Status: DONE
+
+Goal: Add `forge diff-check` that validates git-changed files against policy allowed/prohibited paths.
+Why it matters: This is the safety gate — before any autonomous commit, changes must comply with policy.
+Scope: Read git diff (staged or all), match each file against policy patterns, report violations.
+Expected files or areas: `src/autonomous_forge/diffcheck.py`, `src/autonomous_forge/cli.py`, tests.
+Acceptance criteria: Detects prohibited files, flags files outside allowed paths, reports cleanly with no changes.
+Validation: 9 tests pass; full suite passes. Runtime confirmed.
+Risks or assumptions: Runs `git` as a subprocess. Pattern matching uses `fnmatch` — may not cover all glob edge cases.
+Notes: Prohibited files are flagged exclusively (no duplicate "not-allowed" signal).
+
+### AUTO-020 — Run validation commands and report results
+Priority: P1
+Status: DONE
+
+Goal: Add `forge validate` that runs the test suite and reports structured pass/fail results.
+Why it matters: This is the first real execution step — the forge can now verify its own changes.
+Scope: Extract validation command from policy (or use default), run it, capture output, report results.
+Expected files or areas: `src/autonomous_forge/validate.py`, `src/autonomous_forge/cli.py`, tests.
+Acceptance criteria: Runs commands, reports pass/fail with output, handles timeouts, works cross-platform.
+Validation: 8 tests pass; full suite (81 tests) passes. Runtime confirmed.
+Risks or assumptions: Runs external commands via subprocess. Handles PYTHONPATH portably. Timeout defaults to 300s.
+Notes: Exit code 0 on pass, 1 on fail. The first forge command that executes external processes.
+
 ## Future Ideas
 
+- `forge run` — the full autonomous loop: select task, execute, validate, diff-check, commit.
 - Hash-linked local run reports.
 - Optional issue import.
-- Policy-aware changed-file summaries.
-- Claude Code skill variants for other forge commands (`/forge-report`, `/forge-drift`).
 - Cross-repo session handoff aggregation (resume across multiple projects).
+- `forge watch` — daemon mode that periodically checks repo state.
 
 ## Do Not Change Without Explicit Human Approval
 
