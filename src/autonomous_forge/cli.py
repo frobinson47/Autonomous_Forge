@@ -8,6 +8,7 @@ from pathlib import Path
 from autonomous_forge.plan import (
     PlanParseError,
     PlanSelectionError,
+    lint_plan_structure,
     parse_plan_tasks,
     select_eligible_task,
 )
@@ -44,6 +45,16 @@ def build_parser() -> argparse.ArgumentParser:
         "--next",
         action="store_true",
         help="print only the next eligible TODO task",
+    )
+
+    lint_parser = subparsers.add_parser(
+        "lint-plan",
+        help="check roadmap task block structure without changing files",
+    )
+    lint_parser.add_argument(
+        "--plan",
+        default=".ai/AUTONOMOUS_PLAN.md",
+        help="path to the autonomous roadmap file",
     )
 
     report_parser = subparsers.add_parser(
@@ -123,6 +134,23 @@ def _print_tasks(plan_path: Path, *, next_only: bool = False) -> int:
     return 0
 
 
+def _print_lint_plan(plan_path: Path) -> int:
+    try:
+        diagnostics = lint_plan_structure(plan_path.read_text(encoding="utf-8"))
+    except FileNotFoundError:
+        print(f"Plan file not found: {plan_path}")
+        return 2
+
+    if not diagnostics:
+        print("Plan lint: ok")
+        return 0
+
+    print("Plan lint: failed")
+    for diagnostic in diagnostics:
+        print(f"line {diagnostic.line_number}: {diagnostic.message}")
+    return 2
+
+
 def _print_report(plan_path: Path, state_path: Path, policy_path: Path) -> int:
     try:
         print(read_repository_report(plan_path, state_path, policy_path))
@@ -162,6 +190,9 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.command == "tasks":
         return _print_tasks(Path(args.plan), next_only=args.next)
+
+    if args.command == "lint-plan":
+        return _print_lint_plan(Path(args.plan))
 
     if args.command == "report":
         return _print_report(Path(args.plan), Path(args.state), Path(args.policy))
