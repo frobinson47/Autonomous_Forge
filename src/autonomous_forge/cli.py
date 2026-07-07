@@ -14,6 +14,7 @@ from autonomous_forge.plan import (
 )
 from autonomous_forge.policy import PolicyParseError, RepositoryPolicy, parse_repository_policy
 from autonomous_forge.report import read_repository_report
+from autonomous_forge.run_summary import read_run_summary_preview
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -85,6 +86,26 @@ def build_parser() -> argparse.ArgumentParser:
         "--policy",
         default=".forge/policy.md",
         help="path to the repository policy file",
+    )
+
+    run_summary_parser = subparsers.add_parser(
+        "run-summary",
+        help="preview a local run summary without writing files",
+    )
+    run_summary_parser.add_argument(
+        "--plan",
+        default=".ai/AUTONOMOUS_PLAN.md",
+        help="path to the autonomous roadmap file",
+    )
+    run_summary_parser.add_argument(
+        "--policy",
+        default=".forge/policy.md",
+        help="path to the repository policy file",
+    )
+    run_summary_parser.add_argument(
+        "--timestamp",
+        default=None,
+        help="optional ISO-8601 timestamp to make preview output deterministic",
     )
     return parser
 
@@ -177,6 +198,18 @@ def _print_policy(policy_path: Path) -> int:
     return 0
 
 
+def _print_run_summary(plan_path: Path, policy_path: Path, timestamp: str | None) -> int:
+    try:
+        print(read_run_summary_preview(plan_path, policy_path, timestamp=timestamp))
+    except FileNotFoundError:
+        print(f"Plan file not found: {plan_path}")
+        return 2
+    except (PlanParseError, PlanSelectionError) as exc:
+        print(f"Plan error: {exc}")
+        return 2
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     """Run the Forge CLI."""
     parser = build_parser()
@@ -199,6 +232,9 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.command == "policy":
         return _print_policy(Path(args.policy))
+
+    if args.command == "run-summary":
+        return _print_run_summary(Path(args.plan), Path(args.policy), args.timestamp)
 
     parser.print_help()
     return 0
