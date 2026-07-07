@@ -11,6 +11,7 @@ from autonomous_forge.plan import (
     parse_plan_tasks,
     select_eligible_task,
 )
+from autonomous_forge.policy import PolicyParseError, RepositoryPolicy, parse_repository_policy
 from autonomous_forge.report import read_repository_report
 
 
@@ -59,11 +60,34 @@ def build_parser() -> argparse.ArgumentParser:
         default=".ai/AUTONOMOUS_STATE.md",
         help="path to the autonomous state file",
     )
+
+    policy_parser = subparsers.add_parser(
+        "policy",
+        help="parse repository policy sections without changing files",
+    )
+    policy_parser.add_argument(
+        "--policy",
+        default=".forge/policy.md",
+        help="path to the repository policy file",
+    )
     return parser
 
 
 def _format_task(task) -> str:
     return f"{task.task_id} [{task.priority}/{task.status}] {task.title}"
+
+
+def _format_policy(policy: RepositoryPolicy) -> str:
+    return "\n".join(
+        [
+            "Repository policy summary",
+            "Mode: read-only",
+            f"Allowed paths: {len(policy.allowed_paths)}",
+            f"Prohibited paths: {len(policy.prohibited_paths)}",
+            f"Human approval required: {len(policy.approval_required)}",
+            f"Validation expectations: {len(policy.validation_expectations)}",
+        ]
+    )
 
 
 def _print_tasks(plan_path: Path, *, next_only: bool = False) -> int:
@@ -106,6 +130,20 @@ def _print_report(plan_path: Path, state_path: Path) -> int:
     return 0
 
 
+def _print_policy(policy_path: Path) -> int:
+    try:
+        policy = parse_repository_policy(policy_path.read_text(encoding="utf-8"))
+    except FileNotFoundError:
+        print(f"Policy file not found: {policy_path}")
+        return 2
+    except PolicyParseError as exc:
+        print(f"Policy error: {exc}")
+        return 2
+
+    print(_format_policy(policy))
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     """Run the Forge CLI."""
     parser = build_parser()
@@ -122,6 +160,9 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.command == "report":
         return _print_report(Path(args.plan), Path(args.state))
+
+    if args.command == "policy":
+        return _print_policy(Path(args.policy))
 
     parser.print_help()
     return 0

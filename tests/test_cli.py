@@ -71,3 +71,39 @@ Status: DONE
     assert "Plan tasks: 2" in output
     assert "Next eligible task: AUTO-010 [P2/TODO] Ready task" in output
     assert "State file: present" in output
+
+
+def test_policy_command_prints_read_only_summary(tmp_path, capsys):
+    policy = tmp_path / "policy.md"
+    policy.write_text(
+        """## Allowed paths
+- `src/**`
+
+## Prohibited paths
+- `.env`
+
+## Human approval required
+- Adding network access.
+
+## Validation expectations
+- Run tests.
+""",
+        encoding="utf-8",
+    )
+
+    assert main(["policy", "--policy", str(policy)]) == 0
+
+    output = capsys.readouterr().out
+    assert "Repository policy summary" in output
+    assert "Mode: read-only" in output
+    assert "Allowed paths: 1" in output
+    assert "Prohibited paths: 1" in output
+
+
+def test_policy_command_reports_missing_policy(tmp_path, capsys):
+    missing_policy = tmp_path / "missing-policy.md"
+
+    assert main(["policy", "--policy", str(missing_policy)]) == 2
+
+    output = capsys.readouterr().out
+    assert "Policy file not found:" in output

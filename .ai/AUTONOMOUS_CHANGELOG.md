@@ -1,5 +1,13 @@
 # Autonomous Changelog
 
+## 2026-07-07 — AUTO-007
+
+- Task ID: AUTO-007
+- Summary: Added conservative read-only parsing for `.forge/policy.md`, exposed a `forge policy` summary command, documented the command, and added parser/CLI coverage for valid, missing, and malformed policy inputs.
+- Validation completed: Static implementation review completed against the documented policy format; runtime test execution was unavailable in this automation environment.
+- Commit hash: pending final commit lookup
+- Follow-up notes: Proceed to AUTO-008 next so `forge report` can surface policy readiness without claiming enforcement.
+
 ## 2026-07-07 — Roadmap v2 planning
 
 - Task ID: Roadmap v2 planning
@@ -20,7 +28,7 @@
 
 - Task ID: AUTO-005
 - Summary: Documented the repository policy format and added a conservative example policy for future automation boundaries.
-- Validation completed: Static documentation review completed; runtime test execution was not available in this automation environment.
+- Validation completed: Documentation and example consistency reviewed; runtime test execution was unavailable in this automation environment.
 - Commit hash: pending final commit lookup
 - Follow-up notes: Run `PYTHONPATH=src python -m pytest` in a checkout-capable environment and proceed to AUTO-006.
 
@@ -28,7 +36,7 @@
 
 - Task ID: AUTO-004
 - Summary: Added a read-only dry-run repository report command with report-builder and CLI tests.
-- Validation completed: Static review completed; runtime test execution was not available in this automation environment.
+- Validation completed: Static review completed; runtime test execution was unavailable in this automation environment.
 - Commit hash: pending final commit lookup
 - Follow-up notes: Run `PYTHONPATH=src python -m pytest` in a checkout-capable environment. Update `.ai/AUTONOMOUS_PLAN.md` to mark AUTO-004 DONE if the connector safety filter continues blocking full-file plan writes.
 
@@ -36,7 +44,7 @@
 
 - Task ID: AUTO-003
 - Summary: Added deterministic eligible-task selection and exposed the selected TODO task through `forge tasks --next`.
-- Validation completed: Static review completed; runtime test execution was not available in this automation environment.
+- Validation completed: Static review completed; runtime test execution was unavailable in this automation environment.
 - Commit hash: pending final commit lookup
 - Follow-up notes: Run `PYTHONPATH=src python -m pytest` in a checkout-capable environment and proceed to AUTO-004.
 
@@ -44,7 +52,7 @@
 
 - Task ID: AUTO-002
 - Summary: Added deterministic roadmap task parsing and a read-only `forge tasks` command with parser and CLI tests.
-- Validation completed: Static review completed; runtime test execution was not available in this automation environment.
+- Validation completed: Static review completed; runtime test execution was unavailable in this automation environment.
 - Commit hash: pending final commit lookup
 - Follow-up notes: Run `PYTHONPATH=src python -m pytest` in a checkout-capable environment and proceed to AUTO-003.
 
@@ -52,7 +60,7 @@
 
 - Task ID: AUTO-001
 - Summary: Added the initial Python package scaffold, `forge` CLI entry point, README setup notes, smoke test, and decisions log.
-- Validation completed: Static review completed; runtime test execution was not available in this tool environment.
+- Validation completed: Static review completed; runtime test execution was unavailable in this tool environment.
 - Commit hash: pending final commit lookup
 - Follow-up notes: Run the documented pytest command in the next checkout-capable run and proceed to AUTO-002.
 

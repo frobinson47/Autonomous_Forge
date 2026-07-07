@@ -1,14 +1,14 @@
 # Autonomous State
 
 - Current roadmap version: v2
-- Current task ID: Roadmap v2 planning
+- Current task ID: AUTO-007 — Parse repository policy sections
 - Current task status: DONE
 - Current branch: main
-- Last run timestamp: 2026-07-07T08:58:16+04:00
+- Last run timestamp: 2026-07-07T10:00:47+04:00
 - Last successful commit hash: pending final commit lookup
-- Latest run summary: Reassessed the completed v1 roadmap and added Roadmap v2 focused on conservative, read-only policy parsing, policy readiness reporting, roadmap linting, CLI output documentation, and local run-summary planning.
-- Files changed in the latest run: .ai/AUTONOMOUS_PLAN.md, .ai/AUTONOMOUS_STATE.md, .ai/AUTONOMOUS_CHANGELOG.md, .ai/DECISIONS.md.
-- Validation commands and results: Static roadmap consistency review completed. Confirmed Roadmap v1 tasks remain DONE and Roadmap v2 starts with AUTO-007 TODO. Runtime execution of `PYTHONPATH=src python -m pytest` was not available in this automation environment.
+- Latest run summary: Added a conservative read-only repository policy parser, exposed it through `forge policy`, documented the command, and added parser/CLI tests.
+- Files changed in the latest run: src/autonomous_forge/policy.py, src/autonomous_forge/cli.py, tests/test_policy.py, tests/test_cli.py, README.md, .ai/AUTONOMOUS_PLAN.md, .ai/AUTONOMOUS_STATE.md, .ai/AUTONOMOUS_CHANGELOG.md.
+- Validation commands and results: Static implementation review completed against the documented policy format. Runtime execution of `PYTHONPATH=src python -m pytest` was unavailable in this automation environment.
 - Current blockers: Runtime test execution is unavailable in this automation environment.
-- Known risks and assumptions: This run intentionally performed planning only because the previous roadmap was complete. No product implementation, network behavior, external command execution, sensitive repository settings, or secret-handling behavior were changed.
-- Recommended next task: AUTO-007 — Parse repository policy sections.
+- Known risks and assumptions: Policy parsing is intentionally conservative and read-only. No enforcement, external command execution, network behavior, sensitive repository settings, secret handling, telemetry, or deployment behavior was added.
+- Recommended next task: AUTO-008 — Surface policy readiness in dry-run reports.

@@ -10,13 +10,13 @@ The first product remains a local Python command-line tool. It reads repository 
 
 ## Current architecture
 
-The repository contains a minimal Python package under `src/autonomous_forge`, package metadata in `pyproject.toml`, tests under `tests/`, policy documentation under `docs/`, an example policy under `.forge/`, and contributor guidance in `CONTRIBUTING.md`. The CLI exposes `forge`, `forge tasks`, `forge tasks --next`, and `forge report`. Current behavior is read-only, local-first, and uses zero runtime dependencies.
+The repository contains a minimal Python package under `src/autonomous_forge`, package metadata in `pyproject.toml`, tests under `tests/`, policy documentation under `docs/`, an example policy under `.forge/`, and contributor guidance in `CONTRIBUTING.md`. The CLI exposes `forge`, `forge tasks`, `forge tasks --next`, `forge report`, and `forge policy`. Current behavior is read-only, local-first, and uses zero runtime dependencies.
 
 ## Current implementation status
 
 Roadmap v1 is complete. Autonomous Forge has a minimal installable CLI scaffold, package metadata, README development instructions, deterministic roadmap task parsing, deterministic eligible-task selection, a dry-run repository report, policy format documentation, an example policy, contributor development guidance, and tests covering CLI help, plan parsing, selector behavior, and report output.
 
-Roadmap v2 will turn the documented repository policy into read-only inspectable behavior before any higher-risk automation is considered.
+Roadmap v2 has started with conservative read-only parsing of `.forge/policy.md` through `forge policy`. Next work should surface policy readiness in dry-run reports before any higher-risk automation is considered.
 
 ## User personas and likely workflows
 
@@ -33,15 +33,15 @@ Risks: policy parsing must remain intentionally conservative; reporting must not
 
 ## Technical debt
 
-The CLI can list parsed tasks, select the next eligible TODO task, and produce a dry-run repository report. It does not yet parse `.forge/policy.md`, surface policy readiness in reports, lint plan structure, or persist run summaries in a machine-readable local format.
+The CLI can list parsed tasks, select the next eligible TODO task, produce a dry-run repository report, and parse the documented repository policy format. It does not yet surface policy readiness in reports, lint plan structure, or persist run summaries in a machine-readable local format.
 
 ## Test coverage gaps
 
-Report behavior has unit tests. Parser coverage includes valid, empty, and malformed roadmap inputs. Selector coverage includes priority ordering, source-order tie-breaking, non-TODO exclusion, no-task outcomes, and unsupported priorities. Policy documentation has not yet been converted into parser tests. Plan linting and policy report behavior still need coverage.
+Report behavior has unit tests. Parser coverage includes valid, empty, and malformed roadmap inputs. Selector coverage includes priority ordering, source-order tie-breaking, non-TODO exclusion, no-task outcomes, and unsupported priorities. Policy parser coverage includes valid policy sections, missing required section content, unexpected section content, and missing-policy CLI behavior. Plan linting and policy report behavior still need coverage.
 
 ## Documentation gaps
 
-The contributor guide covers local setup, tests, task discipline, safe file handling, and safety boundaries. Future documentation should explain any new policy inspection, linting, and run-record commands only after they exist.
+The contributor guide covers local setup, tests, task discipline, safe file handling, and safety boundaries. Future documentation should explain any new policy readiness, linting, and run-record commands only after they exist.
 
 ## Security and privacy considerations
 
@@ -137,14 +137,14 @@ Notes: Depends on AUTO-001.
 
 ### AUTO-007 — Parse repository policy sections
 Priority: P1
-Status: TODO
+Status: DONE
 
 Goal: Read `.forge/policy.md` into a small structured policy summary.
 Why it matters: The tool should understand its documented safety boundary before later commands rely on it.
 Scope: Parse the documented section headings for allowed paths, prohibited paths, approval-required areas, and validation expectations.
 Expected files or areas: `src/autonomous_forge/policy.py`, `src/autonomous_forge/cli.py`, `tests/test_policy.py`, `tests/test_cli.py`, README.
 Acceptance criteria: Valid example policy parses, missing policy reports a clear read-only error, malformed required sections produce actionable diagnostics, and no repository files are changed.
-Validation: Add unit tests and CLI tests; run `PYTHONPATH=src python -m pytest` when runtime execution is available.
+Validation: Added policy parser and CLI tests; static implementation review completed because runtime test execution was unavailable in this automation environment.
 Risks or assumptions: The parser should stay conservative and support only the documented Markdown format.
 Notes: Do not enforce changes yet; report only.
 
