@@ -1,4 +1,4 @@
-# Autonomous Forge Roadmap v1
+# Autonomous Forge Roadmap
 
 ## Product vision
 
@@ -6,47 +6,54 @@ Autonomous Forge helps a repository keep a clear improvement plan, choose one sm
 
 ## Product scope and non-goals
 
-The first version is a local Python command-line tool. It reads local project files and produces a dry-run report. It is not a hosted platform or a dashboard.
+The first product remains a local Python command-line tool. It reads repository files, reports safe next actions, and keeps durable project memory. It is not a hosted platform, dashboard, autonomous executor, deployment system, or permission-management tool.
 
 ## Current architecture
 
-The repository now contains a minimal Python package under `src/autonomous_forge`, package metadata in `pyproject.toml`, tests under `tests/`, policy documentation under `docs/`, an example policy under `.forge/`, and contributor guidance in `CONTRIBUTING.md`. The CLI exposes a `forge` command, a read-only `forge tasks` command backed by a deterministic roadmap parser, a `forge tasks --next` selection mode, and keeps behavior local-first with zero runtime dependencies.
+The repository contains a minimal Python package under `src/autonomous_forge`, package metadata in `pyproject.toml`, tests under `tests/`, policy documentation under `docs/`, an example policy under `.forge/`, and contributor guidance in `CONTRIBUTING.md`. The CLI exposes `forge`, `forge tasks`, `forge tasks --next`, and `forge report`. Current behavior is read-only, local-first, and uses zero runtime dependencies.
 
 ## Current implementation status
 
-AUTO-001, AUTO-002, AUTO-003, AUTO-004, AUTO-005, and AUTO-006 are complete. The project has a minimal installable CLI scaffold, package metadata, README development instructions, a parser for roadmap task blocks, deterministic TODO task selection, a dry-run repository report, policy format documentation, an example repository policy, contributor development guidance, and tests covering CLI help, plan parsing, selector behavior, and report output.
+Roadmap v1 is complete. Autonomous Forge has a minimal installable CLI scaffold, package metadata, README development instructions, deterministic roadmap task parsing, deterministic eligible-task selection, a dry-run repository report, policy format documentation, an example policy, contributor development guidance, and tests covering CLI help, plan parsing, selector behavior, and report output.
+
+Roadmap v2 will turn the documented repository policy into read-only inspectable behavior before any higher-risk automation is considered.
 
 ## User personas and likely workflows
 
-- A maintainer reviews a local plan and sees the next task.
-- A small team stores its plan and run notes in the repository.
-- A contributor follows written task limits, safe file handling, and acceptance criteria.
+- A maintainer reviews a local plan and sees the next safe task.
+- A small team stores its plan, state, decisions, and changelog in the repository.
+- A contributor follows written task limits, safe file handling, and validation expectations.
+- A future autonomous maintainer checks policy boundaries before selecting implementation work.
 
 ## Strengths and risks
 
-Strengths: local-first design, small scope, clear history, deterministic task selection, explicit policy boundaries, and clear contributor setup guidance. Risk: plan and policy parsing must remain easy to understand and intentionally limited to documented formats.
+Strengths: local-first design, small scope, clear durable memory, deterministic task selection, explicit policy boundaries, and contributor setup guidance.
+
+Risks: policy parsing must remain intentionally conservative; reporting must not imply enforcement before enforcement exists; any future command execution must remain out of scope until explicitly planned and approved.
 
 ## Technical debt
 
-The CLI can list parsed tasks, select the next eligible TODO task, and produce a dry-run repository report. It does not yet parse or enforce repository policy files.
+The CLI can list parsed tasks, select the next eligible TODO task, and produce a dry-run repository report. It does not yet parse `.forge/policy.md`, surface policy readiness in reports, lint plan structure, or persist run summaries in a machine-readable local format.
 
 ## Test coverage gaps
 
-Report behavior now has unit tests. Parser coverage includes valid, empty, and malformed roadmap inputs. Selector coverage includes priority ordering, source-order tie-breaking, non-TODO exclusion, no-task outcomes, and unsupported priorities. Policy documentation has not yet been converted into parser tests.
+Report behavior has unit tests. Parser coverage includes valid, empty, and malformed roadmap inputs. Selector coverage includes priority ordering, source-order tie-breaking, non-TODO exclusion, no-task outcomes, and unsupported priorities. Policy documentation has not yet been converted into parser tests. Plan linting and policy report behavior still need coverage.
 
 ## Documentation gaps
 
-The first contributor guide now covers local setup, tests, task discipline, safe file handling, and safety boundaries. Future documentation should expand only when new developer workflow commands are added.
+The contributor guide covers local setup, tests, task discipline, safe file handling, and safety boundaries. Future documentation should explain any new policy inspection, linting, and run-record commands only after they exist.
 
 ## Security and privacy considerations
 
-The MVP uses local files only and has no network feature. The documented policy format and contributor guide define allowed paths, prohibited paths, human-approval boundaries, safe file handling, and validation expectations before any higher-risk automation is added.
+The MVP uses local files only and has no network feature. The policy format and contributor guide define allowed paths, prohibited paths, human-approval boundaries, safe file handling, and validation expectations before any higher-risk automation is added. Roadmap v2 keeps behavior read-only and avoids external command execution.
 
 ## Performance and maintainability concerns
 
-Use small standard-library modules and avoid unnecessary dependencies.
+Use small standard-library modules and avoid unnecessary dependencies. Keep parsing deterministic, error messages actionable, and CLI output stable enough for tests and humans.
 
 ## Prioritized roadmap
+
+## Roadmap v1
 
 ### AUTO-001 — Scaffold local CLI and package metadata
 Priority: P1
@@ -126,12 +133,80 @@ Validation: Manual documentation review completed; runtime test execution was un
 Risks or assumptions: Keep it aligned with implemented tooling.
 Notes: Depends on AUTO-001.
 
+## Roadmap v2
+
+### AUTO-007 — Parse repository policy sections
+Priority: P1
+Status: TODO
+
+Goal: Read `.forge/policy.md` into a small structured policy summary.
+Why it matters: The tool should understand its documented safety boundary before later commands rely on it.
+Scope: Parse the documented section headings for allowed paths, prohibited paths, approval-required areas, and validation expectations.
+Expected files or areas: `src/autonomous_forge/policy.py`, `src/autonomous_forge/cli.py`, `tests/test_policy.py`, `tests/test_cli.py`, README.
+Acceptance criteria: Valid example policy parses, missing policy reports a clear read-only error, malformed required sections produce actionable diagnostics, and no repository files are changed.
+Validation: Add unit tests and CLI tests; run `PYTHONPATH=src python -m pytest` when runtime execution is available.
+Risks or assumptions: The parser should stay conservative and support only the documented Markdown format.
+Notes: Do not enforce changes yet; report only.
+
+### AUTO-008 — Surface policy readiness in dry-run reports
+Priority: P1
+Status: TODO
+
+Goal: Include policy-file availability and required-section readiness in `forge report`.
+Why it matters: Maintainers need to see whether future autonomous work has a readable safety boundary.
+Scope: Extend report output to include policy present/missing/malformed status without enforcing path decisions.
+Expected files or areas: `src/autonomous_forge/report.py`, `src/autonomous_forge/policy.py`, `src/autonomous_forge/cli.py`, tests, README.
+Acceptance criteria: Reports show policy status, keep existing plan/task output stable, and return clear errors for malformed policies.
+Validation: Add report and CLI tests; run `PYTHONPATH=src python -m pytest` when runtime execution is available.
+Risks or assumptions: Do not overstate policy enforcement; this is readiness reporting only.
+Notes: Depends on AUTO-007.
+
+### AUTO-009 — Add roadmap structure linting
+Priority: P2
+Status: TODO
+
+Goal: Add a read-only command that checks roadmap task blocks for required fields and supported values.
+Why it matters: A malformed roadmap can cause unsafe or confusing task selection.
+Scope: Validate task headings, priority values, status values, and required task fields using the documented format.
+Expected files or areas: `src/autonomous_forge/plan.py`, `src/autonomous_forge/cli.py`, tests, README.
+Acceptance criteria: `forge lint-plan` exits successfully for the repository roadmap and returns clear diagnostics for malformed examples.
+Validation: Add parser/linter and CLI tests; run `PYTHONPATH=src python -m pytest` when runtime execution is available.
+Risks or assumptions: Keep linting strict enough to catch ambiguity but simple enough to maintain.
+Notes: Read-only command only.
+
+### AUTO-010 — Document command output contracts
+Priority: P2
+Status: TODO
+
+Goal: Document the current CLI commands, exit codes, and stable human-readable output expectations.
+Why it matters: Contributors and future automation need predictable behavior before more commands are added.
+Scope: Add concise command reference documentation for `forge`, `forge tasks`, `forge tasks --next`, `forge report`, and any new read-only commands completed before this task.
+Expected files or areas: README, `docs/`, tests if examples are added.
+Acceptance criteria: Documentation lists commands, purpose, inputs, outputs, exit-code expectations, and safety limitations.
+Validation: Documentation review and existing tests; run `PYTHONPATH=src python -m pytest` when runtime execution is available.
+Risks or assumptions: Keep docs aligned with implemented behavior only.
+Notes: Do not document future commands as complete.
+
+### AUTO-011 — Record local run summaries without execution
+Priority: P3
+Status: TODO
+
+Goal: Design and document a read-only-safe local run summary format for future use.
+Why it matters: Durable execution history is part of the product vision, but write behavior needs careful boundaries.
+Scope: Propose the format and add docs/tests only if a read-only preview command is implemented.
+Expected files or areas: docs, possible report module tests.
+Acceptance criteria: The format captures timestamp, selected task, validation plan, policy status, and changed-files summary placeholder without running external commands.
+Validation: Documentation review and unit tests if a formatter is added.
+Risks or assumptions: Avoid creating automatic history files until explicitly planned.
+Notes: Prefer preview output before write behavior.
+
 ## Future Ideas
 
 - Plan linting with exact diagnostics.
 - Read-only repository health inventory.
 - Hash-linked local run reports.
 - Optional issue import.
+- Policy-aware changed-file summaries.
 
 ## Do Not Change Without Explicit Human Approval
 
@@ -139,3 +214,5 @@ Notes: Depends on AUTO-001.
 - Repository visibility and access controls.
 - Production infrastructure.
 - Features that run external commands.
+- Features that change repository files outside documented safe paths.
+- Secret handling, credential scanning, telemetry, analytics, billing, or deployment behavior.
