@@ -2,7 +2,7 @@
 
 Autonomous Forge does not automatically write execution history files yet. This document defines the intended local run-summary shape so future write behavior can be reviewed before it is implemented.
 
-The format is deliberately plain Markdown with a small set of stable fields. Future commands may preview this structure before any command is allowed to persist it.
+The format is deliberately plain Markdown with a small set of stable fields. The current `forge run-summary` command previews this structure on standard output without writing files.
 
 ## Safety rules
 
@@ -10,7 +10,7 @@ The format is deliberately plain Markdown with a small set of stable fields. Fut
 - A run summary must not contain secrets, tokens, credentials, environment dumps, or private command output.
 - A run summary must not include full diffs by default.
 - A run summary must not be written automatically until the roadmap explicitly allows write behavior.
-- A preview command, if added later, should be read-only and print the summary to standard output.
+- The preview command is read-only and prints the summary to standard output.
 
 ## Required fields
 
@@ -36,12 +36,18 @@ Selected task: AUTO-011 — Record local run summaries without execution
 Task status before run: TODO
 Policy status: present and readable
 Validation plan: PYTHONPATH=src python -m pytest
-Validation result: unavailable: runtime test execution unavailable in this environment
-Changed files summary: docs/RUN_SUMMARIES.md, README.md, .ai state files
-Commit: pending
-Notes: Documentation-only format definition; no automatic history file was written.
+Validation result: not run
+Changed files summary: none
+Commit: none
+Notes: Read-only preview only; no run-summary file was written.
 ```
 
-## Future command expectations
+## Preview command
 
-A future read-only preview command may generate this structure from the current plan, state, policy, and selected task. A separate roadmap task should be required before any command writes run summaries to disk.
+```bash
+forge run-summary --plan .ai/AUTONOMOUS_PLAN.md --policy .forge/policy.md
+```
+
+The command reads the roadmap and policy, selects the same next eligible task used by the planner, reports policy readability, and prints placeholder fields for validation result, changed files, and commit. It does not write execution history.
+
+A separate roadmap task is still required before any command writes run summaries to disk.
