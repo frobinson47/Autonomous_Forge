@@ -1,5 +1,13 @@
 # Autonomous Changelog
 
+## 2026-07-07 — AUTO-004
+
+- Task ID: AUTO-004
+- Summary: Added a read-only dry-run repository report command with report-builder and CLI tests.
+- Validation completed: Static review completed; runtime test execution was not available in this automation environment.
+- Commit hash: pending final commit lookup
+- Follow-up notes: Run `PYTHONPATH=src python -m pytest` in a checkout-capable environment. Update `.ai/AUTONOMOUS_PLAN.md` to mark AUTO-004 DONE if the connector safety filter continues blocking full-file plan writes.
+
 ## 2026-07-07 — AUTO-003
 
 - Task ID: AUTO-003
