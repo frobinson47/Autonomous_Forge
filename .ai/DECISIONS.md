@@ -1,5 +1,13 @@
 # Autonomous Decisions
 
+## DEC-006 — 2026-07-07 — Define run summaries before writing them
+
+Context: AUTO-011 introduces the local run-summary concept as part of durable repository memory, but the project does not yet allow automatic history-file writes.
+Decision: Define the run-summary fields and safety limits in `docs/RUN_SUMMARIES.md` before adding any preview or persistence command.
+Alternatives considered: Add a writer immediately, add a read-only preview command in the same task, or leave the format implicit until later.
+Consequences: Future implementation has a reviewable target format, while current behavior remains documentation-only and avoids premature write behavior.
+Human decision still required: No.
+
 ## DEC-005 — 2026-07-07 — Document implemented command contracts only
 
 Context: AUTO-010 adds command output contracts so maintainers, contributors, and future automation can understand current CLI behavior before more commands are added.
