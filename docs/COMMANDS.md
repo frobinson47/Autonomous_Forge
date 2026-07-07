@@ -193,3 +193,34 @@ Exit codes:
 - `2` when the policy file is missing or malformed.
 
 Safety limits: parses and counts policy sections only; it does not enforce path decisions or approve changes.
+
+## `forge run-summary`
+
+Purpose: preview the documented local run-summary format without writing an execution-history file.
+
+Inputs:
+
+- `--plan`: roadmap Markdown path, defaulting to `.ai/AUTONOMOUS_PLAN.md`.
+- `--policy`: policy Markdown path, defaulting to `.forge/policy.md`.
+- `--timestamp`: optional ISO-8601 timestamp for deterministic preview output.
+
+Expected successful output:
+
+```text
+Run timestamp: <ISO-8601 timestamp with timezone>
+Selected task: <AUTO-### — title, or none>
+Task status before run: <TODO|DONE|BLOCKED|SKIPPED|unknown>
+Policy status: <present and readable|missing|malformed: reason>
+Validation plan: PYTHONPATH=src python -m pytest
+Validation result: not run
+Changed files summary: none
+Commit: none
+Notes: Read-only preview only; no run-summary file was written.
+```
+
+Exit codes:
+
+- `0` when the preview is built.
+- `2` when the plan file is missing, malformed, or contains an unsupported priority for selection.
+
+Safety limits: prints a preview only; it does not create history files, run validation, inspect diffs, commit, push, or change repository files.
