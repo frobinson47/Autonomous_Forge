@@ -1,4 +1,4 @@
-"""Parse Autonomous Forge roadmap task blocks."""
+"""Parse and select Autonomous Forge roadmap task blocks."""
 
 from __future__ import annotations
 
@@ -8,6 +8,7 @@ import re
 
 _TASK_HEADING_RE = re.compile(r"^### (AUTO-\d{3}) — (.+)$")
 _FIELD_RE = re.compile(r"^(Priority|Status):\s*(.+)$")
+_PRIORITY_ORDER = {"P0": 0, "P1": 1, "P2": 2, "P3": 3}
 
 
 @dataclass(frozen=True)
@@ -23,6 +24,10 @@ class PlanTask:
 
 class PlanParseError(ValueError):
     """Raised when a roadmap task block is malformed."""
+
+
+class PlanSelectionError(ValueError):
+    """Raised when a task cannot be selected from parsed roadmap data."""
 
 
 def parse_plan_tasks(plan_text: str) -> list[PlanTask]:
@@ -66,3 +71,22 @@ def parse_plan_tasks(plan_text: str) -> list[PlanTask]:
         )
 
     return tasks
+
+
+def select_eligible_task(tasks: list[PlanTask]) -> PlanTask | None:
+    """Return the next TODO task by priority, preserving source order for ties."""
+    eligible: list[tuple[int, int, PlanTask]] = []
+
+    for source_index, task in enumerate(tasks):
+        if task.status != "TODO":
+            continue
+        if task.priority not in _PRIORITY_ORDER:
+            raise PlanSelectionError(
+                f"{task.task_id} has unsupported priority: {task.priority}"
+            )
+        eligible.append((_PRIORITY_ORDER[task.priority], source_index, task))
+
+    if not eligible:
+        return None
+
+    return min(eligible, key=lambda item: (item[0], item[1]))[2]
