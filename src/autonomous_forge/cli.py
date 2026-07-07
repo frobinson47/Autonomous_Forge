@@ -7,6 +7,13 @@ from pathlib import Path
 
 from autonomous_forge.drift import read_drift_report
 from autonomous_forge.inventory import build_repository_inventory
+from autonomous_forge.session import (
+    build_session_snapshot,
+    capture_git_snapshot,
+    format_resume_briefing,
+    load_latest_session,
+    save_session,
+)
 from autonomous_forge.plan import (
     PlanParseError,
     PlanSelectionError,
@@ -149,6 +156,61 @@ def build_parser() -> argparse.ArgumentParser:
         default=".",
         help="repository root to check policy path existence",
     )
+
+    pause_parser = subparsers.add_parser(
+        "pause",
+        help="capture session context for later handoff",
+    )
+    pause_parser.add_argument(
+        "--root",
+        default=".",
+        help="repository root for git state capture and session storage",
+    )
+    pause_parser.add_argument(
+        "--working-on",
+        default="",
+        help="what you were working on",
+    )
+    pause_parser.add_argument(
+        "--tried",
+        default="",
+        help="what you tried so far",
+    )
+    pause_parser.add_argument(
+        "--stuck-on",
+        default="",
+        help="where you got stuck",
+    )
+    pause_parser.add_argument(
+        "--half-finished",
+        default="",
+        help="what is half-finished",
+    )
+    pause_parser.add_argument(
+        "--next-steps",
+        default="",
+        help="what to do next when resuming",
+    )
+    pause_parser.add_argument(
+        "--notes",
+        default="",
+        help="any additional notes",
+    )
+    pause_parser.add_argument(
+        "--timestamp",
+        default=None,
+        help="optional ISO-8601 timestamp for deterministic output",
+    )
+
+    resume_parser = subparsers.add_parser(
+        "resume",
+        help="replay the most recent session context as a briefing",
+    )
+    resume_parser.add_argument(
+        "--root",
+        default=".",
+        help="repository root to find session files",
+    )
     return parser
 
 
@@ -277,6 +339,42 @@ def _print_drift(
     return 0
 
 
+def _run_pause(
+    root_path: Path,
+    *,
+    working_on: str,
+    tried: str,
+    stuck_on: str,
+    half_finished: str,
+    next_steps: str,
+    notes: str,
+    timestamp: str | None,
+) -> int:
+    git = capture_git_snapshot(root_path)
+    ctx = build_session_snapshot(
+        git,
+        working_on=working_on,
+        tried=tried,
+        stuck_on=stuck_on,
+        half_finished=half_finished,
+        next_steps=next_steps,
+        notes=notes,
+        timestamp=timestamp,
+    )
+    path = save_session(ctx, root_path)
+    print(f"Session saved: {path}")
+    return 0
+
+
+def _run_resume(root_path: Path) -> int:
+    ctx = load_latest_session(root_path)
+    if ctx is None:
+        print("No session found.")
+        return 0
+    print(format_resume_briefing(ctx))
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     """Run the Forge CLI."""
     parser = build_parser()
@@ -314,6 +412,21 @@ def main(argv: list[str] | None = None) -> int:
             Path(args.policy),
             Path(args.root),
         )
+
+    if args.command == "pause":
+        return _run_pause(
+            Path(args.root),
+            working_on=args.working_on,
+            tried=args.tried,
+            stuck_on=args.stuck_on,
+            half_finished=args.half_finished,
+            next_steps=args.next_steps,
+            notes=args.notes,
+            timestamp=args.timestamp,
+        )
+
+    if args.command == "resume":
+        return _run_resume(Path(args.root))
 
     parser.print_help()
     return 0

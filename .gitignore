@@ -15,6 +15,9 @@ venv/
 .env.*
 !.env.example
 
+# Session handoff files (local working state)
+.forge/sessions/
+
 # OS and editors
 .DS_Store
 Thumbs.db
