@@ -10,21 +10,21 @@ The first version is a local Python command-line tool. It reads local project fi
 
 ## Current architecture
 
-The repository now contains a minimal Python package under `src/autonomous_forge`, package metadata in `pyproject.toml`, tests under `tests/`, policy documentation under `docs/`, and an example policy under `.forge/`. The CLI exposes a `forge` command, a read-only `forge tasks` command backed by a deterministic roadmap parser, a `forge tasks --next` selection mode, and keeps behavior local-first with zero runtime dependencies.
+The repository now contains a minimal Python package under `src/autonomous_forge`, package metadata in `pyproject.toml`, tests under `tests/`, policy documentation under `docs/`, an example policy under `.forge/`, and contributor guidance in `CONTRIBUTING.md`. The CLI exposes a `forge` command, a read-only `forge tasks` command backed by a deterministic roadmap parser, a `forge tasks --next` selection mode, and keeps behavior local-first with zero runtime dependencies.
 
 ## Current implementation status
 
-AUTO-001, AUTO-002, AUTO-003, AUTO-004, and AUTO-005 are complete. The project has a minimal installable CLI scaffold, package metadata, README development instructions, a parser for roadmap task blocks, deterministic TODO task selection, a dry-run repository report, policy format documentation, an example repository policy, and tests covering CLI help, plan parsing, selector behavior, and report output.
+AUTO-001, AUTO-002, AUTO-003, AUTO-004, AUTO-005, and AUTO-006 are complete. The project has a minimal installable CLI scaffold, package metadata, README development instructions, a parser for roadmap task blocks, deterministic TODO task selection, a dry-run repository report, policy format documentation, an example repository policy, contributor development guidance, and tests covering CLI help, plan parsing, selector behavior, and report output.
 
 ## User personas and likely workflows
 
 - A maintainer reviews a local plan and sees the next task.
 - A small team stores its plan and run notes in the repository.
-- A contributor follows written task limits and acceptance criteria.
+- A contributor follows written task limits, safe file handling, and acceptance criteria.
 
 ## Strengths and risks
 
-Strengths: local-first design, small scope, clear history, deterministic task selection, and explicit policy boundaries. Risk: plan and policy parsing must remain easy to understand and intentionally limited to documented formats.
+Strengths: local-first design, small scope, clear history, deterministic task selection, explicit policy boundaries, and clear contributor setup guidance. Risk: plan and policy parsing must remain easy to understand and intentionally limited to documented formats.
 
 ## Technical debt
 
@@ -36,11 +36,11 @@ Report behavior now has unit tests. Parser coverage includes valid, empty, and m
 
 ## Documentation gaps
 
-Contributor guidance should be expanded after more developer workflow commands exist.
+The first contributor guide now covers local setup, tests, task discipline, safe file handling, and safety boundaries. Future documentation should expand only when new developer workflow commands are added.
 
 ## Security and privacy considerations
 
-The MVP uses local files only and has no network feature. The documented policy format defines allowed paths, prohibited paths, and human-approval boundaries before any higher-risk automation is added.
+The MVP uses local files only and has no network feature. The documented policy format and contributor guide define allowed paths, prohibited paths, human-approval boundaries, safe file handling, and validation expectations before any higher-risk automation is added.
 
 ## Performance and maintainability concerns
 
@@ -115,14 +115,14 @@ Notes: No runner is added in this task.
 
 ### AUTO-006 — Add contributor development guidance
 Priority: P3
-Status: TODO
+Status: DONE
 
 Goal: Document local setup, tests, and safe contribution expectations after the package exists.
 Why it matters: Clear guidance lowers contributor friction.
 Scope: Add a concise contributor guide after AUTO-001.
 Expected files or areas: `CONTRIBUTING.md`, README.
 Acceptance criteria: Includes setup, tests, task discipline, and safe file handling.
-Validation: Manual documentation review.
+Validation: Manual documentation review completed; runtime test execution was unavailable in this automation environment.
 Risks or assumptions: Keep it aligned with implemented tooling.
 Notes: Depends on AUTO-001.
 
