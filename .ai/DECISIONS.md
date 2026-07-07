@@ -1,5 +1,13 @@
 # Autonomous Decisions
 
+## DEC-003 — 2026-07-07 — Report policy readiness without enforcement
+
+Context: AUTO-007 added conservative parsing for `.forge/policy.md`. AUTO-008 needed to make that safety boundary visible in `forge report` before any future autonomous behavior relies on policy information.
+Decision: `forge report` will show policy readiness as present/readable, missing, or malformed, but it will not enforce path decisions or claim that policy enforcement exists.
+Alternatives considered: Fail the whole report when policy is missing, silently ignore policy state, or implement path enforcement immediately.
+Consequences: Maintainers get clearer safety readiness information while the tool remains read-only and honest about its current limits.
+Human decision still required: No.
+
 ## DEC-002 — 2026-07-07 — Make policy inspection the Roadmap v2 foundation
 
 Context: Roadmap v1 completed the local CLI, deterministic task parsing and selection, dry-run report, policy documentation, and contributor guidance. The repository now has documented policy boundaries but no code that can inspect them.
