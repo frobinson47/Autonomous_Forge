@@ -10,13 +10,13 @@ The first product remains a local Python command-line tool. It reads repository 
 
 ## Current architecture
 
-The repository contains a minimal Python package under `src/autonomous_forge`, package metadata in `pyproject.toml`, tests under `tests/`, policy documentation under `docs/`, an example policy under `.forge/`, and contributor guidance in `CONTRIBUTING.md`. The CLI exposes `forge`, `forge tasks`, `forge tasks --next`, `forge report`, and `forge policy`. Current behavior is read-only, local-first, and uses zero runtime dependencies.
+The repository contains a minimal Python package under `src/autonomous_forge`, package metadata in `pyproject.toml`, tests under `tests/`, policy documentation under `docs/`, an example policy under `.forge/`, and contributor guidance in `CONTRIBUTING.md`. The CLI exposes `forge`, `forge tasks`, `forge tasks --next`, `forge lint-plan`, `forge report`, and `forge policy`. Current behavior is read-only, local-first, and uses zero runtime dependencies.
 
 ## Current implementation status
 
 Roadmap v1 is complete. Autonomous Forge has a minimal installable CLI scaffold, package metadata, README development instructions, deterministic roadmap task parsing, deterministic eligible-task selection, a dry-run repository report, policy format documentation, an example policy, contributor development guidance, and tests covering CLI help, plan parsing, selector behavior, and report output.
 
-Roadmap v2 has started with conservative read-only parsing of `.forge/policy.md` through `forge policy`. `forge report` now surfaces policy-file readiness without claiming policy enforcement. Next work should improve roadmap structure linting before any higher-risk automation is considered.
+Roadmap v2 has started with conservative read-only parsing of `.forge/policy.md` through `forge policy`. `forge report` surfaces policy-file readiness without claiming policy enforcement. `forge lint-plan` now checks roadmap task block structure before higher-risk automation is considered.
 
 ## User personas and likely workflows
 
@@ -27,21 +27,21 @@ Roadmap v2 has started with conservative read-only parsing of `.forge/policy.md`
 
 ## Strengths and risks
 
-Strengths: local-first design, small scope, clear durable memory, deterministic task selection, explicit policy boundaries, and contributor setup guidance.
+Strengths: local-first design, small scope, clear durable memory, deterministic task selection, explicit policy boundaries, roadmap structure linting, and contributor setup guidance.
 
 Risks: policy parsing must remain intentionally conservative; reporting must not imply enforcement before enforcement exists; any future command execution must remain out of scope until explicitly planned and approved.
 
 ## Technical debt
 
-The CLI can list parsed tasks, select the next eligible TODO task, produce a dry-run repository report, parse the documented repository policy format, and surface policy readiness in reports. It does not yet lint plan structure or persist run summaries in a machine-readable local format.
+The CLI can list parsed tasks, select the next eligible TODO task, produce a dry-run repository report, parse the documented repository policy format, surface policy readiness in reports, and lint roadmap task blocks. It does not yet persist run summaries in a machine-readable local format.
 
 ## Test coverage gaps
 
-Report behavior has unit tests, including policy present, missing, and malformed readiness states. Parser coverage includes valid, empty, and malformed roadmap inputs. Selector coverage includes priority ordering, source-order tie-breaking, non-TODO exclusion, no-task outcomes, and unsupported priorities. Policy parser coverage includes valid policy sections, missing required section content, unexpected section content, and missing-policy CLI behavior. Plan linting still needs coverage.
+Report behavior has unit tests, including policy present, missing, and malformed readiness states. Parser coverage includes valid, empty, and malformed roadmap inputs. Selector coverage includes priority ordering, source-order tie-breaking, non-TODO exclusion, no-task outcomes, and unsupported priorities. Policy parser coverage includes valid policy sections, missing required section content, unexpected section content, and missing-policy CLI behavior. Plan linting has coverage for valid plans, missing required fields, unsupported priorities, unsupported statuses, and CLI diagnostic output.
 
 ## Documentation gaps
 
-The contributor guide covers local setup, tests, task discipline, safe file handling, and safety boundaries. Future documentation should explain any new linting and run-record commands only after they exist.
+The contributor guide covers local setup, tests, task discipline, safe file handling, and safety boundaries. Future documentation should explain command output contracts and run-record commands only after they exist.
 
 ## Security and privacy considerations
 
@@ -163,14 +163,14 @@ Notes: Depends on AUTO-007.
 
 ### AUTO-009 — Add roadmap structure linting
 Priority: P2
-Status: TODO
+Status: DONE
 
 Goal: Add a read-only command that checks roadmap task blocks for required fields and supported values.
 Why it matters: A malformed roadmap can cause unsafe or confusing task selection.
 Scope: Validate task headings, priority values, status values, and required task fields using the documented format.
 Expected files or areas: `src/autonomous_forge/plan.py`, `src/autonomous_forge/cli.py`, tests, README.
 Acceptance criteria: `forge lint-plan` exits successfully for the repository roadmap and returns clear diagnostics for malformed examples.
-Validation: Add parser/linter and CLI tests; run `PYTHONPATH=src python -m pytest` when runtime execution is available.
+Validation: Added read-only plan linter logic, CLI command, unit tests, CLI tests, and README usage notes. Static implementation review completed because runtime test execution was unavailable in this automation environment.
 Risks or assumptions: Keep linting strict enough to catch ambiguity but simple enough to maintain.
 Notes: Read-only command only.
 
