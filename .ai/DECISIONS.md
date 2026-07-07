@@ -1,5 +1,13 @@
 # Autonomous Decisions
 
+## DEC-004 — 2026-07-07 — Keep roadmap linting read-only and strict
+
+Context: AUTO-009 adds structure checks for roadmap task blocks before any higher-risk automation is considered.
+Decision: `forge lint-plan` will stay read-only and report diagnostics for malformed task headings, missing required task fields, unsupported priorities, and unsupported statuses without modifying the roadmap or selecting work.
+Alternatives considered: Silently tolerate incomplete task blocks, auto-repair the roadmap, or merge linting into task selection only.
+Consequences: Maintainers get clearer roadmap quality feedback while the command remains safe, predictable, and separate from task selection.
+Human decision still required: No.
+
 ## DEC-003 — 2026-07-07 — Report policy readiness without enforcement
 
 Context: AUTO-007 added conservative parsing for `.forge/policy.md`. AUTO-008 needed to make that safety boundary visible in `forge report` before any future autonomous behavior relies on policy information.
