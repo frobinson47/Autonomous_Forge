@@ -18,6 +18,8 @@ from autonomous_forge.drift import read_drift_report
 from autonomous_forge.init import format_init_result, init_forge
 from autonomous_forge.log import format_run_log, list_runs
 from autonomous_forge.mark import format_mark_result, mark_task_status
+from autonomous_forge.metrics import compute_metrics, format_metrics
+from autonomous_forge.planadd import add_task, format_add_result
 from autonomous_forge.status import get_status
 from autonomous_forge.pipeline import execute_pipeline, format_pipeline_result
 from autonomous_forge.inventory import build_repository_inventory
@@ -492,6 +494,66 @@ def build_parser() -> argparse.ArgumentParser:
         help="path to the autonomous roadmap file",
     )
 
+    plan_parser = subparsers.add_parser(
+        "plan",
+        help="plan management commands",
+    )
+    plan_subparsers = plan_parser.add_subparsers(dest="plan_action")
+    plan_add_parser = plan_subparsers.add_parser(
+        "add",
+        help="add a new task to the plan",
+    )
+    plan_add_parser.add_argument(
+        "--title",
+        required=True,
+        help="task title",
+    )
+    plan_add_parser.add_argument(
+        "--goal",
+        required=True,
+        help="task goal",
+    )
+    plan_add_parser.add_argument(
+        "--priority",
+        default="P1",
+        help="task priority (P0-P3, default: P1)",
+    )
+    plan_add_parser.add_argument(
+        "--plan",
+        default=None,
+        help="path to the autonomous roadmap file",
+    )
+    plan_add_parser.add_argument(
+        "--scope",
+        default="",
+        help="task scope",
+    )
+    plan_add_parser.add_argument(
+        "--files",
+        default="",
+        help="expected files or areas",
+    )
+    plan_add_parser.add_argument(
+        "--acceptance",
+        default="",
+        help="acceptance criteria",
+    )
+    plan_add_parser.add_argument(
+        "--notes",
+        default="",
+        help="additional notes",
+    )
+
+    metrics_parser = subparsers.add_parser(
+        "metrics",
+        help="aggregate stats from run history",
+    )
+    metrics_parser.add_argument(
+        "--root",
+        default=".",
+        help="repository root",
+    )
+
     check_parser = subparsers.add_parser(
         "check",
         help="run all verification steps: lint, drift, diff-check, validate",
@@ -889,6 +951,29 @@ def main(argv: list[str] | None = None) -> int:
         root = Path(args.root)
         plan_path = Path(args.plan) if args.plan else None
         print(get_status(root, plan_path=plan_path))
+        return 0
+
+    if args.command == "plan":
+        if args.plan_action == "add":
+            plan_path = Path(args.plan) if args.plan else None
+            result = add_task(
+                args.title,
+                goal=args.goal,
+                priority=args.priority,
+                plan_path=plan_path,
+                scope=args.scope,
+                files=args.files,
+                acceptance=args.acceptance,
+                notes=args.notes,
+            )
+            print(format_add_result(result))
+            return 0 if result.added else 1
+        plan_parser.print_help()
+        return 0
+
+    if args.command == "metrics":
+        m = compute_metrics(Path(args.root))
+        print(format_metrics(m))
         return 0
 
     if args.command == "check":

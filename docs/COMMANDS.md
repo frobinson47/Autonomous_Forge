@@ -640,3 +640,64 @@ Exit codes:
 Safety limits: **runs external validation commands** via subprocess. Reads metadata files and runs `git` for diff-check. Does not write files, commit, push, or call networks.
 
 Safety limits: **this command combines run, commit, and sync** — it runs external validation commands, runs git commit, and makes Forgejo API calls. Each escalation requires an explicit flag (`--commit`, `--sync`). Without flags, it behaves like `forge run` with auto-save. It does NOT push to git remotes.
+
+## `forge plan add`
+
+Purpose: add a new task block to the plan file with auto-incrementing ID.
+
+Inputs:
+
+- `--title` (required): task title.
+- `--goal` (required): task goal.
+- `--priority`: task priority (P0-P3, default: P1).
+- `--plan`: roadmap Markdown path (defaults to `.ai/AUTONOMOUS_PLAN.md`).
+- `--scope`: task scope.
+- `--files`: expected files or areas.
+- `--acceptance`: acceptance criteria.
+- `--notes`: additional notes.
+
+Expected successful output:
+
+```text
+Added AUTO-029 [P1/TODO] Task title
+```
+
+Exit codes:
+
+- `0` when the task was added.
+- `1` when the plan file is missing or priority is invalid.
+
+Safety limits: **this command writes to the plan file** — it appends a new task block before the Future Ideas section. It does not modify existing tasks, commit, push, or call networks.
+
+## `forge metrics`
+
+Purpose: show aggregate stats from run history.
+
+Inputs:
+
+- `--root`: repository root, defaulting to `.`.
+
+Expected successful output:
+
+```text
+Forge metrics
+Total runs: 10
+Passed: 8  Failed: 1  Blocked: 1  Skipped: 0
+Pass rate: 88.9%
+Unique tasks: 5
+Files changed: 30
+Violations: 2
+Drift signals: 3
+```
+
+If no runs exist:
+
+```text
+No run history found.
+```
+
+Exit codes:
+
+- `0` always.
+
+Safety limits: reads run history files only; does not write files, run external commands, or call networks.

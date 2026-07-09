@@ -1,5 +1,19 @@
 # Autonomous Changelog
 
+## 2026-07-09 — AUTO-030
+
+- Task ID: AUTO-030
+- Summary: Added `forge metrics` — aggregate stats from run history including total runs, pass/fail/blocked counts, pass rate, unique tasks, cumulative files changed and violations.
+- Validation completed: 7 tests pass; full suite 192 tests pass. Runtime confirmed.
+- Commit hash: pending
+
+## 2026-07-09 — AUTO-029
+
+- Task ID: AUTO-029
+- Summary: Added `forge plan add` — add new task blocks to the plan from CLI with auto-incrementing IDs. Inserts before Future Ideas, accepts priority/scope/files/acceptance/notes. Closes the creation loop.
+- Validation completed: 14 tests pass; full suite 192 tests pass. Runtime confirmed.
+- Commit hash: pending
+
 ## 2026-07-09 — AUTO-028
 
 - Task ID: AUTO-028

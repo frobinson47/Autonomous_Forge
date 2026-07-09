@@ -387,6 +387,30 @@ Acceptance criteria: Runs all four checks, reports each independently, exits 0 o
 Validation: 10 tests pass; full suite 171 tests pass. Runtime confirmed.
 Risks or assumptions: None. Also fixed SKIPPED status not being in _SUPPORTED_STATUSES.
 
+### AUTO-029 — Add tasks to plan from CLI
+Priority: P0
+Status: DONE
+
+Goal: Add `forge plan add` to create new task blocks in the plan file from the CLI, auto-incrementing IDs.
+Why it matters: Closes the creation loop — the forge can now create, select, execute, mark, and sync tasks entirely from CLI. No manual markdown editing needed.
+Scope: Parse existing IDs, compute next ID, build properly formatted task block, insert before Future Ideas section.
+Expected files or areas: `src/autonomous_forge/planadd.py`, `src/autonomous_forge/cli.py`, tests.
+Acceptance criteria: Auto-increments IDs, inserts before Future Ideas, preserves existing content, accepts priority/scope/files/acceptance/notes.
+Validation: 14 tests pass; full suite 192 tests pass. Runtime confirmed.
+Risks or assumptions: Only appends — no task reordering or section targeting.
+
+### AUTO-030 — Aggregate run history metrics
+Priority: P1
+Status: DONE
+
+Goal: Add `forge metrics` to show aggregate stats from run history — total runs, pass rate, unique tasks, violations, drift.
+Why it matters: Gives visibility into the health and productivity of the autonomous loop over time.
+Scope: Read all run files, compute counts and pass rate, format as concise report.
+Expected files or areas: `src/autonomous_forge/metrics.py`, `src/autonomous_forge/cli.py`, tests.
+Acceptance criteria: Shows total runs, passed/failed/blocked counts, pass rate percentage, unique tasks, cumulative files/violations/drift.
+Validation: 7 tests pass; full suite 192 tests pass. Runtime confirmed.
+Risks or assumptions: Uses existing log module for run parsing.
+
 ## Future Ideas
 
 - Hash-linked local run reports.
