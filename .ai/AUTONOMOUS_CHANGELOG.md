@@ -1,5 +1,19 @@
 # Autonomous Changelog
 
+## 2026-07-09 — AUTO-032
+
+- Task ID: AUTO-032
+- Summary: Added `forge export` — JSON output of forge state (tasks, counts, next task, policy, optional run history) for programmatic integration.
+- Validation completed: 7 tests pass; full suite 203 tests pass. Runtime confirmed.
+- Commit hash: pending
+
+## 2026-07-09 — AUTO-031
+
+- Task ID: AUTO-031
+- Summary: Added `--status` and `--priority` filters to `forge tasks`. Case-insensitive. Shows "No matching" when empty.
+- Validation completed: 4 tests pass; full suite 203 tests pass. Runtime confirmed.
+- Commit hash: pending
+
 ## 2026-07-09 — AUTO-030
 
 - Task ID: AUTO-030

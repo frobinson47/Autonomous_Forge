@@ -411,6 +411,30 @@ Acceptance criteria: Shows total runs, passed/failed/blocked counts, pass rate p
 Validation: 7 tests pass; full suite 192 tests pass. Runtime confirmed.
 Risks or assumptions: Uses existing log module for run parsing.
 
+### AUTO-031 — Task filtering
+Priority: P1
+Status: DONE
+
+Goal: Add `--status` and `--priority` filters to `forge tasks` for focused task views.
+Why it matters: With 30+ tasks, unfiltered output is noisy. Filters let you ask "what's TODO?" or "what's P0?".
+Scope: Add filter arguments to tasks parser, apply in _print_tasks. Case-insensitive matching.
+Expected files or areas: `src/autonomous_forge/cli.py`, tests.
+Acceptance criteria: Filter by status, priority, or both. Case-insensitive. Shows "No matching" when empty.
+Validation: 4 tests pass; full suite 203 tests pass. Runtime confirmed.
+Risks or assumptions: None.
+
+### AUTO-032 — JSON export
+Priority: P1
+Status: DONE
+
+Goal: Add `forge export` to output forge state as JSON for programmatic integration.
+Why it matters: Enables CI/CD pipelines, dashboards, and external tools to consume forge state.
+Scope: Export plan tasks, counts, next task, policy status, and optionally run history as JSON.
+Expected files or areas: `src/autonomous_forge/export.py`, `src/autonomous_forge/cli.py`, tests.
+Acceptance criteria: Valid JSON output with version, plan, tasks, counts, next_task, policy. Optional --runs flag.
+Validation: 7 tests pass; full suite 203 tests pass. Runtime confirmed.
+Risks or assumptions: JSON schema is versioned for future compatibility.
+
 ## Future Ideas
 
 - Hash-linked local run reports.

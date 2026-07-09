@@ -14,6 +14,7 @@ from autonomous_forge.commit import (
 )
 from autonomous_forge.context import build_project_context
 from autonomous_forge.diffcheck import read_diff_report
+from autonomous_forge.export import export_state
 from autonomous_forge.drift import read_drift_report
 from autonomous_forge.init import format_init_result, init_forge
 from autonomous_forge.log import format_run_log, list_runs
@@ -74,6 +75,16 @@ def build_parser() -> argparse.ArgumentParser:
         "--next",
         action="store_true",
         help="print only the next eligible TODO task",
+    )
+    tasks_parser.add_argument(
+        "--status",
+        default=None,
+        help="filter by status (TODO, DONE, BLOCKED, SKIPPED)",
+    )
+    tasks_parser.add_argument(
+        "--priority",
+        default=None,
+        help="filter by priority (P0, P1, P2, P3)",
     )
 
     lint_parser = subparsers.add_parser(
@@ -554,6 +565,32 @@ def build_parser() -> argparse.ArgumentParser:
         help="repository root",
     )
 
+    export_parser = subparsers.add_parser(
+        "export",
+        help="export forge state as JSON",
+    )
+    export_parser.add_argument(
+        "--root",
+        default=".",
+        help="repository root",
+    )
+    export_parser.add_argument(
+        "--plan",
+        default=None,
+        help="path to the autonomous roadmap file",
+    )
+    export_parser.add_argument(
+        "--runs",
+        action="store_true",
+        help="include run history in export",
+    )
+    export_parser.add_argument(
+        "--limit",
+        type=int,
+        default=20,
+        help="max runs to include (default: 20)",
+    )
+
     check_parser = subparsers.add_parser(
         "check",
         help="run all verification steps: lint, drift, diff-check, validate",
@@ -637,7 +674,13 @@ def _format_policy(policy: RepositoryPolicy) -> str:
     )
 
 
-def _print_tasks(plan_path: Path, *, next_only: bool = False) -> int:
+def _print_tasks(
+    plan_path: Path,
+    *,
+    next_only: bool = False,
+    status_filter: str | None = None,
+    priority_filter: str | None = None,
+) -> int:
     try:
         tasks = parse_plan_tasks(plan_path.read_text(encoding="utf-8"))
         selected_task = select_eligible_task(tasks) if next_only else None
@@ -655,11 +698,17 @@ def _print_tasks(plan_path: Path, *, next_only: bool = False) -> int:
             print(_format_task(selected_task))
         return 0
 
-    if not tasks:
-        print("No autonomous tasks found.")
+    filtered = tasks
+    if status_filter:
+        filtered = [t for t in filtered if t.status == status_filter.upper()]
+    if priority_filter:
+        filtered = [t for t in filtered if t.priority == priority_filter.upper()]
+
+    if not filtered:
+        print("No matching tasks found.")
         return 0
 
-    for task in tasks:
+    for task in filtered:
         print(_format_task(task))
 
     return 0
@@ -797,7 +846,12 @@ def main(argv: list[str] | None = None) -> int:
         return 0
 
     if args.command == "tasks":
-        return _print_tasks(Path(args.plan), next_only=args.next)
+        return _print_tasks(
+            Path(args.plan),
+            next_only=args.next,
+            status_filter=args.status,
+            priority_filter=args.priority,
+        )
 
     if args.command == "lint-plan":
         return _print_lint_plan(Path(args.plan))
@@ -974,6 +1028,12 @@ def main(argv: list[str] | None = None) -> int:
     if args.command == "metrics":
         m = compute_metrics(Path(args.root))
         print(format_metrics(m))
+        return 0
+
+    if args.command == "export":
+        root = Path(args.root)
+        plan_path = Path(args.plan) if args.plan else None
+        print(export_state(root, plan_path=plan_path, include_runs=args.runs, run_limit=args.limit))
         return 0
 
     if args.command == "check":
