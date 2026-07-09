@@ -16,6 +16,7 @@ from autonomous_forge.diffcheck import read_diff_report
 from autonomous_forge.drift import read_drift_report
 from autonomous_forge.init import format_init_result, init_forge
 from autonomous_forge.log import format_run_log, list_runs
+from autonomous_forge.pipeline import execute_pipeline, format_pipeline_result
 from autonomous_forge.inventory import build_repository_inventory
 from autonomous_forge.run import execute_run, format_run_outcome, save_run_outcome
 from autonomous_forge.sync import execute_sync, format_sync_result
@@ -403,6 +404,58 @@ def build_parser() -> argparse.ArgumentParser:
         help="show detailed info per run",
     )
 
+    pipeline_parser = subparsers.add_parser(
+        "pipeline",
+        help="full autonomous pipeline: run -> commit -> sync",
+    )
+    pipeline_parser.add_argument(
+        "--root",
+        default=".",
+        help="repository root",
+    )
+    pipeline_parser.add_argument(
+        "--plan",
+        default=None,
+        help="path to the autonomous roadmap file",
+    )
+    pipeline_parser.add_argument(
+        "--policy",
+        default=None,
+        help="path to the repository policy file",
+    )
+    pipeline_parser.add_argument(
+        "--cmd",
+        default=None,
+        dest="pipeline_cmd",
+        help="validation command override",
+    )
+    pipeline_parser.add_argument(
+        "--commit",
+        action="store_true",
+        help="auto-commit if checks pass (opt-in)",
+    )
+    pipeline_parser.add_argument(
+        "--sync",
+        action="store_true",
+        help="sync to Forgejo after commit (opt-in)",
+    )
+    pipeline_parser.add_argument(
+        "-m", "--message",
+        default=None,
+        dest="pipeline_message",
+        help="commit message override",
+    )
+    pipeline_parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="skip validation execution",
+    )
+    pipeline_parser.add_argument(
+        "--timestamp",
+        default=None,
+        help="optional ISO-8601 timestamp for deterministic output",
+    )
+
     validate_parser = subparsers.add_parser(
         "validate",
         help="run validation command and report results",
@@ -700,6 +753,32 @@ def main(argv: list[str] | None = None) -> int:
             return 2
         print(format_sync_result(result))
         return 1 if result.errors else 0
+
+    if args.command == "pipeline":
+        root = Path(args.root)
+        plan_path = Path(args.plan) if args.plan else None
+        policy_path = Path(args.policy) if args.policy else None
+        try:
+            result = execute_pipeline(
+                root,
+                plan_path=plan_path,
+                policy_path=policy_path,
+                validate_command=args.pipeline_cmd,
+                commit=args.commit,
+                sync=args.sync,
+                commit_message=args.pipeline_message,
+                dry_run=args.dry_run,
+                timestamp=args.timestamp,
+            )
+        except FileNotFoundError as exc:
+            print(f"File not found: {exc}")
+            return 2
+        print(format_pipeline_result(result))
+        if result.run_outcome and result.run_outcome.blocked:
+            return 1
+        if result.commit_result and not result.commit_result.committed and args.commit:
+            return 1
+        return 0
 
     if args.command == "log":
         entries = list_runs(Path(args.root), limit=args.limit)

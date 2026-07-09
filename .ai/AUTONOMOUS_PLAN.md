@@ -339,6 +339,18 @@ Acceptance criteria: Lists runs newest-first, supports `--limit` and `--verbose`
 Validation: 11 tests pass; full suite (135 tests) passes with zero regressions. Runtime confirmed.
 Risks or assumptions: Parses run summary Markdown files — format changes could break parsing.
 
+### AUTO-025 — Full autonomous pipeline command
+Priority: P0
+Status: DONE
+
+Goal: Add `forge pipeline` that chains run -> commit -> sync into a single command with explicit opt-in at each stage.
+Why it matters: The autonomous loop required running three commands manually. This is the "one button" mode.
+Scope: Chain run, commit, and sync stages. Stop at each gate (blocked, validation failure, no changes). Require `--commit` and `--sync` flags for opt-in. Save run outcome automatically.
+Expected files or areas: `src/autonomous_forge/pipeline.py`, `src/autonomous_forge/cli.py`, tests.
+Acceptance criteria: Stops on block/failure at any stage, skips commit without `--commit`, skips sync without `--sync`, formats concise multi-stage report.
+Validation: 6 tests pass; full suite (141 tests) passes with zero regressions. Runtime confirmed.
+Risks or assumptions: Commit and sync are opt-in — pipeline without flags is equivalent to `forge run` with auto-save.
+
 ## Future Ideas
 
 - Hash-linked local run reports.

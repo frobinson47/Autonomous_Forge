@@ -1,5 +1,12 @@
 # Autonomous Changelog
 
+## 2026-07-09 — AUTO-025
+
+- Task ID: AUTO-025
+- Summary: Added `forge pipeline` — chains run -> commit -> sync into a single command with explicit opt-in at each stage. Stops at any gate (blocked, validation failure, no changes). Requires `--commit` and `--sync` flags for opt-in escalation.
+- Validation completed: 6 tests pass; full suite 141 tests pass. Runtime confirmed.
+- Commit hash: pending
+
 ## 2026-07-09 — AUTO-024
 
 - Task ID: AUTO-024

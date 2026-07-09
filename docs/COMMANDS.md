@@ -464,3 +464,81 @@ Exit codes:
 - `1` when blocked by prohibited files, validation failure, no changes, or git error.
 
 Safety limits: **this command runs git commit** and **runs external validation commands** via subprocess. It checks staged files against policy before committing. It does NOT push, modify the plan file, or auto-stage files. Auto-generated commit messages use the format `forge: AUTO-### — title`.
+
+## `forge log`
+
+Purpose: view run history from `.forge/runs/`.
+
+Inputs:
+
+- `--root`: repository root, defaulting to `.`.
+- `--limit`: maximum number of runs to display (default: 10).
+- `--verbose`: show full details for each run.
+
+Expected successful output:
+
+```text
+Forge run log (last <N>)
+
+<timestamp> AUTO-### — title [policy:present drift:0 files:3 violations:0 validation:PASSED]
+<timestamp> AUTO-### — title [policy:present drift:1 files:0 violations:0 validation:skipped]
+...
+```
+
+If no runs exist:
+
+```text
+No runs found.
+```
+
+Exit codes:
+
+- `0` when the log is printed, including when no runs exist.
+
+Safety limits: reads run history files only; it does not change files, run external commands, or call networks.
+
+## `forge pipeline`
+
+Purpose: run the full autonomous pipeline — run -> commit -> sync — in a single command with explicit opt-in at each stage.
+
+Inputs:
+
+- `--root`: repository root, defaulting to `.`.
+- `--plan`: roadmap Markdown path (defaults to `.ai/AUTONOMOUS_PLAN.md`).
+- `--policy`: policy Markdown path (defaults to `.forge/policy.md`).
+- `--cmd`: validation command override.
+- `-m` / `--message`: commit message (auto-generated from current task if omitted).
+- `--commit`: opt-in to auto-commit after successful run.
+- `--sync`: opt-in to Forgejo sync after successful commit (implies `--commit`).
+- `--dry-run`: skip validation and sync API calls.
+- `--timestamp`: optional ISO-8601 timestamp for deterministic output.
+
+Expected successful output:
+
+```text
+Forge pipeline
+Task: AUTO-### — title
+Changed files: <count>
+Drift: <count>
+Violations: <count>
+Validation: PASSED|FAILED
+Stages: run -> commit (<hash>) -> sync (<created> created, <updated> updated)
+Result: pipeline complete
+```
+
+When stopped early:
+
+```text
+Forge pipeline
+Task: AUTO-### — title
+...
+Stopped: <reason>
+```
+
+Exit codes:
+
+- `0` when the pipeline completes or stops at a non-error gate (no commit requested, no sync requested).
+- `1` when blocked by prohibited files, validation failure, or errors.
+- `2` when required input files are missing.
+
+Safety limits: **this command combines run, commit, and sync** — it runs external validation commands, runs git commit, and makes Forgejo API calls. Each escalation requires an explicit flag (`--commit`, `--sync`). Without flags, it behaves like `forge run` with auto-save. It does NOT push to git remotes.
