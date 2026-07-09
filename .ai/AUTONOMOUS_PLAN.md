@@ -351,6 +351,30 @@ Acceptance criteria: Stops on block/failure at any stage, skips commit without `
 Validation: 6 tests pass; full suite (141 tests) passes with zero regressions. Runtime confirmed.
 Risks or assumptions: Commit and sync are opt-in — pipeline without flags is equivalent to `forge run` with auto-save.
 
+### AUTO-026 — Mark task status from CLI
+Priority: P0
+Status: DONE
+
+Goal: Add `forge mark` to update a task's status in the plan file from the command line.
+Why it matters: Previously required manual markdown editing. This closes the loop — the forge can now complete a task and mark it done without human file edits.
+Scope: Parse the plan file, find the target task, rewrite its Status line, preserve everything else.
+Expected files or areas: `src/autonomous_forge/mark.py`, `src/autonomous_forge/cli.py`, tests.
+Acceptance criteria: Updates status in-place, preserves other tasks, rejects invalid statuses, handles missing plan/task.
+Validation: 14 tests pass; full suite 161 tests pass. Runtime confirmed.
+Risks or assumptions: Only mutates the Status line — all other fields untouched.
+
+### AUTO-027 — Quick at-a-glance status
+Priority: P1
+Status: DONE
+
+Goal: Add `forge status` — a compact one-screen summary showing branch, dirty files, task counts, next task, last run, and policy presence.
+Why it matters: `forge report` is verbose. Day-to-day you want a 4-line glance.
+Scope: Read git branch/dirty count, plan task counts, last run timestamp, policy presence.
+Expected files or areas: `src/autonomous_forge/status.py`, `src/autonomous_forge/cli.py`, tests.
+Acceptance criteria: Shows branch, dirty count, task breakdown, next task, last run, policy status. Handles missing plan gracefully.
+Validation: 6 tests pass; full suite 161 tests pass. Runtime confirmed.
+Risks or assumptions: Runs `git` as subprocess for branch/dirty info. No network calls.
+
 ## Future Ideas
 
 - Hash-linked local run reports.

@@ -16,6 +16,8 @@ from autonomous_forge.diffcheck import read_diff_report
 from autonomous_forge.drift import read_drift_report
 from autonomous_forge.init import format_init_result, init_forge
 from autonomous_forge.log import format_run_log, list_runs
+from autonomous_forge.mark import format_mark_result, mark_task_status
+from autonomous_forge.status import get_status
 from autonomous_forge.pipeline import execute_pipeline, format_pipeline_result
 from autonomous_forge.inventory import build_repository_inventory
 from autonomous_forge.run import execute_run, format_run_outcome, save_run_outcome
@@ -456,6 +458,39 @@ def build_parser() -> argparse.ArgumentParser:
         help="optional ISO-8601 timestamp for deterministic output",
     )
 
+    mark_parser = subparsers.add_parser(
+        "mark",
+        help="update a task's status in the plan file",
+    )
+    mark_parser.add_argument(
+        "task_id",
+        help="task ID (e.g. AUTO-001)",
+    )
+    mark_parser.add_argument(
+        "new_status",
+        help="new status (TODO, DONE, BLOCKED)",
+    )
+    mark_parser.add_argument(
+        "--plan",
+        default=None,
+        help="path to the autonomous roadmap file",
+    )
+
+    status_parser = subparsers.add_parser(
+        "status",
+        help="quick at-a-glance forge status",
+    )
+    status_parser.add_argument(
+        "--root",
+        default=".",
+        help="repository root",
+    )
+    status_parser.add_argument(
+        "--plan",
+        default=None,
+        help="path to the autonomous roadmap file",
+    )
+
     validate_parser = subparsers.add_parser(
         "validate",
         help="run validation command and report results",
@@ -805,6 +840,18 @@ def main(argv: list[str] | None = None) -> int:
         )
         print(format_commit_result(result))
         return 0 if result.committed else 1
+
+    if args.command == "mark":
+        plan_path = Path(args.plan) if args.plan else None
+        result = mark_task_status(args.task_id, args.new_status, plan_path)
+        print(format_mark_result(result))
+        return 0 if result.updated else 1
+
+    if args.command == "status":
+        root = Path(args.root)
+        plan_path = Path(args.plan) if args.plan else None
+        print(get_status(root, plan_path=plan_path))
+        return 0
 
     if args.command == "diff-check":
         root = Path(args.root)

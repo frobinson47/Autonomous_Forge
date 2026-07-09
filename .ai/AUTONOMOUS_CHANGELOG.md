@@ -1,5 +1,19 @@
 # Autonomous Changelog
 
+## 2026-07-09 — AUTO-027
+
+- Task ID: AUTO-027
+- Summary: Added `forge status` — compact at-a-glance view showing branch, dirty files, task counts, next task, last run, and policy presence.
+- Validation completed: 6 tests pass; full suite 161 tests pass. Runtime confirmed.
+- Commit hash: pending
+
+## 2026-07-09 — AUTO-026
+
+- Task ID: AUTO-026
+- Summary: Added `forge mark` — update a task's status in the plan file from the CLI. Supports TODO, DONE, BLOCKED. Preserves all other content. Rejects invalid statuses and missing tasks.
+- Validation completed: 14 tests pass; full suite 161 tests pass. Runtime confirmed.
+- Commit hash: pending
+
 ## 2026-07-09 — AUTO-025
 
 - Task ID: AUTO-025

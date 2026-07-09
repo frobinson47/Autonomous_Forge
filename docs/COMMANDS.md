@@ -541,4 +541,58 @@ Exit codes:
 - `1` when blocked by prohibited files, validation failure, or errors.
 - `2` when required input files are missing.
 
+## `forge mark`
+
+Purpose: update a task's status in the plan file from the command line.
+
+Inputs:
+
+- `task_id`: task ID (e.g. `AUTO-001`).
+- `new_status`: new status (`TODO`, `DONE`, `BLOCKED`).
+- `--plan`: roadmap Markdown path (defaults to `.ai/AUTONOMOUS_PLAN.md`).
+
+Expected successful output:
+
+```text
+AUTO-001: TODO -> DONE
+```
+
+When no update needed:
+
+```text
+AUTO-001: Already DONE
+```
+
+Exit codes:
+
+- `0` when the status was updated.
+- `1` when the task was not found, status is invalid, plan is missing, or already at the requested status.
+
+Safety limits: **this command writes to the plan file** — it modifies only the `Status:` line of the target task. All other content is preserved. It does not commit, push, run external commands, or call networks.
+
+## `forge status`
+
+Purpose: quick at-a-glance view of forge state.
+
+Inputs:
+
+- `--root`: repository root, defaulting to `.`.
+- `--plan`: roadmap Markdown path (defaults to `.ai/AUTONOMOUS_PLAN.md`).
+
+Expected successful output:
+
+```text
+Branch: main  Dirty: 3
+Tasks: 25 total, 2 TODO, 20 DONE, 3 BLOCKED
+Next: AUTO-022 [P1] Build sync
+Last run: 2026-07-09T14-00-00
+Policy: present
+```
+
+Exit codes:
+
+- `0` always.
+
+Safety limits: **runs `git` as subprocess** for branch and dirty count. Reads the plan file and run history. Does not write files, commit, push, or call networks.
+
 Safety limits: **this command combines run, commit, and sync** — it runs external validation commands, runs git commit, and makes Forgejo API calls. Each escalation requires an explicit flag (`--commit`, `--sync`). Without flags, it behaves like `forge run` with auto-save. It does NOT push to git remotes.
