@@ -1,5 +1,12 @@
 # Autonomous Changelog
 
+## 2026-07-09 — AUTO-024
+
+- Task ID: AUTO-024
+- Summary: Added `forge log` to view run history from `.forge/runs/`. Supports `--limit` and `--verbose`. Also added `__main__.py` so `python -m autonomous_forge` works.
+- Validation completed: 11 tests pass; full suite 135 tests pass. Runtime confirmed.
+- Commit hash: pending
+
 ## 2026-07-09 — AUTO-023
 
 - Task ID: AUTO-023

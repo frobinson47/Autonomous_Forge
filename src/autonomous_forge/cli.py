@@ -15,6 +15,7 @@ from autonomous_forge.context import build_project_context
 from autonomous_forge.diffcheck import read_diff_report
 from autonomous_forge.drift import read_drift_report
 from autonomous_forge.init import format_init_result, init_forge
+from autonomous_forge.log import format_run_log, list_runs
 from autonomous_forge.inventory import build_repository_inventory
 from autonomous_forge.run import execute_run, format_run_outcome, save_run_outcome
 from autonomous_forge.sync import execute_sync, format_sync_result
@@ -381,6 +382,27 @@ def build_parser() -> argparse.ArgumentParser:
         help="run pre-flight checks only, do not commit",
     )
 
+    log_parser = subparsers.add_parser(
+        "log",
+        help="show run history from .forge/runs/",
+    )
+    log_parser.add_argument(
+        "--root",
+        default=".",
+        help="repository root",
+    )
+    log_parser.add_argument(
+        "--limit",
+        type=int,
+        default=20,
+        help="max runs to show (default: 20)",
+    )
+    log_parser.add_argument(
+        "--verbose", "-v",
+        action="store_true",
+        help="show detailed info per run",
+    )
+
     validate_parser = subparsers.add_parser(
         "validate",
         help="run validation command and report results",
@@ -678,6 +700,11 @@ def main(argv: list[str] | None = None) -> int:
             return 2
         print(format_sync_result(result))
         return 1 if result.errors else 0
+
+    if args.command == "log":
+        entries = list_runs(Path(args.root), limit=args.limit)
+        print(format_run_log(entries, verbose=args.verbose))
+        return 0
 
     if args.command == "commit":
         root = Path(args.root)

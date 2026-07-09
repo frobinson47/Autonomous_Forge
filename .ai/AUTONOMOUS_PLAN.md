@@ -327,6 +327,18 @@ Validation: 14 tests pass; full suite (124 tests) passes with zero regressions. 
 Risks or assumptions: Runs git commit as subprocess. Does not push — that remains a separate decision.
 Notes: Supports `--check-only`, `--no-validate`, `-m` message override, `--cmd` validation override.
 
+### AUTO-024 — View run history
+Priority: P2
+Status: DONE
+
+Goal: Add `forge log` to view past run outcomes from `.forge/runs/` and add `__main__.py` for `python -m autonomous_forge` support.
+Why it matters: Runs are being recorded but there was no way to review them. The log closes the observability loop.
+Scope: Parse run summary files, list newest-first with limit, format as a scannable log with optional verbose mode.
+Expected files or areas: `src/autonomous_forge/log.py`, `src/autonomous_forge/__main__.py`, `src/autonomous_forge/cli.py`, tests.
+Acceptance criteria: Lists runs newest-first, supports `--limit` and `--verbose`, handles missing runs dir gracefully, CLI wired up.
+Validation: 11 tests pass; full suite (135 tests) passes with zero regressions. Runtime confirmed.
+Risks or assumptions: Parses run summary Markdown files — format changes could break parsing.
+
 ## Future Ideas
 
 - Hash-linked local run reports.
