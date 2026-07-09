@@ -314,6 +314,19 @@ Validation: 14 tests pass; full suite (110 tests) passes with zero regressions. 
 Risks or assumptions: Requires network access and `FORGEJO_TOKEN`. Uses Python stdlib `urllib` (zero dependencies). Only syncs to `forgejo.familytechlab.com` remotes.
 Notes: Also created `/forge-sync` Claude Code skill. Plan file remains the source of truth. Forgejo is the mirror.
 
+### AUTO-023 — Safe auto-commit with pre-flight checks
+Priority: P1
+Status: DONE
+
+Goal: Add `forge commit` that runs policy diff-check and validation before committing, ensuring every commit passes safety gates.
+Why it matters: `forge run` reports "ready to commit" but the commit itself was still manual. This closes the loop with safety baked in.
+Scope: Pre-flight checks (diff-check against policy, run validation). Auto-generate commit message from current task. `--check-only` mode for dry-run. Block on prohibited files or validation failure.
+Expected files or areas: `src/autonomous_forge/commit.py`, `src/autonomous_forge/cli.py`, tests.
+Acceptance criteria: Blocks on prohibited files, blocks on validation failure, auto-generates message from task, `--check-only` runs checks without committing, CLI returns exit code 1 when blocked.
+Validation: 14 tests pass; full suite (124 tests) passes with zero regressions. Runtime confirmed.
+Risks or assumptions: Runs git commit as subprocess. Does not push — that remains a separate decision.
+Notes: Supports `--check-only`, `--no-validate`, `-m` message override, `--cmd` validation override.
+
 ## Future Ideas
 
 - Hash-linked local run reports.

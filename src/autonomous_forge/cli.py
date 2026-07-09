@@ -5,6 +5,12 @@ from __future__ import annotations
 import argparse
 from pathlib import Path
 
+from autonomous_forge.commit import (
+    execute_commit,
+    format_commit_result,
+    format_pre_flight,
+    run_pre_flight,
+)
 from autonomous_forge.context import build_project_context
 from autonomous_forge.diffcheck import read_diff_report
 from autonomous_forge.drift import read_drift_report
@@ -334,6 +340,47 @@ def build_parser() -> argparse.ArgumentParser:
         help="show what would be synced without making API calls",
     )
 
+    commit_parser = subparsers.add_parser(
+        "commit",
+        help="safe auto-commit with policy and validation pre-flight",
+    )
+    commit_parser.add_argument(
+        "--root",
+        default=".",
+        help="repository root",
+    )
+    commit_parser.add_argument(
+        "--plan",
+        default=None,
+        help="path to the autonomous roadmap file",
+    )
+    commit_parser.add_argument(
+        "--policy",
+        default=None,
+        help="path to the repository policy file",
+    )
+    commit_parser.add_argument(
+        "--message", "-m",
+        default=None,
+        help="commit message (auto-generated from task if omitted)",
+    )
+    commit_parser.add_argument(
+        "--cmd",
+        default=None,
+        dest="commit_cmd",
+        help="validation command override",
+    )
+    commit_parser.add_argument(
+        "--no-validate",
+        action="store_true",
+        help="skip validation",
+    )
+    commit_parser.add_argument(
+        "--check-only",
+        action="store_true",
+        help="run pre-flight checks only, do not commit",
+    )
+
     validate_parser = subparsers.add_parser(
         "validate",
         help="run validation command and report results",
@@ -631,6 +678,27 @@ def main(argv: list[str] | None = None) -> int:
             return 2
         print(format_sync_result(result))
         return 1 if result.errors else 0
+
+    if args.command == "commit":
+        root = Path(args.root)
+        plan_path = Path(args.plan) if args.plan else None
+        policy_path = Path(args.policy) if args.policy else None
+        if args.check_only:
+            pf = run_pre_flight(
+                root, plan_path=plan_path, policy_path=policy_path,
+                validate=not args.no_validate,
+                validate_command=args.commit_cmd,
+            )
+            print(format_pre_flight(pf))
+            return 0 if pf.safe else 1
+        result = execute_commit(
+            root, message=args.message,
+            plan_path=plan_path, policy_path=policy_path,
+            validate=not args.no_validate,
+            validate_command=args.commit_cmd,
+        )
+        print(format_commit_result(result))
+        return 0 if result.committed else 1
 
     if args.command == "diff-check":
         root = Path(args.root)

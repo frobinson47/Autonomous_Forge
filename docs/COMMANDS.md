@@ -429,3 +429,38 @@ Exit codes:
 - `2` when required input files are missing.
 
 Safety limits: **this command makes network API calls** to the Forgejo instance at `forgejo.familytechlab.com`. It creates and updates issues, labels, and milestones. It does NOT modify local files, commit, push, or change the plan file. Requires `FORGEJO_TOKEN` in environment or `~/.claude/.secrets.env`. The plan file remains the source of truth — Forgejo is the read-only mirror. Re-running is idempotent.
+
+## `forge commit`
+
+Purpose: safe auto-commit with policy and validation pre-flight checks baked in.
+
+Inputs:
+
+- `--root`: repository root, defaulting to `.`.
+- `--plan`: roadmap Markdown path (defaults to `.ai/AUTONOMOUS_PLAN.md`).
+- `--policy`: policy Markdown path (defaults to `.forge/policy.md`).
+- `-m` / `--message`: commit message (auto-generated from current task if omitted).
+- `--cmd`: validation command override.
+- `--no-validate`: skip validation.
+- `--check-only`: run pre-flight checks only, do not commit.
+
+Expected successful output:
+
+```text
+Forge commit pre-flight
+Task: <AUTO-### — title, if available>
+Changed files: <count>
+  <file list>
+Validation: <PASSED|FAILED>
+Result: <SAFE to commit|BLOCKED — reason>
+
+Committed: <short hash>
+Message: <commit message>
+```
+
+Exit codes:
+
+- `0` when the commit succeeds (or `--check-only` reports SAFE).
+- `1` when blocked by prohibited files, validation failure, no changes, or git error.
+
+Safety limits: **this command runs git commit** and **runs external validation commands** via subprocess. It checks staged files against policy before committing. It does NOT push, modify the plan file, or auto-stage files. Auto-generated commit messages use the format `forge: AUTO-### — title`.

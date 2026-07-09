@@ -1,5 +1,12 @@
 # Autonomous Changelog
 
+## 2026-07-09 — AUTO-023
+
+- Task ID: AUTO-023
+- Summary: Added `forge commit` — safe auto-commit with policy diff-check and validation pre-flight. Blocks on prohibited files or validation failure. Auto-generates commit message from current task. Supports `--check-only` for dry-run pre-flight.
+- Validation completed: 14 tests pass; full suite 124 tests pass. Runtime confirmed.
+- Commit hash: pending
+
 ## 2026-07-07 — AUTO-022
 
 - Task ID: AUTO-022
