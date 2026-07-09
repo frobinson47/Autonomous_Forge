@@ -1,5 +1,12 @@
 # Autonomous Changelog
 
+## 2026-07-09 — AUTO-028
+
+- Task ID: AUTO-028
+- Summary: Added `forge check` — runs lint, drift, diff-check, and validation in one command. Also added SKIPPED to _SUPPORTED_STATUSES (was used in report/sync but not accepted by linter or mark).
+- Validation completed: 10 tests pass; full suite 171 tests pass. Runtime confirmed.
+- Commit hash: pending
+
 ## 2026-07-09 — AUTO-027
 
 - Task ID: AUTO-027

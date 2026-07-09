@@ -375,6 +375,18 @@ Acceptance criteria: Shows branch, dirty count, task breakdown, next task, last 
 Validation: 6 tests pass; full suite 161 tests pass. Runtime confirmed.
 Risks or assumptions: Runs `git` as subprocess for branch/dirty info. No network calls.
 
+### AUTO-028 — Combined verification check
+Priority: P1
+Status: DONE
+
+Goal: Add `forge check` — run lint, drift, diff-check, and validation in one command.
+Why it matters: Previously required running 4 separate commands to verify repo health. This is the "are we good?" command.
+Scope: Run lint-plan, drift detection, diff-check against policy, and validation. Report pass/fail for each. Return non-zero if any fail.
+Expected files or areas: `src/autonomous_forge/check.py`, `src/autonomous_forge/cli.py`, tests.
+Acceptance criteria: Runs all four checks, reports each independently, exits 0 only if all pass. Supports `--no-validate` to skip tests.
+Validation: 10 tests pass; full suite 171 tests pass. Runtime confirmed.
+Risks or assumptions: None. Also fixed SKIPPED status not being in _SUPPORTED_STATUSES.
+
 ## Future Ideas
 
 - Hash-linked local run reports.

@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 from pathlib import Path
 
+from autonomous_forge.check import execute_check, format_check_result
 from autonomous_forge.commit import (
     execute_commit,
     format_commit_result,
@@ -491,6 +492,43 @@ def build_parser() -> argparse.ArgumentParser:
         help="path to the autonomous roadmap file",
     )
 
+    check_parser = subparsers.add_parser(
+        "check",
+        help="run all verification steps: lint, drift, diff-check, validate",
+    )
+    check_parser.add_argument(
+        "--root",
+        default=".",
+        help="repository root",
+    )
+    check_parser.add_argument(
+        "--plan",
+        default=None,
+        help="path to the autonomous roadmap file",
+    )
+    check_parser.add_argument(
+        "--policy",
+        default=None,
+        help="path to the repository policy file",
+    )
+    check_parser.add_argument(
+        "--cmd",
+        default=None,
+        dest="check_cmd",
+        help="validation command override",
+    )
+    check_parser.add_argument(
+        "--no-validate",
+        action="store_true",
+        help="skip validation",
+    )
+    check_parser.add_argument(
+        "--timeout",
+        type=int,
+        default=300,
+        help="validation timeout in seconds (default: 300)",
+    )
+
     validate_parser = subparsers.add_parser(
         "validate",
         help="run validation command and report results",
@@ -852,6 +890,21 @@ def main(argv: list[str] | None = None) -> int:
         plan_path = Path(args.plan) if args.plan else None
         print(get_status(root, plan_path=plan_path))
         return 0
+
+    if args.command == "check":
+        root = Path(args.root)
+        plan_path = Path(args.plan) if args.plan else None
+        policy_path = Path(args.policy) if args.policy else None
+        result = execute_check(
+            root,
+            plan_path=plan_path,
+            policy_path=policy_path,
+            validate=not args.no_validate,
+            validate_command=args.check_cmd,
+            timeout=args.timeout,
+        )
+        print(format_check_result(result))
+        return 0 if result.all_passed else 1
 
     if args.command == "diff-check":
         root = Path(args.root)

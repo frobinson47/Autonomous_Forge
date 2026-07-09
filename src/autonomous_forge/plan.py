@@ -10,7 +10,7 @@ _TASK_HEADING_RE = re.compile(r"^### (AUTO-\d{3}) — (.+)$")
 _FIELD_RE = re.compile(r"^([^:]+):\s*(.*)$")
 _TASK_FIELD_RE = re.compile(r"^(Priority|Status):\s*(.+)$")
 _PRIORITY_ORDER = {"P0": 0, "P1": 1, "P2": 2, "P3": 3}
-_SUPPORTED_STATUSES = {"TODO", "DONE", "BLOCKED"}
+_SUPPORTED_STATUSES = {"TODO", "DONE", "BLOCKED", "SKIPPED"}
 _REQUIRED_TASK_FIELDS = (
     "Priority",
     "Status",

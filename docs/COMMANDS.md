@@ -595,4 +595,48 @@ Exit codes:
 
 Safety limits: **runs `git` as subprocess** for branch and dirty count. Reads the plan file and run history. Does not write files, commit, push, or call networks.
 
+## `forge check`
+
+Purpose: run all verification steps — lint, drift, diff-check, validation — in one command.
+
+Inputs:
+
+- `--root`: repository root, defaulting to `.`.
+- `--plan`: roadmap Markdown path (defaults to `.ai/AUTONOMOUS_PLAN.md`).
+- `--policy`: policy Markdown path (defaults to `.forge/policy.md`).
+- `--cmd`: validation command override.
+- `--no-validate`: skip validation.
+- `--timeout`: validation timeout in seconds (default: 300).
+
+Expected successful output:
+
+```text
+Forge check
+Lint: PASS
+Drift: PASS
+Diff-check: PASS
+Validation: PASS
+Result: ALL PASSED
+```
+
+When issues found:
+
+```text
+Forge check
+Lint: FAIL
+  line 3: AUTO-001 is missing required field: Status
+Drift: PASS
+Diff-check: FAIL
+  .env: Matches prohibited pattern '.env'
+Validation: skipped
+Result: ISSUES FOUND
+```
+
+Exit codes:
+
+- `0` when all checks pass.
+- `1` when any check fails.
+
+Safety limits: **runs external validation commands** via subprocess. Reads metadata files and runs `git` for diff-check. Does not write files, commit, push, or call networks.
+
 Safety limits: **this command combines run, commit, and sync** — it runs external validation commands, runs git commit, and makes Forgejo API calls. Each escalation requires an explicit flag (`--commit`, `--sync`). Without flags, it behaves like `forge run` with auto-save. It does NOT push to git remotes.
