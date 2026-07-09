@@ -23,7 +23,7 @@ classifiers = [
 dependencies = []
 
 [project.scripts]
-forge = "autonomous_forge.cli:main"
+forge = "autonomous_forge.cli:_entry_point"
 
 [tool.setuptools.packages.find]
 where = ["src"]

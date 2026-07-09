@@ -525,7 +525,11 @@ def _run_resume(root_path: Path) -> int:
 
 
 def main(argv: list[str] | None = None) -> int:
-    """Run the Forge CLI."""
+    """Run the Forge CLI.
+
+    Returns an exit code. When called as a console script, wraps with
+    sys.exit via the ``_entry_point`` wrapper.
+    """
     parser = build_parser()
     args = parser.parse_args(argv)
 
@@ -646,3 +650,10 @@ def main(argv: list[str] | None = None) -> int:
 
     parser.print_help()
     return 0
+
+
+def _entry_point() -> None:
+    """Console script entry point — wraps main() with sys.exit()."""
+    import sys
+
+    sys.exit(main())
