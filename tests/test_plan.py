@@ -46,6 +46,69 @@ def test_parse_valid_task_blocks():
     assert tasks[0].status == "TODO"
 
 
+def test_parse_normalizes_pending_and_complete_status_aliases():
+    tasks = parse_plan_tasks(
+        """### AUTO-010 — Pending task
+Priority: P1
+Status: PENDING
+Goal: Do one thing.
+Why it matters: It proves alias parsing works.
+Scope: Keep it small.
+Expected files or areas: tests.
+Acceptance criteria: The task parses.
+Validation: Run tests.
+Risks or assumptions: None.
+Notes: Keep deterministic.
+
+### AUTO-011 — Complete task
+Priority: P2
+Status: COMPLETE (2026-07-18, closed by hand)
+Goal: Finish another thing.
+Why it matters: It proves alias parsing works.
+Scope: Keep it small.
+Expected files or areas: tests.
+Acceptance criteria: The task parses.
+Validation: Run tests.
+Risks or assumptions: None.
+Notes: Keep deterministic.
+"""
+    )
+
+    assert tasks[0].status == "TODO"
+    assert tasks[1].status == "DONE"
+
+
+def test_lint_accepts_pending_and_complete_status_aliases():
+    diagnostics = lint_plan_structure(
+        """### AUTO-012 — Pending task
+Priority: P1
+Status: PENDING
+Goal: Do one thing.
+Why it matters: It proves alias parsing works.
+Scope: Keep it small.
+Expected files or areas: tests.
+Acceptance criteria: The task parses.
+Validation: Run tests.
+Risks or assumptions: None.
+Notes: Keep deterministic.
+
+### AUTO-013 — Complete task
+Priority: P2
+Status: COMPLETE (2026-07-18, closed by hand)
+Goal: Finish another thing.
+Why it matters: It proves alias parsing works.
+Scope: Keep it small.
+Expected files or areas: tests.
+Acceptance criteria: The task parses.
+Validation: Run tests.
+Risks or assumptions: None.
+Notes: Keep deterministic.
+"""
+    )
+
+    assert diagnostics == []
+
+
 def test_parse_empty_plan_returns_no_tasks():
     assert parse_plan_tasks("# Empty roadmap\n") == []
 

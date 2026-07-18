@@ -11,6 +11,8 @@ _FIELD_RE = re.compile(r"^([^:]+):\s*(.*)$")
 _TASK_FIELD_RE = re.compile(r"^(Priority|Status):\s*(.+)$")
 _PRIORITY_ORDER = {"P0": 0, "P1": 1, "P2": 2, "P3": 3}
 _SUPPORTED_STATUSES = {"TODO", "DONE", "BLOCKED", "SKIPPED"}
+_STATUS_ALIASES = {"PENDING": "TODO", "COMPLETE": "DONE"}
+_STATUS_TRAILER_RE = re.compile(r"\s*\(.*\)\s*$")
 _REQUIRED_TASK_FIELDS = (
     "Priority",
     "Status",
@@ -23,6 +25,17 @@ _REQUIRED_TASK_FIELDS = (
     "Risks or assumptions",
     "Notes",
 )
+
+
+def _normalize_status(raw: str) -> str:
+    """Map alternate plan-file status conventions onto the canonical set.
+
+    Some projects write ``Status: PENDING`` / ``Status: COMPLETE (date, notes)``
+    instead of ``TODO`` / ``DONE``. Trailing parentheticals are stripped before
+    alias lookup so ``COMPLETE (2026-07-18, notes)`` still resolves to ``DONE``.
+    """
+    base = _STATUS_TRAILER_RE.sub("", raw).strip()
+    return _STATUS_ALIASES.get(base, base)
 
 
 @dataclass(frozen=True)
@@ -87,7 +100,7 @@ def parse_plan_tasks(plan_text: str) -> list[PlanTask]:
                 task_id=task_id,
                 title=title.strip(),
                 priority=fields["Priority"],
-                status=fields["Status"],
+                status=_normalize_status(fields["Status"]),
                 line_number=line_number,
             )
         )
@@ -160,7 +173,7 @@ def lint_plan_structure(plan_text: str) -> list[PlanLintDiagnostic]:
             )
 
         status = fields.get("Status")
-        if status and status[1] not in _SUPPORTED_STATUSES:
+        if status and _normalize_status(status[1]) not in _SUPPORTED_STATUSES:
             diagnostics.append(
                 PlanLintDiagnostic(
                     status[0],
