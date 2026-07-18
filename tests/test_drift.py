@@ -38,6 +38,26 @@ def test_state_plan_status_mismatch():
     assert "DONE" in signals[0].message
 
 
+def test_no_drift_when_plan_status_has_commit_annotation():
+    plan = (
+        "### AUTO-001 — First task\n"
+        "Priority: P1\n"
+        "Status: DONE — 70f89fd\n"
+        "\n"
+        "### AUTO-002 — Second task\n"
+        "Priority: P2\n"
+        "Status: TODO\n"
+    )
+    state = (
+        "# State\n"
+        "- Current task ID: AUTO-001 — First task\n"
+        "- Current task status: DONE\n"
+        "- Last successful commit hash: 70f89fd\n"
+    )
+    signals = collect_drift_signals(plan, state_text=state)
+    assert signals == []
+
+
 def test_state_references_missing_task():
     state = (
         "# State\n"

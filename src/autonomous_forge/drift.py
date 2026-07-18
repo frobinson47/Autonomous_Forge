@@ -73,7 +73,8 @@ def _check_state_vs_plan(
 
     plan_task = task_map[current_task_id]
     state_status = state_fields.get("Current task status", "")
-    if state_status and state_status != plan_task.status:
+    plan_status = plan_task.status.split("—", 1)[0].strip()
+    if state_status and state_status != plan_status:
         signals.append(DriftSignal(
             category="state-plan",
             severity="error",
