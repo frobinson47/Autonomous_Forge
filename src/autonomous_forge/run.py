@@ -273,3 +273,15 @@ def save_run_outcome(outcome: RunOutcome, root: Path = Path(".")) -> Path:
     lines.append("")
     path.write_text("\n".join(lines), encoding="utf-8")
     return path
+
+
+def record_commit_hash(report_path: Path, commit_hash: str) -> None:
+    """Append the resulting commit hash to an existing run report file.
+
+    Called after a pipeline run produces a commit, so the run report can be
+    cross-referenced against `git log`. No-op if the report file is missing.
+    """
+    if not report_path.exists():
+        return
+    with report_path.open("a", encoding="utf-8") as f:
+        f.write(f"\nCommit: {commit_hash}\n")

@@ -73,6 +73,20 @@ class TestParseRunFile:
         entry = _parse_run_file(tmp_path / "nonexistent.md")
         assert entry is None
 
+    def test_parse_run_with_commit_hash(self, tmp_path: Path):
+        path = tmp_path / "run.md"
+        path.write_text(RUN_FILE + "\nCommit: abc1234\n", encoding="utf-8")
+        entry = _parse_run_file(path)
+        assert entry is not None
+        assert entry.commit_hash == "abc1234"
+
+    def test_parse_run_without_commit_hash_defaults_empty(self, tmp_path: Path):
+        path = tmp_path / "run.md"
+        path.write_text(RUN_FILE, encoding="utf-8")
+        entry = _parse_run_file(path)
+        assert entry is not None
+        assert entry.commit_hash == ""
+
 
 class TestListRuns:
     def test_no_runs_dir(self, tmp_path: Path):
@@ -108,6 +122,7 @@ class TestFormatRunLog:
             diff_violations=0,
             validation="PASSED",
             blocked="",
+            commit_hash="",
         )
         text = format_run_log([entry])
         assert "1 runs" in text
@@ -125,10 +140,27 @@ class TestFormatRunLog:
             diff_violations=0,
             validation="PASSED",
             blocked="",
+            commit_hash="",
         )
         text = format_run_log([entry], verbose=True)
         assert "Drift: 2" in text
         assert "Files: 3" in text
+
+    def test_shows_commit_hash(self):
+        entry = RunEntry(
+            path=Path("run.md"),
+            timestamp="2026-07-09T12:00:00+00:00",
+            task="AUTO-001 — Build widget",
+            policy="present and readable",
+            drift_signals=0,
+            changed_files=3,
+            diff_violations=0,
+            validation="PASSED",
+            blocked="",
+            commit_hash="abc1234",
+        )
+        text = format_run_log([entry])
+        assert "abc1234" in text
 
 
 class TestLogCLI:

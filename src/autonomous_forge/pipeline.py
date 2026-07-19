@@ -7,7 +7,7 @@ from pathlib import Path
 
 from autonomous_forge.commit import CommitResult, execute_commit, run_pre_flight
 from autonomous_forge.push import PushResult, execute_push
-from autonomous_forge.run import RunOutcome, execute_run, save_run_outcome
+from autonomous_forge.run import RunOutcome, execute_run, record_commit_hash, save_run_outcome
 from autonomous_forge.sync import SyncResult, execute_sync
 
 
@@ -44,7 +44,7 @@ def execute_pipeline(
         dry_run=dry_run,
         timestamp=timestamp,
     )
-    save_run_outcome(run_outcome, root)
+    run_report_path = save_run_outcome(run_outcome, root)
 
     if run_outcome.blocked:
         return PipelineResult(
@@ -104,6 +104,8 @@ def execute_pipeline(
             stage_reached="commit",
             stopped_reason=f"Commit failed: {commit_result.message}",
         )
+
+    record_commit_hash(run_report_path, commit_result.commit_hash)
 
     if not push:
         return PipelineResult(

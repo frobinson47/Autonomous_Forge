@@ -529,6 +529,8 @@ Exit codes:
 
 - `0` when the log is printed, including when no runs exist.
 
+When a run's report was linked to a commit (see `forge pipeline --commit`), the commit hash is shown in brackets after the status, e.g. `PASSED  [abc1234]`, and in `--verbose` mode as its own `Commit:` line.
+
 Safety limits: reads run history files only; it does not change files, run external commands, or call networks.
 
 ## `forge pipeline`

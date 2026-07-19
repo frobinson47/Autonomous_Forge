@@ -451,16 +451,16 @@ Risks or assumptions: Push always targets `origin` and the current branch's own 
 
 ### AUTO-034 — Hash-linked local run reports
 Priority: P2
-Status: TODO
+Status: DONE
 
 Goal: Link each local run report to the git commit hash it produced, so run history in `.forge/runs/` can be cross-referenced against `git log`.
 Why it matters: Run reports currently record task/validation/drift info but not which commit (if any) resulted from that run, making it hard to trace "which run produced commit X" during an audit.
 Scope: Add an optional `commit_hash` field to the run report schema, populated when a pipeline run produces a commit in the same invocation. `forge log` displays the hash when present. Run reports saved before this change (no field) must still load and print without error.
 Expected files or areas: `src/autonomous_forge/run.py`, `src/autonomous_forge/pipeline.py`, `src/autonomous_forge/log.py`, tests.
 Acceptance criteria: A `forge pipeline --commit` run's saved report includes the resulting commit hash; `forge log` shows it; run reports without the field still load and print without error.
-Validation: New unit tests for the run report hash field and log formatting; full suite passes.
+Validation: 6 new tests pass (`test_run.py`, `test_log.py`, `test_pipeline.py`); full suite 224 tests pass. Runtime confirmed.
 Risks or assumptions: Only applies when a commit actually happens in the same pipeline invocation — a standalone `forge run` (no `--commit`) report has no hash, which is expected, not a bug.
-Notes: None yet.
+Notes: Commit hash is appended as a trailing `Commit:` line after the run report is saved, since the hash isn't known until after `execute_commit` runs.
 
 ### AUTO-035 — Read-only Forgejo orphan-issue report
 Priority: P2

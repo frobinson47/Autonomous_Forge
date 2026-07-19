@@ -133,6 +133,22 @@ class TestExecutePipeline:
         assert result.push_result is None
 
     @patch("autonomous_forge.run.get_changed_files", return_value=[])
+    @patch("autonomous_forge.pipeline.execute_commit")
+    def test_commit_records_hash_on_run_report(self, mock_commit, mock_git, tmp_path):
+        _setup(tmp_path)
+        mock_commit.return_value = self._fake_commit_result()
+        result = execute_pipeline(
+            root=tmp_path,
+            commit=True,
+            dry_run=True,
+            timestamp="2026-01-01T00:00:00+00:00",
+        )
+        run_files = list((tmp_path / ".forge" / "runs").glob("run-*.md"))
+        assert len(run_files) == 1
+        content = run_files[0].read_text(encoding="utf-8")
+        assert "Commit: abc1234" in content
+
+    @patch("autonomous_forge.run.get_changed_files", return_value=[])
     @patch("autonomous_forge.pipeline.execute_push")
     @patch("autonomous_forge.pipeline.execute_commit")
     def test_push_without_sync_stops_at_push(self, mock_commit, mock_push, mock_git, tmp_path):

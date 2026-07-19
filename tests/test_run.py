@@ -11,6 +11,7 @@ from autonomous_forge.run import (
     RunOutcome,
     execute_run,
     format_run_outcome,
+    record_commit_hash,
     save_run_outcome,
 )
 
@@ -255,6 +256,34 @@ class TestSaveRunOutcome:
         )
         save_run_outcome(outcome, tmp_path)
         assert (tmp_path / ".forge" / "runs").is_dir()
+
+
+class TestRecordCommitHash:
+    def test_appends_commit_hash(self, tmp_path: Path):
+        outcome = RunOutcome(
+            timestamp="2026-01-01T00:00:00+00:00",
+            selected_task=None,
+            validation_passed=None,
+            validation_command="",
+            validation_output="",
+            diff_violations=0,
+            diff_details=(),
+            drift_signals=0,
+            changed_files=(),
+            policy_status="not found",
+            blocked=False,
+            block_reason="",
+        )
+        path = save_run_outcome(outcome, tmp_path)
+        record_commit_hash(path, "abc1234")
+
+        content = path.read_text(encoding="utf-8")
+        assert "Commit: abc1234" in content
+
+    def test_noop_when_report_missing(self, tmp_path: Path):
+        missing = tmp_path / ".forge" / "runs" / "run-does-not-exist.md"
+        record_commit_hash(missing, "abc1234")  # must not raise
+        assert not missing.exists()
 
 
 class TestRunCLI:

@@ -20,6 +20,7 @@ class RunEntry:
     diff_violations: int
     validation: str
     blocked: str
+    commit_hash: str
 
 
 _FIELD_RE = re.compile(r"^([A-Za-z ]+):\s*(.+)$")
@@ -69,6 +70,7 @@ def _parse_run_file(path: Path) -> RunEntry | None:
         diff_violations=violations,
         validation=fields.get("validation", ""),
         blocked=fields.get("blocked", ""),
+        commit_hash=fields.get("commit", ""),
     )
 
 
@@ -105,12 +107,15 @@ def format_run_log(entries: list[RunEntry], verbose: bool = False) -> str:
         else:
             status = entry.validation or "no validation"
 
-        line = f"  {entry.timestamp}  {entry.task:<40s}  {status}"
+        commit_suffix = f"  [{entry.commit_hash}]" if entry.commit_hash else ""
+        line = f"  {entry.timestamp}  {entry.task:<40s}  {status}{commit_suffix}"
         lines.append(line)
 
         if verbose:
             lines.append(f"    Files: {entry.changed_files}  Drift: {entry.drift_signals}  Violations: {entry.diff_violations}")
             lines.append(f"    Policy: {entry.policy}")
+            if entry.commit_hash:
+                lines.append(f"    Commit: {entry.commit_hash}")
             lines.append("")
 
     return "\n".join(lines)
