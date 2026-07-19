@@ -465,6 +465,40 @@ Exit codes:
 
 Safety limits: **this command runs git commit** and **runs external validation commands** via subprocess. It checks staged files against policy before committing. It does NOT push, modify the plan file, or auto-stage files. Auto-generated commit messages use the format `forge: AUTO-### — title`.
 
+## `forge push`
+
+Purpose: push local commits to the git remote — standalone, independent of task selection or commit state. Use this to clear already-committed local work (e.g. after `forge commit`, or when a repo has drifted ahead of `origin` with no TODO task in flight to trigger `forge pipeline --push`).
+
+Inputs:
+
+- `--root`: repository root, defaulting to `.`.
+- `--remote`: git remote to push to (default: `origin`).
+
+Expected successful output:
+
+```text
+Push (origin/main): PUSHED — Pushed 3 commit(s) to origin/main.
+```
+
+When already up to date:
+
+```text
+Push (origin/main): PUSHED — Already up to date with remote.
+```
+
+When the push is rejected:
+
+```text
+Push (origin/main): FAILED — git push failed: ! [rejected] main -> main (non-fast-forward)
+```
+
+Exit codes:
+
+- `0` when the push succeeds or the branch is already up to date.
+- `1` when the push is rejected, the remote has diverged, or the current branch cannot be determined.
+
+Safety limits: **runs `git push`** against the current branch's tracked remote. Never rebases, merges, or force-pushes — a rejected/diverged push fails loudly and must be resolved manually (pull/rebase, then re-run).
+
 ## `forge log`
 
 Purpose: view run history from `.forge/runs/`.

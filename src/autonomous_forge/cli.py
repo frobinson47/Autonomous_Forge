@@ -23,6 +23,7 @@ from autonomous_forge.metrics import compute_metrics, format_metrics
 from autonomous_forge.planadd import add_task, format_add_result
 from autonomous_forge.status import get_status
 from autonomous_forge.pipeline import execute_pipeline, format_pipeline_result
+from autonomous_forge.push import execute_push, format_push_result
 from autonomous_forge.inventory import build_repository_inventory
 from autonomous_forge.run import execute_run, format_run_outcome, save_run_outcome
 from autonomous_forge.sync import execute_sync, format_sync_result
@@ -397,6 +398,21 @@ def build_parser() -> argparse.ArgumentParser:
         "--check-only",
         action="store_true",
         help="run pre-flight checks only, do not commit",
+    )
+
+    push_parser = subparsers.add_parser(
+        "push",
+        help="push local commits to the git remote",
+    )
+    push_parser.add_argument(
+        "--root",
+        default=".",
+        help="repository root",
+    )
+    push_parser.add_argument(
+        "--remote",
+        default="origin",
+        help="git remote to push to (default: origin)",
     )
 
     log_parser = subparsers.add_parser(
@@ -1002,6 +1018,11 @@ def main(argv: list[str] | None = None) -> int:
         )
         print(format_commit_result(result))
         return 0 if result.committed else 1
+
+    if args.command == "push":
+        result = execute_push(root=Path(args.root), remote=args.remote)
+        print(format_push_result(result))
+        return 0 if result.pushed else 1
 
     if args.command == "mark":
         plan_path = Path(args.plan) if args.plan else None

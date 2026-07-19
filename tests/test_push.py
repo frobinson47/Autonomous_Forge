@@ -76,6 +76,37 @@ class TestExecutePush:
         assert "Could not determine current branch" in result.message
 
 
+class TestPushCLI:
+    @patch("autonomous_forge.cli.execute_push")
+    def test_push_command_success(self, mock_push, tmp_path, capsys):
+        from autonomous_forge.cli import main
+
+        mock_push.return_value = PushResult(
+            pushed=True, remote="origin", branch="main",
+            commits_pushed=2, message="Pushed 2 commit(s) to origin/main.",
+        )
+        code = main(["push", "--root", str(tmp_path)])
+        captured = capsys.readouterr()
+
+        assert code == 0
+        assert "PUSHED" in captured.out
+        mock_push.assert_called_once_with(root=tmp_path, remote="origin")
+
+    @patch("autonomous_forge.cli.execute_push")
+    def test_push_command_failure_exits_1(self, mock_push, tmp_path, capsys):
+        from autonomous_forge.cli import main
+
+        mock_push.return_value = PushResult(
+            pushed=False, remote="origin", branch="main",
+            commits_pushed=0, message="git push failed: rejected",
+        )
+        code = main(["push", "--root", str(tmp_path)])
+        captured = capsys.readouterr()
+
+        assert code == 1
+        assert "FAILED" in captured.out
+
+
 class TestFormatPushResult:
     def test_pushed(self):
         result = PushResult(
