@@ -3,11 +3,14 @@ from pathlib import Path
 from autonomous_forge.cli import main
 from autonomous_forge.session import (
     GitSnapshot,
+    RootSession,
     SessionContext,
     build_session_snapshot,
     deserialize_session,
+    format_multi_resume_briefing,
     format_resume_briefing,
     load_latest_session,
+    load_sessions_for_roots,
     save_session,
     serialize_session,
 )
@@ -160,6 +163,75 @@ def test_format_resume_briefing():
     assert "Working on: Bug fix" in briefing
     assert "Next steps: Write tests" in briefing
     assert "abc fix bug" in briefing
+
+
+def test_load_sessions_for_roots(tmp_path):
+    root_a = tmp_path / "repo-a"
+    root_b = tmp_path / "repo-b"
+    root_a.mkdir()
+    root_b.mkdir()
+    save_session(_make_session(working_on="Working on A"), root_a)
+    # root_b has no session at all
+
+    sessions = load_sessions_for_roots([root_a, root_b])
+
+    assert len(sessions) == 2
+    assert sessions[0].root == root_a
+    assert sessions[0].context is not None
+    assert sessions[0].context.working_on == "Working on A"
+    assert sessions[1].root == root_b
+    assert sessions[1].context is None
+
+
+def test_format_multi_resume_briefing():
+    ctx = _make_session(
+        git=_make_git_snapshot(branch="feature", dirty_files=("a.py",)),
+        working_on="Building the widget",
+        next_steps="Ship it",
+    )
+    sessions = [
+        RootSession(root=Path("repo-a"), context=ctx),
+        RootSession(root=Path("repo-b"), context=None),
+    ]
+    text = format_multi_resume_briefing(sessions)
+
+    assert "Cross-repo session resume briefing" in text
+    assert "Repos: 2" in text
+    assert "repo-a" in text
+    assert "Branch: feature" in text
+    assert "Building the widget" in text
+    assert "Ship it" in text
+    assert "repo-b" in text
+    assert "No session found." in text
+
+
+def test_resume_cli_roots_combined_briefing(tmp_path, capsys):
+    root_a = tmp_path / "repo-a"
+    root_b = tmp_path / "repo-b"
+    root_a.mkdir()
+    root_b.mkdir()
+    save_session(_make_session(working_on="Working on A", next_steps="Finish A"), root_a)
+    save_session(_make_session(working_on="Working on B", next_steps="Finish B"), root_b)
+
+    result = main(["resume", "--roots", f"{root_a},{root_b}"])
+    assert result == 0
+    output = capsys.readouterr().out
+    assert "Cross-repo session resume briefing" in output
+    assert "Working on A" in output
+    assert "Working on B" in output
+
+
+def test_resume_cli_roots_overrides_root(tmp_path, capsys):
+    root_a = tmp_path / "repo-a"
+    root_a.mkdir()
+    save_session(_make_session(working_on="Working on A"), root_a)
+
+    # --root points somewhere with no session; --roots should take precedence
+    result = main(["resume", "--root", str(tmp_path), "--roots", str(root_a)])
+    assert result == 0
+    output = capsys.readouterr().out
+    assert "Cross-repo session resume briefing" in output
+    assert "Working on A" in output
 
 
 def test_pause_cli_saves_session(tmp_path, capsys):

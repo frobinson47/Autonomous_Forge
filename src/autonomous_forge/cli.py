@@ -36,8 +36,10 @@ from autonomous_forge.validate import format_validation_result, run_validation
 from autonomous_forge.session import (
     build_session_snapshot,
     capture_git_snapshot,
+    format_multi_resume_briefing,
     format_resume_briefing,
     load_latest_session,
+    load_sessions_for_roots,
     save_session,
 )
 from autonomous_forge.plan import (
@@ -246,6 +248,11 @@ def build_parser() -> argparse.ArgumentParser:
         "--root",
         default=".",
         help="repository root to find session files",
+    )
+    resume_parser.add_argument(
+        "--roots",
+        default=None,
+        help="comma-separated repo roots for a combined cross-repo briefing (overrides --root)",
     )
 
     context_parser = subparsers.add_parser(
@@ -861,6 +868,13 @@ def _run_resume(root_path: Path) -> int:
     return 0
 
 
+def _run_resume_multi(roots_arg: str) -> int:
+    roots = [Path(r.strip()) for r in roots_arg.split(",") if r.strip()]
+    sessions = load_sessions_for_roots(roots)
+    print(format_multi_resume_briefing(sessions))
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     """Run the Forge CLI.
 
@@ -921,6 +935,8 @@ def main(argv: list[str] | None = None) -> int:
         )
 
     if args.command == "resume":
+        if args.roots:
+            return _run_resume_multi(args.roots)
         return _run_resume(Path(args.root))
 
     if args.command == "context":

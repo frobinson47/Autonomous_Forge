@@ -284,6 +284,47 @@ def load_latest_session(root: Path = Path(".")) -> SessionContext | None:
     return deserialize_session(files[-1].read_text(encoding="utf-8"))
 
 
+@dataclass(frozen=True)
+class RootSession:
+    """The most recent session context found for one repo root, if any."""
+
+    root: Path
+    context: SessionContext | None
+
+
+def load_sessions_for_roots(roots: list[Path]) -> list[RootSession]:
+    """Load the latest session context for each of several repo roots."""
+    return [RootSession(root=root, context=load_latest_session(root)) for root in roots]
+
+
+def format_multi_resume_briefing(sessions: list[RootSession]) -> str:
+    """Format a combined resume briefing across several repo roots."""
+    lines = [
+        "Cross-repo session resume briefing",
+        f"Repos: {len(sessions)}",
+    ]
+
+    for entry in sessions:
+        lines.append("")
+        lines.append(f"## {entry.root}")
+
+        if entry.context is None:
+            lines.append("No session found.")
+            continue
+
+        ctx = entry.context
+        lines.append(f"Last paused: {ctx.timestamp}")
+        lines.append(f"Branch: {ctx.git.branch}")
+        if ctx.git.dirty_files:
+            lines.append(f"Dirty files: {len(ctx.git.dirty_files)}")
+        if ctx.working_on:
+            lines.append(f"Working on: {ctx.working_on}")
+        if ctx.next_steps:
+            lines.append(f"Next steps: {ctx.next_steps}")
+
+    return "\n".join(lines)
+
+
 def format_resume_briefing(ctx: SessionContext) -> str:
     """Format a session context as a structured resume briefing."""
     lines = [

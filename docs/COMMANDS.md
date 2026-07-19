@@ -325,6 +325,7 @@ Purpose: replay the most recent session context as a structured briefing.
 Inputs:
 
 - `--root`: repository root to find session files, defaulting to `.`.
+- `--roots`: comma-separated repo roots for a combined cross-repo briefing (overrides `--root`).
 
 Expected successful output:
 
@@ -349,11 +350,30 @@ If no session files exist:
 No session found.
 ```
 
+With `--roots`, output is a combined briefing across every listed repo instead of the single-repo format above:
+
+```text
+Cross-repo session resume briefing
+Repos: <count>
+
+## <root a>
+Last paused: <ISO-8601 timestamp>
+Branch: <branch>
+Dirty files: <count>
+Working on: <text>
+Next steps: <text>
+
+## <root b>
+No session found.
+```
+
+A root with no session file is reported as such, not treated as an error.
+
 Exit codes:
 
 - `0` when the briefing is printed or when no session exists.
 
-Safety limits: reads session files and prints a briefing only; it does not change files, run external commands, or call networks.
+Safety limits: reads session files and prints a briefing only; it does not change files, run external commands, or call networks. `--roots` reads each listed local path directly — it does not fetch or clone remote repos.
 
 ## `forge run`
 

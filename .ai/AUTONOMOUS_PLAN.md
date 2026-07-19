@@ -477,16 +477,16 @@ Notes: Orphan detection matches any `AUTO-###` substring in the issue title (bra
 
 ### AUTO-036 — Cross-repo session handoff aggregation
 Priority: P2
-Status: TODO
+Status: DONE
 
 Goal: Add a `--roots` option to `forge resume` that scans the latest session file in each of several repo roots and prints a combined multi-project briefing.
 Why it matters: `forge pause`/`forge resume` already capture per-repo handoff; a user working across several forge-enabled projects has to `cd` into each one and run `forge resume` separately to see what's pending.
 Scope: New `--roots` argument (comma-separated paths) on the resume command; for each root, load its newest `.forge/sessions/session-*.md` (reusing existing session parsing) and print a short summary per project. No cross-repo git operations beyond what `forge resume` already does per-repo.
 Expected files or areas: `src/autonomous_forge/session.py`, `src/autonomous_forge/cli.py`, tests, `docs/COMMANDS.md`.
 Acceptance criteria: `forge resume --roots a,b,c` prints one section per root with its most recent session summary; a root with no session file is reported as such, not treated as an error; single-repo `forge resume` behavior is unchanged.
-Validation: New unit and CLI tests with fixture session files across multiple `tmp_path` roots; full suite passes.
+Validation: 4 new tests pass (`test_session.py`) with fixture session files across multiple `tmp_path` roots; full suite 244 tests pass. Runtime confirmed.
 Risks or assumptions: Assumes each listed root is a local, already forge-initialized path; does not fetch or clone remote repos.
-Notes: None yet.
+Notes: `--roots` overrides `--root` when both are passed rather than erroring, matching the "explicit flag wins" pattern used elsewhere in the CLI.
 
 ### AUTO-037 — `forge watch` periodic check mode
 Priority: P3
