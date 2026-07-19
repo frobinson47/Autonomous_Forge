@@ -78,6 +78,38 @@ Notes: Keep deterministic.
     assert tasks[1].status == "DONE"
 
 
+def test_parse_normalizes_em_dash_commit_annotation():
+    tasks = parse_plan_tasks(
+        """### AUTO-014 — Shipped task
+Priority: P1
+Status: DONE — 70f89fd
+Goal: Do one thing.
+Why it matters: It proves em-dash annotations are stripped.
+Scope: Keep it small.
+Expected files or areas: tests.
+Acceptance criteria: The task parses.
+Validation: Run tests.
+Risks or assumptions: None.
+Notes: Keep deterministic.
+
+### AUTO-015 — Predates scaffold
+Priority: P2
+Status: DONE — already satisfied, no code change needed
+Goal: Finish another thing.
+Why it matters: It proves longer annotations are stripped too.
+Scope: Keep it small.
+Expected files or areas: tests.
+Acceptance criteria: The task parses.
+Validation: Run tests.
+Risks or assumptions: None.
+Notes: Keep deterministic.
+"""
+    )
+
+    assert tasks[0].status == "DONE"
+    assert tasks[1].status == "DONE"
+
+
 def test_lint_accepts_pending_and_complete_status_aliases():
     diagnostics = lint_plan_structure(
         """### AUTO-012 — Pending task

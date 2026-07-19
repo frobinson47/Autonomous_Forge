@@ -12,7 +12,7 @@ _TASK_FIELD_RE = re.compile(r"^(Priority|Status):\s*(.+)$")
 _PRIORITY_ORDER = {"P0": 0, "P1": 1, "P2": 2, "P3": 3}
 _SUPPORTED_STATUSES = {"TODO", "DONE", "BLOCKED", "SKIPPED"}
 _STATUS_ALIASES = {"PENDING": "TODO", "COMPLETE": "DONE"}
-_STATUS_TRAILER_RE = re.compile(r"\s*\(.*\)\s*$")
+_STATUS_TRAILER_RE = re.compile(r"\s*(\(.*\)|—.*)\s*$")
 _REQUIRED_TASK_FIELDS = (
     "Priority",
     "Status",
@@ -31,8 +31,11 @@ def _normalize_status(raw: str) -> str:
     """Map alternate plan-file status conventions onto the canonical set.
 
     Some projects write ``Status: PENDING`` / ``Status: COMPLETE (date, notes)``
-    instead of ``TODO`` / ``DONE``. Trailing parentheticals are stripped before
-    alias lookup so ``COMPLETE (2026-07-18, notes)`` still resolves to ``DONE``.
+    instead of ``TODO`` / ``DONE``; others annotate a completed task with a
+    trailing commit hash, e.g. ``Status: DONE — 70f89fd``. Trailing
+    parentheticals and em-dash annotations are stripped before alias lookup so
+    ``COMPLETE (2026-07-18, notes)`` and ``DONE — 70f89fd`` both resolve
+    correctly.
     """
     base = _STATUS_TRAILER_RE.sub("", raw).strip()
     return _STATUS_ALIASES.get(base, base)
