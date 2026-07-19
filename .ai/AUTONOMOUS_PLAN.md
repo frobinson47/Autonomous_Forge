@@ -14,11 +14,11 @@ The project has two interfaces: a Python CLI (`forge`) and Claude Code skills (`
 
 ## Current implementation status
 
-Roadmaps v1 and v2 are complete (14 tasks). Roadmap v3 has added metadata drift detection and session handoff. All 54 tests pass at runtime. The session `pause` command is the first feature that writes files (session snapshots) and runs an external command (`git`).
+Roadmaps v1, v2, and v3 are complete (33 tasks). Roadmap v3 added metadata drift detection, session handoff, the full run -> commit -> push -> sync pipeline, and JSON export. Roadmap v4 is planned (4 tasks, all TODO). All 218 tests pass at runtime.
 
 ## Technical debt
 
-The CLI does not yet persist run summaries in a machine-readable local format. The `docs/COMMANDS.md` file does not document the `drift`, `pause`, or `resume` commands yet.
+None currently tracked. Prior debt (run summary persistence, missing `docs/COMMANDS.md` coverage for `drift`/`pause`/`resume`/`push`) was resolved in Roadmap v3.
 
 ## Prioritized roadmap
 
@@ -447,12 +447,63 @@ Acceptance criteria: `forge pipeline --commit --push` pushes HEAD to the current
 Validation: 10 new tests pass (`test_push.py`, `test_pipeline.py`); full suite 216 tests pass.
 Risks or assumptions: Push always targets `origin` and the current branch's own name (no cross-branch push). Divergence must be resolved manually — the tool does not attempt automatic conflict resolution.
 
+## Roadmap v4
+
+### AUTO-034 — Hash-linked local run reports
+Priority: P2
+Status: TODO
+
+Goal: Link each local run report to the git commit hash it produced, so run history in `.forge/runs/` can be cross-referenced against `git log`.
+Why it matters: Run reports currently record task/validation/drift info but not which commit (if any) resulted from that run, making it hard to trace "which run produced commit X" during an audit.
+Scope: Add an optional `commit_hash` field to the run report schema, populated when a pipeline run produces a commit in the same invocation. `forge log` displays the hash when present. Run reports saved before this change (no field) must still load and print without error.
+Expected files or areas: `src/autonomous_forge/run.py`, `src/autonomous_forge/pipeline.py`, `src/autonomous_forge/log.py`, tests.
+Acceptance criteria: A `forge pipeline --commit` run's saved report includes the resulting commit hash; `forge log` shows it; run reports without the field still load and print without error.
+Validation: New unit tests for the run report hash field and log formatting; full suite passes.
+Risks or assumptions: Only applies when a commit actually happens in the same pipeline invocation — a standalone `forge run` (no `--commit`) report has no hash, which is expected, not a bug.
+Notes: None yet.
+
+### AUTO-035 — Read-only Forgejo orphan-issue report
+Priority: P2
+Status: TODO
+
+Goal: Add a read-only report that lists Forgejo issues with no matching `[AUTO-###]` task in the current plan, so manually-created issues can be spotted and reconciled by a human.
+Why it matters: `forge sync` is intentionally one-way (plan -> Forgejo); issues created directly in Forgejo are invisible to the tool and never show up in `forge tasks` or `forge status`. Surfacing them prevents silently orphaned work — this is exactly the failure mode that motivated AUTO-033/the PENDING/COMPLETE status fix, applied to issues instead of statuses.
+Scope: New `--report-orphans` flag on `forge sync` that lists open Forgejo issues lacking an `[AUTO-###]` prefix match against current plan tasks. Read-only — makes no write API calls and does not modify the plan file. Explicitly out of scope: auto-generating plan task stubs from orphan issues; a human decides what, if anything, to add.
+Expected files or areas: `src/autonomous_forge/sync.py`, `src/autonomous_forge/cli.py`, tests.
+Acceptance criteria: `forge sync --report-orphans` lists issue number and title for every open issue with no `[AUTO-###]` match; exits 0 with "No orphan issues" when none found; issues no write requests to the Forgejo API.
+Validation: Unit tests mocking the Forgejo client; full suite passes.
+Risks or assumptions: Read-only by design — writing plan tasks from Forgejo issues is deliberately out of scope to preserve "the plan is the source of truth."
+Notes: None yet.
+
+### AUTO-036 — Cross-repo session handoff aggregation
+Priority: P2
+Status: TODO
+
+Goal: Add a `--roots` option to `forge resume` that scans the latest session file in each of several repo roots and prints a combined multi-project briefing.
+Why it matters: `forge pause`/`forge resume` already capture per-repo handoff; a user working across several forge-enabled projects has to `cd` into each one and run `forge resume` separately to see what's pending.
+Scope: New `--roots` argument (comma-separated paths) on the resume command; for each root, load its newest `.forge/sessions/session-*.md` (reusing existing session parsing) and print a short summary per project. No cross-repo git operations beyond what `forge resume` already does per-repo.
+Expected files or areas: `src/autonomous_forge/session.py`, `src/autonomous_forge/cli.py`, tests, `docs/COMMANDS.md`.
+Acceptance criteria: `forge resume --roots a,b,c` prints one section per root with its most recent session summary; a root with no session file is reported as such, not treated as an error; single-repo `forge resume` behavior is unchanged.
+Validation: New unit and CLI tests with fixture session files across multiple `tmp_path` roots; full suite passes.
+Risks or assumptions: Assumes each listed root is a local, already forge-initialized path; does not fetch or clone remote repos.
+Notes: None yet.
+
+### AUTO-037 — `forge watch` periodic check mode
+Priority: P3
+Status: TODO
+
+Goal: Add `forge watch [--interval SECONDS] [--once]` that periodically re-runs `forge check` (lint + drift + diff-check + validation) and prints results, exiting cleanly on Ctrl+C.
+Why it matters: Drift and policy issues are currently only caught when someone remembers to run `forge check` manually; a lightweight foreground watcher catches regressions between sessions without requiring external cron/scheduler setup.
+Scope: A polling loop around the existing `execute_check` — read-only, no commits, no network calls, no autonomous fixes. `--once` runs a single check-and-exit (for scripting/testing). `--interval` defaults to a sane value (e.g. 300 seconds). No daemonization or PID files — foreground process only, matching the project's stated non-goal of being "a hosted platform... autonomous executor."
+Expected files or areas: `src/autonomous_forge/watch.py`, `src/autonomous_forge/cli.py`, tests, `docs/COMMANDS.md`.
+Acceptance criteria: `forge watch --once` runs exactly one check cycle and exits with `forge check`'s exit code; `forge watch --interval N` loops, printing a check report every N seconds, until interrupted; Ctrl+C exits cleanly with code 0.
+Validation: Unit tests with mocked sleep/loop count; full suite passes.
+Risks or assumptions: Explicitly read-only — does not trigger `forge pipeline` or any commit/push. A backgrounded/daemonized mode, if ever wanted, is a separate task requiring explicit human approval given the project's non-goals.
+Notes: None yet.
+
 ## Future Ideas
 
-- Hash-linked local run reports.
-- Optional issue import.
-- Cross-repo session handoff aggregation (resume across multiple projects).
-- `forge watch` — daemon mode that periodically checks repo state.
+- (empty — all previously listed ideas were promoted into Roadmap v4)
 
 ## Do Not Change Without Explicit Human Approval
 
