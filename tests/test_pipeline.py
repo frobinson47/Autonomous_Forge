@@ -7,11 +7,13 @@ from unittest.mock import patch
 
 import pytest
 
+from autonomous_forge.commit import CommitPreFlight, CommitResult
 from autonomous_forge.pipeline import (
     PipelineResult,
     execute_pipeline,
     format_pipeline_result,
 )
+from autonomous_forge.push import PushResult
 
 
 PLAN_TODO = """\
@@ -104,6 +106,78 @@ class TestExecutePipeline:
         assert result.stage_reached == "run"
         assert "nothing to do" in result.stopped_reason
 
+    def _fake_commit_result(self) -> CommitResult:
+        pf = CommitPreFlight(
+            safe=True, changed_files=("src/foo.py",), violations=(),
+            validation_passed=True, validation_output="",
+            task_id="AUTO-001", task_title="Build widget", block_reason="",
+        )
+        return CommitResult(
+            committed=True, commit_hash="abc1234",
+            message="forge: AUTO-001 — Build widget", pre_flight=pf,
+        )
+
+    @patch("autonomous_forge.run.get_changed_files", return_value=[])
+    @patch("autonomous_forge.pipeline.execute_commit")
+    def test_commit_without_push_stops_at_commit(self, mock_commit, mock_git, tmp_path):
+        _setup(tmp_path)
+        mock_commit.return_value = self._fake_commit_result()
+        result = execute_pipeline(
+            root=tmp_path,
+            commit=True,
+            dry_run=True,
+            timestamp="2026-01-01T00:00:00+00:00",
+        )
+        assert result.stage_reached == "commit"
+        assert "Push not requested" in result.stopped_reason
+        assert result.push_result is None
+
+    @patch("autonomous_forge.run.get_changed_files", return_value=[])
+    @patch("autonomous_forge.pipeline.execute_push")
+    @patch("autonomous_forge.pipeline.execute_commit")
+    def test_push_without_sync_stops_at_push(self, mock_commit, mock_push, mock_git, tmp_path):
+        _setup(tmp_path)
+        mock_commit.return_value = self._fake_commit_result()
+        mock_push.return_value = PushResult(
+            pushed=True, remote="origin", branch="main",
+            commits_pushed=1, message="Pushed 1 commit(s) to origin/main.",
+        )
+        result = execute_pipeline(
+            root=tmp_path,
+            commit=True,
+            push=True,
+            dry_run=True,
+            timestamp="2026-01-01T00:00:00+00:00",
+        )
+        assert result.stage_reached == "push"
+        assert "Sync not requested" in result.stopped_reason
+        assert result.push_result.pushed
+
+    @patch("autonomous_forge.run.get_changed_files", return_value=[])
+    @patch("autonomous_forge.pipeline.execute_sync")
+    @patch("autonomous_forge.pipeline.execute_push")
+    @patch("autonomous_forge.pipeline.execute_commit")
+    def test_push_failure_stops_before_sync(
+        self, mock_commit, mock_push, mock_sync, mock_git, tmp_path
+    ):
+        _setup(tmp_path)
+        mock_commit.return_value = self._fake_commit_result()
+        mock_push.return_value = PushResult(
+            pushed=False, remote="origin", branch="main",
+            commits_pushed=0, message="git push failed: rejected",
+        )
+        result = execute_pipeline(
+            root=tmp_path,
+            commit=True,
+            push=True,
+            sync=True,
+            dry_run=True,
+            timestamp="2026-01-01T00:00:00+00:00",
+        )
+        assert result.stage_reached == "push"
+        assert "Push failed" in result.stopped_reason
+        assert not mock_sync.called
+
 
 class TestFormatPipelineResult:
     def test_format_run_only(self):
@@ -128,6 +202,7 @@ class TestFormatPipelineResult:
         result = PipelineResult(
             run_outcome=ro,
             commit_result=None,
+            push_result=None,
             sync_result=None,
             stage_reached="run",
             stopped_reason="Commit not requested.",

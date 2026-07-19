@@ -435,6 +435,18 @@ Acceptance criteria: Valid JSON output with version, plan, tasks, counts, next_t
 Validation: 7 tests pass; full suite 203 tests pass. Runtime confirmed.
 Risks or assumptions: JSON schema is versioned for future compatibility.
 
+### AUTO-033 — Push stage in pipeline
+Priority: P0
+Status: DONE
+
+Goal: Add a `--push` stage to `forge pipeline` that pushes local commits to the git remote after a successful commit and before Forgejo sync.
+Why it matters: `forge sync` only updated Forgejo issue labels/state — it never ran `git push`. Autonomous sessions accumulated local-only commits with nothing pushing them upstream, so a repo could silently drift dozens of commits behind origin.
+Scope: New `src/autonomous_forge/push.py` module (`execute_push`, `format_push_result`); wired as a stage between commit and sync in `pipeline.py`; new `--push` CLI flag on `forge pipeline`.
+Expected files or areas: `src/autonomous_forge/push.py`, `src/autonomous_forge/pipeline.py`, `src/autonomous_forge/cli.py`, `docs/COMMANDS.md`, tests.
+Acceptance criteria: `forge pipeline --commit --push` pushes HEAD to the current branch's remote after commit; skips the push call if already up to date; fails loudly (no rebase/merge/force-push) on a rejected/diverged push and stops the pipeline before sync runs.
+Validation: 10 new tests pass (`test_push.py`, `test_pipeline.py`); full suite 216 tests pass.
+Risks or assumptions: Push always targets `origin` and the current branch's own name (no cross-branch push). Divergence must be resolved manually — the tool does not attempt automatic conflict resolution.
+
 ## Future Ideas
 
 - Hash-linked local run reports.

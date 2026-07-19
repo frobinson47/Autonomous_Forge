@@ -6,6 +6,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from autonomous_forge.commit import CommitResult, execute_commit, run_pre_flight
+from autonomous_forge.push import PushResult, execute_push
 from autonomous_forge.run import RunOutcome, execute_run, save_run_outcome
 from autonomous_forge.sync import SyncResult, execute_sync
 
@@ -16,8 +17,9 @@ class PipelineResult:
 
     run_outcome: RunOutcome | None
     commit_result: CommitResult | None
+    push_result: PushResult | None
     sync_result: SyncResult | None
-    stage_reached: str  # "run", "commit", "sync", "complete"
+    stage_reached: str  # "run", "commit", "push", "sync", "complete"
     stopped_reason: str
 
 
@@ -27,12 +29,13 @@ def execute_pipeline(
     policy_path: Path | None = None,
     validate_command: str | None = None,
     commit: bool = False,
+    push: bool = False,
     sync: bool = False,
     commit_message: str | None = None,
     dry_run: bool = False,
     timestamp: str | None = None,
 ) -> PipelineResult:
-    """Execute the full forge pipeline: run -> commit -> sync."""
+    """Execute the full forge pipeline: run -> commit -> push -> sync."""
     run_outcome = execute_run(
         root,
         plan_path=plan_path,
@@ -47,6 +50,7 @@ def execute_pipeline(
         return PipelineResult(
             run_outcome=run_outcome,
             commit_result=None,
+            push_result=None,
             sync_result=None,
             stage_reached="run",
             stopped_reason=f"Blocked: {run_outcome.block_reason}",
@@ -56,6 +60,7 @@ def execute_pipeline(
         return PipelineResult(
             run_outcome=run_outcome,
             commit_result=None,
+            push_result=None,
             sync_result=None,
             stage_reached="run",
             stopped_reason="No TODO tasks — nothing to do.",
@@ -65,6 +70,7 @@ def execute_pipeline(
         return PipelineResult(
             run_outcome=run_outcome,
             commit_result=None,
+            push_result=None,
             sync_result=None,
             stage_reached="run",
             stopped_reason="Validation failed — not safe to commit.",
@@ -74,6 +80,7 @@ def execute_pipeline(
         return PipelineResult(
             run_outcome=run_outcome,
             commit_result=None,
+            push_result=None,
             sync_result=None,
             stage_reached="run",
             stopped_reason="Commit not requested (use --commit to auto-commit).",
@@ -92,18 +99,42 @@ def execute_pipeline(
         return PipelineResult(
             run_outcome=run_outcome,
             commit_result=commit_result,
+            push_result=None,
             sync_result=None,
             stage_reached="commit",
             stopped_reason=f"Commit failed: {commit_result.message}",
+        )
+
+    if not push:
+        return PipelineResult(
+            run_outcome=run_outcome,
+            commit_result=commit_result,
+            push_result=None,
+            sync_result=None,
+            stage_reached="commit",
+            stopped_reason="Push not requested (use --push to push commits to the git remote).",
+        )
+
+    push_result = execute_push(root)
+
+    if not push_result.pushed:
+        return PipelineResult(
+            run_outcome=run_outcome,
+            commit_result=commit_result,
+            push_result=push_result,
+            sync_result=None,
+            stage_reached="push",
+            stopped_reason=f"Push failed: {push_result.message}",
         )
 
     if not sync:
         return PipelineResult(
             run_outcome=run_outcome,
             commit_result=commit_result,
+            push_result=push_result,
             sync_result=None,
-            stage_reached="commit",
-            stopped_reason="Sync not requested (use --sync to push to Forgejo).",
+            stage_reached="push",
+            stopped_reason="Sync not requested (use --sync to sync Forgejo issue status).",
         )
 
     sync_result = execute_sync(
@@ -115,6 +146,7 @@ def execute_pipeline(
     return PipelineResult(
         run_outcome=run_outcome,
         commit_result=commit_result,
+        push_result=push_result,
         sync_result=sync_result,
         stage_reached="complete",
         stopped_reason="" if not sync_result.errors else f"Sync errors: {sync_result.errors[0]}",
@@ -144,6 +176,8 @@ def format_pipeline_result(result: PipelineResult) -> str:
         stages.append("run")
     if result.commit_result and result.commit_result.committed:
         stages.append(f"commit ({result.commit_result.commit_hash})")
+    if result.push_result and result.push_result.pushed:
+        stages.append(f"push ({result.push_result.commits_pushed} commit(s))")
     if result.sync_result:
         created = sum(1 for a in result.sync_result.actions if a.action == "created")
         updated = sum(1 for a in result.sync_result.actions if a.action not in ("created", "up-to-date", "error"))

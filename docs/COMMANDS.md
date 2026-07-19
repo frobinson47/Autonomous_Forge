@@ -499,7 +499,7 @@ Safety limits: reads run history files only; it does not change files, run exter
 
 ## `forge pipeline`
 
-Purpose: run the full autonomous pipeline — run -> commit -> sync — in a single command with explicit opt-in at each stage.
+Purpose: run the full autonomous pipeline — run -> commit -> push -> sync — in a single command with explicit opt-in at each stage.
 
 Inputs:
 
@@ -509,9 +509,12 @@ Inputs:
 - `--cmd`: validation command override.
 - `-m` / `--message`: commit message (auto-generated from current task if omitted).
 - `--commit`: opt-in to auto-commit after successful run.
-- `--sync`: opt-in to Forgejo sync after successful commit (implies `--commit`).
+- `--push`: opt-in to `git push` to the current branch's remote after a successful commit.
+- `--sync`: opt-in to Forgejo issue-status sync after a successful push.
 - `--dry-run`: skip validation and sync API calls.
 - `--timestamp`: optional ISO-8601 timestamp for deterministic output.
+
+Note: each flag gates only its own stage — `--sync` does **not** imply `--commit` or `--push`; pass all the flags you need explicitly.
 
 Expected successful output:
 
@@ -522,7 +525,7 @@ Changed files: <count>
 Drift: <count>
 Violations: <count>
 Validation: PASSED|FAILED
-Stages: run -> commit (<hash>) -> sync (<created> created, <updated> updated)
+Stages: run -> commit (<hash>) -> push (<count> commit(s)) -> sync (<created> created, <updated> updated)
 Result: pipeline complete
 ```
 
@@ -537,9 +540,13 @@ Stopped: <reason>
 
 Exit codes:
 
-- `0` when the pipeline completes or stops at a non-error gate (no commit requested, no sync requested).
-- `1` when blocked by prohibited files, validation failure, or errors.
+- `0` when the pipeline completes or stops at a non-error gate (no commit/push/sync requested).
+- `1` when blocked by prohibited files, validation failure, commit failure, push failure, or sync errors.
 - `2` when required input files are missing.
+
+Push behavior: `--push` runs a plain `git push <remote> <branch>` against the current branch's tracked remote. It never rebases, merges, or force-pushes — if the remote has diverged (e.g. rejected as non-fast-forward), the pipeline stops with `stage_reached: push` and reports the git error. Resolve the divergence manually (pull/rebase) and re-run.
+
+Safety limits: **this command combines run, commit, push, and sync** — it runs external validation commands, runs `git commit`, runs `git push`, and makes Forgejo API calls. Each escalation requires an explicit flag (`--commit`, `--push`, `--sync`). Without flags, it behaves like `forge run` with auto-save.
 
 ## `forge mark`
 
@@ -638,8 +645,6 @@ Exit codes:
 - `1` when any check fails.
 
 Safety limits: **runs external validation commands** via subprocess. Reads metadata files and runs `git` for diff-check. Does not write files, commit, push, or call networks.
-
-Safety limits: **this command combines run, commit, and sync** — it runs external validation commands, runs git commit, and makes Forgejo API calls. Each escalation requires an explicit flag (`--commit`, `--sync`). Without flags, it behaves like `forge run` with auto-save. It does NOT push to git remotes.
 
 ## `forge plan add`
 

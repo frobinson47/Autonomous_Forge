@@ -422,7 +422,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     pipeline_parser = subparsers.add_parser(
         "pipeline",
-        help="full autonomous pipeline: run -> commit -> sync",
+        help="full autonomous pipeline: run -> commit -> push -> sync",
     )
     pipeline_parser.add_argument(
         "--root",
@@ -451,9 +451,14 @@ def build_parser() -> argparse.ArgumentParser:
         help="auto-commit if checks pass (opt-in)",
     )
     pipeline_parser.add_argument(
+        "--push",
+        action="store_true",
+        help="push commits to the git remote after commit (opt-in)",
+    )
+    pipeline_parser.add_argument(
         "--sync",
         action="store_true",
-        help="sync to Forgejo after commit (opt-in)",
+        help="sync Forgejo issue status after push (opt-in)",
     )
     pipeline_parser.add_argument(
         "-m", "--message",
@@ -954,6 +959,7 @@ def main(argv: list[str] | None = None) -> int:
                 policy_path=policy_path,
                 validate_command=args.pipeline_cmd,
                 commit=args.commit,
+                push=args.push,
                 sync=args.sync,
                 commit_message=args.pipeline_message,
                 dry_run=args.dry_run,
@@ -966,6 +972,8 @@ def main(argv: list[str] | None = None) -> int:
         if result.run_outcome and result.run_outcome.blocked:
             return 1
         if result.commit_result and not result.commit_result.committed and args.commit:
+            return 1
+        if result.push_result and not result.push_result.pushed and args.push:
             return 1
         return 0
 
