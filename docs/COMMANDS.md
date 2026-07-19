@@ -406,6 +406,7 @@ Inputs:
 - `--plan`: roadmap Markdown path (defaults to `.ai/AUTONOMOUS_PLAN.md`).
 - `--repo`: Forgejo `owner/repo` (auto-detected from git remote if omitted).
 - `--dry-run`: show what would be synced without making API calls.
+- `--report-orphans`: read-only — list open Forgejo issues that have no matching `[AUTO-###]` task in the current plan, instead of running a sync. Skips the sync entirely; makes GET calls only.
 
 Expected successful output:
 
@@ -422,13 +423,32 @@ Tasks synced: <count>
   ...
 ```
 
+`--report-orphans` output:
+
+```text
+Forge orphan-issue report
+Repo: <owner/repo>
+Orphan issues: <count>
+
+  #5: Manually filed bug
+  #9: [AUTO-099] Old removed task
+```
+
+or, when none are found:
+
+```text
+Forge orphan-issue report
+Repo: <owner/repo>
+No orphan issues.
+```
+
 Exit codes:
 
-- `0` when the sync completes without errors.
+- `0` when the sync (or orphan report) completes without errors.
 - `1` when API errors occur.
 - `2` when required input files are missing.
 
-Safety limits: **this command makes network API calls** to the Forgejo instance at `forgejo.familytechlab.com`. It creates and updates issues, labels, and milestones. It does NOT modify local files, commit, push, or change the plan file. Requires `FORGEJO_TOKEN` in environment or `~/.claude/.secrets.env`. The plan file remains the source of truth — Forgejo is the read-only mirror. Re-running is idempotent.
+Safety limits: **this command makes network API calls** to the Forgejo instance at `forgejo.familytechlab.com`. Without `--report-orphans`, it creates and updates issues, labels, and milestones. With `--report-orphans`, it makes GET calls only — it never creates, updates, or comments on issues. Neither mode modifies local files, commits, pushes, or changes the plan file. Requires `FORGEJO_TOKEN` in environment or `~/.claude/.secrets.env`. The plan file remains the source of truth — Forgejo is the read-only mirror. Re-running is idempotent. `--report-orphans` is deliberately read-only: it never writes plan task stubs from orphan issues — a human decides what, if anything, to add to the plan.
 
 ## `forge commit`
 

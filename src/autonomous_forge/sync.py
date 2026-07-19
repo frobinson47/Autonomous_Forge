@@ -48,6 +48,25 @@ _PRIORITY_LABEL_MAP = {
 }
 
 _AUTO_TAG_RE = re.compile(r"^\[AUTO-\d+\]")
+_ANY_AUTO_ID_RE = re.compile(r"AUTO-\d+")
+
+
+@dataclass(frozen=True)
+class OrphanIssue:
+    """A Forgejo issue with no matching AUTO-### task in the current plan."""
+
+    number: int
+    title: str
+    url: str
+
+
+@dataclass(frozen=True)
+class OrphanReport:
+    """Result of a read-only orphan-issue scan."""
+
+    orphans: tuple[OrphanIssue, ...]
+    repo: str
+    errors: tuple[str, ...] = ()
 
 
 def _detect_forgejo_repo(root: Path) -> str | None:
@@ -235,10 +254,19 @@ def _ensure_milestone(client: ForgejoClient, title: str) -> int:
 
 
 def _find_issue_for_task(task_id: str, issues: list[dict]) -> dict | None:
-    """Find the Forgejo issue corresponding to an AUTO task."""
-    prefix = f"[{task_id}]"
+    """Find the Forgejo issue corresponding to an AUTO task.
+
+    Matches this tool's own ``[AUTO-xxx] Title`` format as well as the
+    unbracketed ``AUTO-xxx: Title`` format some repos already used before
+    forge-sync existed — otherwise re-running sync against a repo with
+    pre-existing manually-filed issues creates a full duplicate set instead
+    of updating the originals.
+    """
+    bracketed = f"[{task_id}]"
+    unbracketed = f"{task_id}:"
     for issue in issues:
-        if issue["title"].startswith(prefix):
+        title = issue["title"]
+        if title.startswith(bracketed) or title.startswith(unbracketed):
             return issue
     return None
 
@@ -267,6 +295,87 @@ def _detect_roadmap_version(task: PlanTask, plan_text: str) -> str | None:
         if re.match(rf"^###\s+{re.escape(task.task_id)}\s", line):
             return current_version
     return None
+
+
+def find_orphan_issues(issues: list[dict], tasks: list[PlanTask]) -> list[dict]:
+    """Return open issues with no AUTO-### reference matching a current plan task."""
+    task_ids = {task.task_id for task in tasks}
+    orphans = []
+    for issue in issues:
+        if issue.get("state") != "open":
+            continue
+        match = _ANY_AUTO_ID_RE.search(issue.get("title", ""))
+        if not match or match.group(0) not in task_ids:
+            orphans.append(issue)
+    return orphans
+
+
+def execute_orphan_report(
+    root: Path = Path("."),
+    plan_path: Path | None = None,
+    repo_override: str | None = None,
+    token_override: str | None = None,
+) -> OrphanReport:
+    """Read-only scan for open Forgejo issues with no matching plan task.
+
+    Makes GET calls only — never creates, updates, or comments on issues.
+    """
+    plan_p = plan_path or (root / ".ai/AUTONOMOUS_PLAN.md")
+    plan_text = plan_p.read_text(encoding="utf-8")
+    tasks = parse_plan_tasks(plan_text)
+
+    repo = repo_override or _detect_forgejo_repo(root)
+    if not repo:
+        return OrphanReport(
+            orphans=(),
+            repo="unknown",
+            errors=("Could not detect Forgejo repo from git remote.",),
+        )
+
+    token = token_override or _load_token()
+    if not token:
+        return OrphanReport(
+            orphans=(),
+            repo=repo,
+            errors=(
+                "No Forgejo token found. Set FORGEJO_TOKEN in environment "
+                "or ~/.claude/.secrets.env.",
+            ),
+        )
+
+    client = ForgejoClient(repo, token)
+    try:
+        issues = client.list_issues(state="open")
+    except RuntimeError as exc:
+        return OrphanReport(orphans=(), repo=repo, errors=(str(exc),))
+
+    orphans = tuple(
+        OrphanIssue(number=i["number"], title=i["title"], url=i.get("html_url", ""))
+        for i in find_orphan_issues(issues, tasks)
+    )
+    return OrphanReport(orphans=orphans, repo=repo)
+
+
+def format_orphan_report(report: OrphanReport) -> str:
+    """Format an orphan-issue report as a human-readable summary."""
+    lines = ["Forge orphan-issue report", f"Repo: {report.repo}"]
+
+    if report.errors:
+        for err in report.errors:
+            lines.append(f"ERROR: {err}")
+        if not report.orphans:
+            return "\n".join(lines)
+
+    if not report.orphans:
+        lines.append("No orphan issues.")
+        return "\n".join(lines)
+
+    lines.append(f"Orphan issues: {len(report.orphans)}")
+    lines.append("")
+    for orphan in report.orphans:
+        lines.append(f"  #{orphan.number}: {orphan.title}")
+
+    return "\n".join(lines)
 
 
 def execute_sync(

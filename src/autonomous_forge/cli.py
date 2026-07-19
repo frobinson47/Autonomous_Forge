@@ -26,7 +26,12 @@ from autonomous_forge.pipeline import execute_pipeline, format_pipeline_result
 from autonomous_forge.push import execute_push, format_push_result
 from autonomous_forge.inventory import build_repository_inventory
 from autonomous_forge.run import execute_run, format_run_outcome, save_run_outcome
-from autonomous_forge.sync import execute_sync, format_sync_result
+from autonomous_forge.sync import (
+    execute_orphan_report,
+    execute_sync,
+    format_orphan_report,
+    format_sync_result,
+)
 from autonomous_forge.validate import format_validation_result, run_validation
 from autonomous_forge.session import (
     build_session_snapshot,
@@ -357,6 +362,11 @@ def build_parser() -> argparse.ArgumentParser:
         "--dry-run",
         action="store_true",
         help="show what would be synced without making API calls",
+    )
+    sync_parser.add_argument(
+        "--report-orphans",
+        action="store_true",
+        help="read-only: list open Forgejo issues with no matching AUTO-### plan task",
     )
 
     commit_parser = subparsers.add_parser(
@@ -951,6 +961,18 @@ def main(argv: list[str] | None = None) -> int:
     if args.command == "sync":
         root = Path(args.root)
         plan_path = Path(args.plan) if args.plan else None
+        if args.report_orphans:
+            try:
+                orphan_report = execute_orphan_report(
+                    root,
+                    plan_path=plan_path,
+                    repo_override=args.repo,
+                )
+            except FileNotFoundError as exc:
+                print(f"File not found: {exc}")
+                return 2
+            print(format_orphan_report(orphan_report))
+            return 1 if orphan_report.errors else 0
         try:
             result = execute_sync(
                 root,

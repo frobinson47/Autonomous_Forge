@@ -464,16 +464,16 @@ Notes: Commit hash is appended as a trailing `Commit:` line after the run report
 
 ### AUTO-035 — Read-only Forgejo orphan-issue report
 Priority: P2
-Status: TODO
+Status: DONE
 
 Goal: Add a read-only report that lists Forgejo issues with no matching `[AUTO-###]` task in the current plan, so manually-created issues can be spotted and reconciled by a human.
 Why it matters: `forge sync` is intentionally one-way (plan -> Forgejo); issues created directly in Forgejo are invisible to the tool and never show up in `forge tasks` or `forge status`. Surfacing them prevents silently orphaned work — this is exactly the failure mode that motivated AUTO-033/the PENDING/COMPLETE status fix, applied to issues instead of statuses.
 Scope: New `--report-orphans` flag on `forge sync` that lists open Forgejo issues lacking an `[AUTO-###]` prefix match against current plan tasks. Read-only — makes no write API calls and does not modify the plan file. Explicitly out of scope: auto-generating plan task stubs from orphan issues; a human decides what, if anything, to add.
 Expected files or areas: `src/autonomous_forge/sync.py`, `src/autonomous_forge/cli.py`, tests.
 Acceptance criteria: `forge sync --report-orphans` lists issue number and title for every open issue with no `[AUTO-###]` match; exits 0 with "No orphan issues" when none found; issues no write requests to the Forgejo API.
-Validation: Unit tests mocking the Forgejo client; full suite passes.
+Validation: 16 new tests pass (`test_sync.py`), mocking the Forgejo client; full suite 240 tests pass. Runtime confirmed.
 Risks or assumptions: Read-only by design — writing plan tasks from Forgejo issues is deliberately out of scope to preserve "the plan is the source of truth."
-Notes: None yet.
+Notes: Orphan detection matches any `AUTO-###` substring in the issue title (bracketed or unbracketed) against current plan task IDs — an issue referencing a task ID that was later removed from the plan counts as an orphan too, not just issues with no AUTO tag at all.
 
 ### AUTO-036 — Cross-repo session handoff aggregation
 Priority: P2
