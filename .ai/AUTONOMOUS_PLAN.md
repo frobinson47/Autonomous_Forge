@@ -10,11 +10,11 @@ The first product remains a local Python command-line tool. It reads repository 
 
 ## Current architecture
 
-The project has two interfaces: a Python CLI (`forge`) and Claude Code skills (`/pause`, `/resume`). The Python package lives under `src/autonomous_forge` with tests under `tests/`. The CLI exposes `forge tasks`, `forge tasks --next`, `forge lint-plan`, `forge report`, `forge policy`, `forge run-summary`, `forge inventory`, `forge drift`, `forge pause`, and `forge resume`. The Claude Code skills live in global config (`~/.claude/commands/`) and work in any repo. Session handoff files are stored in `.forge/sessions/` (gitignored). The project uses zero runtime dependencies; `forge pause` shells out to `git` for state capture.
+The project has two interfaces: a Python CLI (`forge`) and Claude Code skills (`/pause`, `/resume`). The Python package lives under `src/autonomous_forge` with tests under `tests/`. See `docs/COMMANDS.md` for the full, current command reference (`forge --help` also lists every subcommand) — the roadmap task list above is the source of truth for what's been added. The Claude Code skills live in global config (`~/.claude/commands/`) and work in any repo. Session handoff files are stored in `.forge/sessions/` (gitignored). The project uses zero runtime dependencies; several commands shell out to `git`, and `forge sync` makes Forgejo API calls via stdlib `urllib`.
 
 ## Current implementation status
 
-Roadmaps v1, v2, and v3 are complete (33 tasks). Roadmap v3 added metadata drift detection, session handoff, the full run -> commit -> push -> sync pipeline, and JSON export. Roadmap v4 is planned (4 tasks, all TODO). All 218 tests pass at runtime.
+Roadmaps v1 through v4 are complete (37 tasks). Roadmap v4 added commit-hash-linked run reports, a read-only Forgejo orphan-issue report, cross-repo session handoff aggregation, and `forge watch`. All 251 tests pass at runtime.
 
 ## Technical debt
 
@@ -490,16 +490,16 @@ Notes: `--roots` overrides `--root` when both are passed rather than erroring, m
 
 ### AUTO-037 — `forge watch` periodic check mode
 Priority: P3
-Status: TODO
+Status: DONE
 
 Goal: Add `forge watch [--interval SECONDS] [--once]` that periodically re-runs `forge check` (lint + drift + diff-check + validation) and prints results, exiting cleanly on Ctrl+C.
 Why it matters: Drift and policy issues are currently only caught when someone remembers to run `forge check` manually; a lightweight foreground watcher catches regressions between sessions without requiring external cron/scheduler setup.
 Scope: A polling loop around the existing `execute_check` — read-only, no commits, no network calls, no autonomous fixes. `--once` runs a single check-and-exit (for scripting/testing). `--interval` defaults to a sane value (e.g. 300 seconds). No daemonization or PID files — foreground process only, matching the project's stated non-goal of being "a hosted platform... autonomous executor."
 Expected files or areas: `src/autonomous_forge/watch.py`, `src/autonomous_forge/cli.py`, tests, `docs/COMMANDS.md`.
 Acceptance criteria: `forge watch --once` runs exactly one check cycle and exits with `forge check`'s exit code; `forge watch --interval N` loops, printing a check report every N seconds, until interrupted; Ctrl+C exits cleanly with code 0.
-Validation: Unit tests with mocked sleep/loop count; full suite passes.
+Validation: 7 new tests pass (`test_watch.py`), with mocked sleep/print/`execute_check` and no real sleeping; full suite 251 tests pass. Runtime confirmed via `forge watch --once` against this repo.
 Risks or assumptions: Explicitly read-only — does not trigger `forge pipeline` or any commit/push. A backgrounded/daemonized mode, if ever wanted, is a separate task requiring explicit human approval given the project's non-goals.
-Notes: None yet.
+Notes: `--once` and the interrupted multi-cycle loop have different exit-code semantics on purpose — `--once` returns the check's actual pass/fail code (for scripting), while Ctrl+C on a running loop always returns 0 (interruption is not itself a failure).
 
 ## Future Ideas
 

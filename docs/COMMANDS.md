@@ -722,6 +722,41 @@ Exit codes:
 
 Safety limits: **runs external validation commands** via subprocess. Reads metadata files and runs `git` for diff-check. Does not write files, commit, push, or call networks.
 
+## `forge watch`
+
+Purpose: periodically re-run `forge check` (lint + drift + diff-check + validation) in the foreground until interrupted, catching regressions between sessions without external cron/scheduler setup.
+
+Inputs:
+
+- `--root`: repository root, defaulting to `.`.
+- `--plan`: roadmap Markdown path (defaults to `.ai/AUTONOMOUS_PLAN.md`).
+- `--policy`: policy Markdown path (defaults to `.forge/policy.md`).
+- `--cmd`: validation command override.
+- `--no-validate`: skip validation.
+- `--timeout`: validation timeout in seconds (default: 300).
+- `--interval`: seconds between check cycles (default: 300).
+- `--once`: run a single check cycle and exit, instead of looping.
+
+Expected output (one block per cycle, repeating every `--interval` seconds):
+
+```text
+[cycle 1] Forge check
+  Lint: PASS
+  Drift: PASS
+  Diff-check: PASS
+  Validation: PASS
+  Result: ALL PASSED
+[cycle 2] Forge check
+  ...
+```
+
+Exit codes:
+
+- With `--once`: `0` when the single check passes, `1` when it fails — same as `forge check`.
+- Without `--once`: the process loops until interrupted; Ctrl+C exits cleanly with `0` regardless of the last cycle's result — interruption is not itself a failure.
+
+Safety limits: **read-only** — wraps `forge check` on a timer with no commits, pushes, or autonomous fixes; never invokes `forge pipeline`. Foreground process only — no daemonization, no PID files, no backgrounding. If a backgrounded/daemonized mode is ever wanted, that is a separate feature requiring explicit human approval (the project's stated non-goal is being "a hosted platform... autonomous executor").
+
 ## `forge plan add`
 
 Purpose: add a new task block to the plan file with auto-incrementing ID.

@@ -6,6 +6,7 @@ import argparse
 from pathlib import Path
 
 from autonomous_forge.check import execute_check, format_check_result
+from autonomous_forge.watch import run_watch
 from autonomous_forge.commit import (
     execute_commit,
     format_commit_result,
@@ -666,6 +667,54 @@ def build_parser() -> argparse.ArgumentParser:
         help="validation timeout in seconds (default: 300)",
     )
 
+    watch_parser = subparsers.add_parser(
+        "watch",
+        help="periodically re-run forge check until interrupted",
+    )
+    watch_parser.add_argument(
+        "--root",
+        default=".",
+        help="repository root",
+    )
+    watch_parser.add_argument(
+        "--plan",
+        default=None,
+        help="path to the autonomous roadmap file",
+    )
+    watch_parser.add_argument(
+        "--policy",
+        default=None,
+        help="path to the repository policy file",
+    )
+    watch_parser.add_argument(
+        "--cmd",
+        default=None,
+        dest="watch_cmd",
+        help="validation command override",
+    )
+    watch_parser.add_argument(
+        "--no-validate",
+        action="store_true",
+        help="skip validation",
+    )
+    watch_parser.add_argument(
+        "--timeout",
+        type=int,
+        default=300,
+        help="validation timeout in seconds (default: 300)",
+    )
+    watch_parser.add_argument(
+        "--interval",
+        type=int,
+        default=300,
+        help="seconds between check cycles (default: 300)",
+    )
+    watch_parser.add_argument(
+        "--once",
+        action="store_true",
+        help="run a single check cycle and exit",
+    )
+
     validate_parser = subparsers.add_parser(
         "validate",
         help="run validation command and report results",
@@ -1117,6 +1166,21 @@ def main(argv: list[str] | None = None) -> int:
         )
         print(format_check_result(result))
         return 0 if result.all_passed else 1
+
+    if args.command == "watch":
+        root = Path(args.root)
+        plan_path = Path(args.plan) if args.plan else None
+        policy_path = Path(args.policy) if args.policy else None
+        return run_watch(
+            root,
+            plan_path=plan_path,
+            policy_path=policy_path,
+            validate=not args.no_validate,
+            validate_command=args.watch_cmd,
+            timeout=args.timeout,
+            interval=args.interval,
+            once=args.once,
+        )
 
     if args.command == "diff-check":
         root = Path(args.root)
