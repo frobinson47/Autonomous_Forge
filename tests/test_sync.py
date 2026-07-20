@@ -87,6 +87,15 @@ class TestHelpers:
         ]
         assert _find_issue_for_task("AUTO-001", issues)["number"] == 12
 
+    def test_find_issue_for_task_prefers_lowest_number_when_duplicates_exist(self):
+        # A leftover duplicate (e.g. from before this matching fix existed)
+        # must not win just because the API listed it first (newest-first).
+        issues = [
+            {"title": "[AUTO-001] Build the widget", "number": 51},
+            {"title": "AUTO-001: Build the widget", "number": 6},
+        ]
+        assert _find_issue_for_task("AUTO-001", issues)["number"] == 6
+
     def test_labels_for_task(self):
         label_map = {
             "status:todo": 10,
@@ -133,16 +142,37 @@ class TestExecuteSync:
 
     def test_dry_run(self, tmp_path: Path):
         self._setup_plan(tmp_path)
-        result = execute_sync(
-            root=tmp_path,
-            dry_run=True,
-            repo_override="frank/Test",
-            token_override="fake-token",
-        )
+        with patch("autonomous_forge.sync.ForgejoClient.list_issues", return_value=[]):
+            result = execute_sync(
+                root=tmp_path,
+                dry_run=True,
+                repo_override="frank/Test",
+                token_override="fake-token",
+            )
         assert len(result.actions) == 3
         assert all(a.action.startswith("would-") for a in result.actions)
         assert result.repo == "frank/Test"
         assert not result.errors
+
+    def test_dry_run_matches_existing_issue(self, tmp_path: Path):
+        # A DONE task with a pre-existing issue must report "would-sync"
+        # against that issue, not a status-derived guess.
+        self._setup_plan(tmp_path)
+        existing = [{"title": "[AUTO-001] Build the widget", "number": 9}]
+        with patch("autonomous_forge.sync.ForgejoClient.list_issues", return_value=existing):
+            result = execute_sync(
+                root=tmp_path,
+                dry_run=True,
+                repo_override="frank/Test",
+                token_override="fake-token",
+            )
+        action = next(a for a in result.actions if a.task_id == "AUTO-001")
+        assert action.action == "would-sync"
+        assert action.issue_number == 9
+
+        action = next(a for a in result.actions if a.task_id == "AUTO-002")
+        assert action.action == "would-create"
+        assert action.issue_number is None
 
     def test_no_repo_detected(self, tmp_path: Path):
         self._setup_plan(tmp_path)
@@ -310,13 +340,14 @@ class TestSyncCLI:
 
         from autonomous_forge.cli import main
 
-        code = main([
-            "sync",
-            "--root", str(tmp_path),
-            "--plan", str(ai_dir / "AUTONOMOUS_PLAN.md"),
-            "--repo", "frank/Test",
-            "--dry-run",
-        ])
+        with patch("autonomous_forge.sync.ForgejoClient.list_issues", return_value=[]):
+            code = main([
+                "sync",
+                "--root", str(tmp_path),
+                "--plan", str(ai_dir / "AUTONOMOUS_PLAN.md"),
+                "--repo", "frank/Test",
+                "--dry-run",
+            ])
         captured = capsys.readouterr()
         assert code == 0
         assert "frank/Test" in captured.out

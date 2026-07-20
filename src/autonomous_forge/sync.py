@@ -261,14 +261,20 @@ def _find_issue_for_task(task_id: str, issues: list[dict]) -> dict | None:
     forge-sync existed — otherwise re-running sync against a repo with
     pre-existing manually-filed issues creates a full duplicate set instead
     of updating the originals.
+
+    If more than one issue matches (e.g. a leftover duplicate from before
+    this matching was fixed), prefer the lowest issue number — the original,
+    not whichever the API happened to list first.
     """
     bracketed = f"[{task_id}]"
     unbracketed = f"{task_id}:"
-    for issue in issues:
-        title = issue["title"]
-        if title.startswith(bracketed) or title.startswith(unbracketed):
-            return issue
-    return None
+    matches = [
+        issue for issue in issues
+        if issue["title"].startswith(bracketed) or issue["title"].startswith(unbracketed)
+    ]
+    if not matches:
+        return None
+    return min(matches, key=lambda issue: issue["number"])
 
 
 def _labels_for_task(task: PlanTask, label_map: dict[str, int]) -> list[int]:
@@ -409,17 +415,30 @@ def execute_sync(
             ),
         )
 
+    client = ForgejoClient(repo, token)
+
     if dry_run:
+        # Query real issue state so "would-create" vs "would-sync" reflects
+        # what a live run would actually do — previously this branch never
+        # looked at Forgejo at all and derived the label purely from
+        # task.status, which is wrong whenever a matching issue already
+        # exists (e.g. every TODO task always said "would-create" even if
+        # its issue was sitting right there).
+        try:
+            existing_issues = client.list_issues(state="all")
+        except RuntimeError as exc:
+            return SyncResult(actions=(), repo=repo, errors=(str(exc),))
+
         actions = []
         for task in tasks:
+            issue = _find_issue_for_task(task.task_id, existing_issues)
             actions.append(SyncAction(
                 task_id=task.task_id,
-                action="would-create" if task.status == "TODO" else "would-sync",
+                action="would-create" if issue is None else "would-sync",
+                issue_number=issue["number"] if issue else None,
                 detail=f"{task.title} [{task.priority}/{task.status}]",
             ))
         return SyncResult(actions=tuple(actions), repo=repo)
-
-    client = ForgejoClient(repo, token)
     errors: list[str] = []
     actions: list[SyncAction] = []
 
