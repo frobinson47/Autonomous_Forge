@@ -68,6 +68,7 @@ Every command's inputs, output format, exit codes, and safety limits are documen
 | `forge pipeline` | Run → commit → push → sync, each stage opt-in |
 | `forge mark` / `forge plan add` | Update task status / append a new task |
 | `forge check` / `forge watch` | Run (or periodically re-run) lint + drift + diff-check + validation |
+| `forge doctor` | Diagnose environment issues (token, git remote, reachability) before a run |
 | `forge log` / `forge metrics` | Run history and aggregate stats |
 | `forge pause` / `forge resume` | Session handoff, single-repo or cross-repo |
 | `forge policy` / `forge inventory` | Policy readiness / repository health signals (read-only) |

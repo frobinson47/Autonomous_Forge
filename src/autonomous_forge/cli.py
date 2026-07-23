@@ -15,6 +15,7 @@ from autonomous_forge.commit import (
 )
 from autonomous_forge.context import build_project_context
 from autonomous_forge.diffcheck import read_diff_report
+from autonomous_forge.doctor import format_doctor_report, run_doctor
 from autonomous_forge.export import export_state
 from autonomous_forge.drift import read_drift_report
 from autonomous_forge.init import format_init_result, init_forge
@@ -715,6 +716,31 @@ def build_parser() -> argparse.ArgumentParser:
         help="run a single check cycle and exit",
     )
 
+    doctor_parser = subparsers.add_parser(
+        "doctor",
+        help="diagnose common environment issues before a run",
+    )
+    doctor_parser.add_argument(
+        "--root",
+        default=".",
+        help="repository root",
+    )
+    doctor_parser.add_argument(
+        "--plan",
+        default=None,
+        help="path to the autonomous roadmap file",
+    )
+    doctor_parser.add_argument(
+        "--policy",
+        default=None,
+        help="path to the repository policy file",
+    )
+    doctor_parser.add_argument(
+        "--repo",
+        default=None,
+        help="Forgejo owner/repo override (auto-detected from git remote if omitted)",
+    )
+
     validate_parser = subparsers.add_parser(
         "validate",
         help="run validation command and report results",
@@ -1181,6 +1207,19 @@ def main(argv: list[str] | None = None) -> int:
             interval=args.interval,
             once=args.once,
         )
+
+    if args.command == "doctor":
+        root = Path(args.root)
+        plan_path = Path(args.plan) if args.plan else None
+        policy_path = Path(args.policy) if args.policy else None
+        result = run_doctor(
+            root,
+            plan_path=plan_path,
+            policy_path=policy_path,
+            repo_override=args.repo,
+        )
+        print(format_doctor_report(result))
+        return 0 if result.all_passed else 1
 
     if args.command == "diff-check":
         root = Path(args.root)

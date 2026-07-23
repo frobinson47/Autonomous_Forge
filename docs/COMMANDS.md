@@ -757,6 +757,41 @@ Exit codes:
 
 Safety limits: **read-only** — wraps `forge check` on a timer with no commits, pushes, or autonomous fixes; never invokes `forge pipeline`. Foreground process only — no daemonization, no PID files, no backgrounding. If a backgrounded/daemonized mode is ever wanted, that is a separate feature requiring explicit human approval (the project's stated non-goal is being "a hosted platform... autonomous executor").
 
+## `forge doctor`
+
+Purpose: diagnose common environment issues before a run — the class of silent failures that otherwise surface partway through a `forge run`/`forge pipeline`/`forge sync` invocation.
+
+Inputs:
+
+- `--root`: repository root, defaulting to `.`.
+- `--plan`: roadmap Markdown path (defaults to `.ai/AUTONOMOUS_PLAN.md`).
+- `--policy`: policy Markdown path (defaults to `.forge/policy.md`).
+- `--repo`: Forgejo `owner/repo` override (auto-detected from git remote if omitted).
+
+Checks performed: git availability, plan file present, policy file present, `FORGEJO_TOKEN` present (environment or `~/.claude/.secrets.env`), a Forgejo remote detected from `git remote -v`, and — if both a token and a repo were found — a single GET call confirming the detected repo actually resolves on Forgejo.
+
+Expected successful output:
+
+```text
+Forge doctor
+git available: PASS — git version 2.40.0
+plan file present: PASS — .ai/AUTONOMOUS_PLAN.md
+policy file present: PASS — .forge/policy.md
+Forgejo token present: PASS — found
+Forgejo remote detected: PASS — <owner/repo>
+Forgejo repo reachable: PASS — <owner/repo> resolved
+Result: ALL PASSED
+```
+
+Each failed check prints a `hint:` line with a concrete remediation step. The "Forgejo repo reachable" check is skipped (not failed) when no token or no remote was detected, since it cannot run without both.
+
+Exit codes:
+
+- `0` when every check passes (skipped checks do not count as failures).
+- `1` when any check fails.
+
+Safety limits: **read-only** except for a single GET request to the Forgejo API when checking repo reachability. Never creates, updates, or fixes anything — it only diagnoses and suggests remediation.
+
 ## `forge plan add`
 
 Purpose: add a new task block to the plan file with auto-incrementing ID.

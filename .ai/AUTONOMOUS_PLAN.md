@@ -505,15 +505,15 @@ Notes: `--once` and the interrupted multi-cycle loop have different exit-code se
 
 ### AUTO-038 — Diagnose environment issues before a run
 Priority: P1
-Status: TODO
+Status: DONE
 
 Goal: Add `forge doctor` that checks for common silent-failure causes before a run: missing FORGEJO_TOKEN, git remote URL mismatch against the configured Forgejo repo, git/Python availability, and missing required files (.ai/, .forge/policy.md).
-Why it matters: TBD
+Why it matters: This project has already hit two silent-failure classes (a 301-redirecting git remote, missing plan Notes fields) that went unnoticed until something downstream broke. A one-command diagnostic catches these before a run, not after.
 Scope: Read-only diagnostic checks; print PASS/FAIL per check with a short remediation hint. No fixes applied automatically.
 Expected files or areas: src/autonomous_forge/doctor.py, src/autonomous_forge/cli.py, tests, docs/COMMANDS.md
 Acceptance criteria: Detects missing FORGEJO_TOKEN, detects git remote/repo-name mismatch (the underscore/hyphen class of bug hit in Roadmap v4), reports a clean pass when the environment is healthy, exits 1 on any failed check.
-Validation: TBD
-Risks or assumptions: None.
+Validation: 10 new tests pass (`test_doctor.py`); full suite 263 tests pass. Runtime confirmed via `forge doctor` against this repo (ALL PASSED).
+Risks or assumptions: The repo-reachability check makes one GET call to the Forgejo API — the only network action in an otherwise read-only command. Skipped (not failed) when no token or remote is detected, since it cannot run without both.
 Notes: Motivated directly by two silent-failure incidents already hit in this project: a 301-redirecting git remote and missing plan Notes fields going unnoticed for many tasks.
 
 ### AUTO-039 — Repo-level config defaults
