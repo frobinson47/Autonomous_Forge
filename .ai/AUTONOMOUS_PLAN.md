@@ -501,6 +501,60 @@ Validation: 7 new tests pass (`test_watch.py`), with mocked sleep/print/`execute
 Risks or assumptions: Explicitly read-only — does not trigger `forge pipeline` or any commit/push. A backgrounded/daemonized mode, if ever wanted, is a separate task requiring explicit human approval given the project's non-goals.
 Notes: `--once` and the interrupted multi-cycle loop have different exit-code semantics on purpose — `--once` returns the check's actual pass/fail code (for scripting), while Ctrl+C on a running loop always returns 0 (interruption is not itself a failure).
 
+## Roadmap v5
+
+### AUTO-038 — Diagnose environment issues before a run
+Priority: P1
+Status: TODO
+
+Goal: Add `forge doctor` that checks for common silent-failure causes before a run: missing FORGEJO_TOKEN, git remote URL mismatch against the configured Forgejo repo, git/Python availability, and missing required files (.ai/, .forge/policy.md).
+Why it matters: TBD
+Scope: Read-only diagnostic checks; print PASS/FAIL per check with a short remediation hint. No fixes applied automatically.
+Expected files or areas: src/autonomous_forge/doctor.py, src/autonomous_forge/cli.py, tests, docs/COMMANDS.md
+Acceptance criteria: Detects missing FORGEJO_TOKEN, detects git remote/repo-name mismatch (the underscore/hyphen class of bug hit in Roadmap v4), reports a clean pass when the environment is healthy, exits 1 on any failed check.
+Validation: TBD
+Risks or assumptions: None.
+Notes: Motivated directly by two silent-failure incidents already hit in this project: a 301-redirecting git remote and missing plan Notes fields going unnoticed for many tasks.
+
+### AUTO-039 — Repo-level config defaults
+Priority: P1
+Status: TODO
+
+Goal: Add a `.forge/config.toml` (or similar) read by all commands, so repo-level defaults for --plan, --policy, --root, and --cmd stop needing to be passed on every invocation.
+Why it matters: TBD
+Scope: New optional config file, parsed once and merged with explicit CLI flags (explicit flags always win). forge init should scaffold a default config alongside existing templates.
+Expected files or areas: src/autonomous_forge/config.py, src/autonomous_forge/cli.py, src/autonomous_forge/init.py, tests, docs/COMMANDS.md
+Acceptance criteria: Commands use config-file values when a flag is omitted, explicit flags override config values, missing config file falls back to current hardcoded defaults with no behavior change.
+Validation: TBD
+Risks or assumptions: None.
+Notes: Zero-dependency parsing preferred (stdlib tomllib on Python 3.11+, or a minimal conservative parser if broader Python support is required).
+
+### AUTO-040 — Prevent concurrent forge run/pipeline collisions
+Priority: P1
+Status: TODO
+
+Goal: Add a lightweight lock file so two concurrent `forge run`/`forge pipeline` invocations against the same repo cannot double-commit or race.
+Why it matters: TBD
+Scope: Acquire a .forge/.lock file (PID + timestamp) at the start of run/pipeline, release on exit (including on error), and fail fast with a clear message if a live lock is already held.
+Expected files or areas: src/autonomous_forge/lock.py, src/autonomous_forge/run.py, src/autonomous_forge/pipeline.py, tests, docs/COMMANDS.md
+Acceptance criteria: A second concurrent invocation fails fast with a clear 'already running (pid X)' message instead of racing; a stale lock (process no longer alive) is detected and cleared automatically; normal single-invocation runs are unaffected.
+Validation: TBD
+Risks or assumptions: None.
+Notes: Guards against the realistic case of a human and an agent (or two agent sessions) running against the same repo at once — currently nothing prevents this.
+
+### AUTO-041 — Auto-append completed tasks to the changelog
+Priority: P2
+Status: TODO
+
+Goal: Have `forge commit`/`forge pipeline` append a line to .ai/AUTONOMOUS_CHANGELOG.md when a task's status flips to DONE, so the changelog stops silently drifting from the plan.
+Why it matters: TBD
+Scope: On successful commit of a task that is now DONE, append a dated one-line changelog entry (task ID, title, commit hash). Do not rewrite or reorder existing changelog content.
+Expected files or areas: src/autonomous_forge/changelog.py, src/autonomous_forge/commit.py, src/autonomous_forge/pipeline.py, tests, docs/COMMANDS.md
+Acceptance criteria: A completed task's commit appends exactly one new changelog line with task ID, title, and commit hash; non-DONE-flipping commits do not touch the changelog; existing changelog content is preserved verbatim.
+Validation: TBD
+Risks or assumptions: None.
+Notes: The changelog file already exists in the metadata scaffold but nothing currently writes to it automatically — this closes that gap, mirroring how forge mark closes the manual-status-edit gap.
+
 ## Future Ideas
 
 - (empty — all previously listed ideas were promoted into Roadmap v4)
