@@ -1,5 +1,13 @@
 # Autonomous Decisions
 
+## DEC-010 — 2026-07-23 — Allow explicit, human-triggered Forgejo-to-plan import
+
+Context: AUTO-035 (Roadmap v4) deliberately made orphan-issue detection read-only, with the stated principle that a human decides what, if anything, gets promoted from Forgejo into the plan, preserving "the plan is the source of truth." Roadmap v5 now wants a command that actually creates `AUTO-xxx` plan stubs from orphan Forgejo issues, which is a partial reversal of that stance.
+Decision: Add `forge sync --import-orphans` as a new explicit, human-triggered command. Running it converts current orphan issues into `AUTO-xxx` plan stubs in the plan file in one shot — no per-issue interactive prompt — but the human still reviews the resulting plan diff and decides whether to commit it, same as any other plan edit. `forge sync --report-orphans` remains read-only and unchanged; import is strictly opt-in and separate.
+Alternatives considered: (a) per-issue interactive confirmation before each stub is created — rejected as slower for the common case of importing several issues at once, with review happening at the diff/commit stage instead; (b) fully automatic import inside `forge run`/`forge pipeline` with no human trigger at all — rejected as too large a reversal of "human decides" for now.
+Consequences: Closes a real workflow gap (issues filed in Forgejo that never make it into the plan) while keeping a human review point (the plan diff) before anything is considered real. The "plan is the source of truth" principle is preserved in spirit — Forgejo can now seed the plan, but only when a human explicitly asks for it and reviews the result.
+Human decision still required: Yes — running the command is the trigger, and the resulting plan diff still needs human review before commit.
+
 ## DEC-009 — 2026-07-07 — Keep inventory limited to file-presence signals
 
 Context: AUTO-013 documented a safe repository health inventory scope, and the next smallest coherent task was to expose that scope through the CLI.

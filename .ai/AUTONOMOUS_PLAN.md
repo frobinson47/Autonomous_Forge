@@ -555,6 +555,19 @@ Validation: TBD
 Risks or assumptions: None.
 Notes: The changelog file already exists in the metadata scaffold but nothing currently writes to it automatically — this closes that gap, mirroring how forge mark closes the manual-status-edit gap.
 
+### AUTO-042 — Import orphan Forgejo issues into the plan as AUTO-xxx stubs
+Priority: P2
+Status: TODO
+
+Goal: Add `forge sync --import-orphans` that converts current orphan Forgejo issues (from AUTO-035's --report-orphans) into new AUTO-xxx task stubs appended to the plan file, in one explicit, human-triggered run.
+Why it matters: TBD
+Scope: Reuse the existing orphan-issue detection from AUTO-035. For each orphan issue, append a new AUTO-xxx task block (title from issue title, Notes referencing the source issue number/URL, Status TODO, Priority P2 default) before Future Ideas, matching forge plan add's existing insertion behavior. No per-issue prompt; the human reviews the resulting plan diff before committing it. --report-orphans stays read-only and unchanged; --import-orphans is a separate, opt-in flag.
+Expected files or areas: src/autonomous_forge/sync.py, src/autonomous_forge/planadd.py, src/autonomous_forge/cli.py, tests, docs/COMMANDS.md
+Acceptance criteria: Running --import-orphans creates one AUTO-xxx stub per current orphan issue with correct auto-incremented IDs, each stub's Notes references the source Forgejo issue number; --report-orphans and plain --dry-run behavior are unaffected; re-running after a previous import does not duplicate stubs for issues already imported (idempotent against issues already referenced by an AUTO-xxx Notes field).
+Validation: TBD
+Risks or assumptions: None.
+Notes: See DEC-010 in .ai/DECISIONS.md: this is an explicit, human-triggered partial reversal of AUTO-035's read-only-only stance — the human still reviews the plan diff before committing, preserving the plan as source of truth.
+
 ## Future Ideas
 
 - (empty — all previously listed ideas were promoted into Roadmap v4)
