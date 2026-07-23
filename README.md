@@ -2,59 +2,22 @@
 
 Autonomous Forge is an open-source, AI-built and AI-maintained developer tool for safely running repository-native autonomous software-improvement loops.
 
-The project starts as a local-first Python CLI. Its first goal is deliberately small: provide a `forge` command that can grow into dry-run planning, task selection, validation reporting, and durable repository memory without requiring uncontrolled autonomous behavior.
+It keeps a durable, human-readable roadmap (`.ai/AUTONOMOUS_PLAN.md`) as the single source of truth for what work is next, then provides a `forge` CLI that can select a task, validate it, check it against a repository policy, commit, push, and sync the result to a Forgejo issue tracker — with every stage gated behind explicit opt-in flags and a conservative, documented policy boundary for anything higher-risk.
+
+## What it gives you
+
+- **A durable plan-of-record.** Tasks live in a roadmap file with IDs, priorities, and statuses. `forge tasks --next` deterministically picks the next eligible task — no manual triage.
+- **A full opt-in pipeline.** `forge run` → `forge commit` → `forge push` → `forge sync` (or all four at once via `forge pipeline --commit --push --sync`) — validate, diff-check, commit, push, and mirror status to Forgejo, one flag per stage.
+- **A repository policy layer.** `.forge/policy.md` defines allowed paths, prohibited paths, and categories requiring explicit human approval. `forge commit`/`forge check` enforce it before anything is committed.
+- **Drift and lint detection.** `forge drift` and `forge lint-plan` catch inconsistency between the plan, state, changelog, and policy files before it compounds.
+- **Session continuity.** `forge pause` / `forge resume` capture full git state and working context so a session (human or agent) can pick back up with zero ramp-up — including a combined `--roots` briefing across multiple repos.
+- **Run history and metrics.** Every `forge run` is recorded to `.forge/runs/`; `forge log` and `forge metrics` surface pass rate, drift signals, and violations over time.
+- **A read-only watch loop.** `forge watch` re-runs lint + drift + diff-check + validation on a timer, catching regressions between sessions without a cron/daemon setup.
+- **One-way Forgejo issue sync.** `forge sync` mirrors plan tasks to issues/labels/milestones (plan is always the source of truth); `forge sync --report-orphans` flags issues with no matching plan task, read-only.
 
 ## Current status
 
-Autonomous Forge is pre-alpha. The repository now contains:
-
-- Apache-2.0 licensing.
-- Durable autonomous planning files in `.ai/`.
-- A minimal Python package scaffold.
-- A `forge` console script entry point.
-- A roadmap task parser and read-only `forge tasks` command.
-- Deterministic TODO task selection with `forge tasks --next`.
-- A read-only `forge lint-plan` command for roadmap structure checks.
-- A read-only `forge report` command for dry-run repository summaries and policy-readiness reporting.
-- A documented repository policy format with a conservative example policy.
-- A read-only `forge policy` command for parsing policy section readiness.
-- A read-only `forge run-summary` command for previewing the documented local run-summary format.
-- A read-only `forge inventory` command for repository health file-presence signals.
-- Documented command output contracts in `docs/COMMANDS.md`.
-- A documented local run-summary format in `docs/RUN_SUMMARIES.md` for future preview/write behavior.
-- A documented repository health inventory scope in `docs/HEALTH_INVENTORY.md`.
-- Contributor development guidance in `CONTRIBUTING.md`.
-- Smoke tests for CLI help, task parsing, eligible task selection, roadmap linting, report behavior, policy parsing, run-summary preview output, and inventory output.
-
-## Planned direction
-
-The MVP roadmap focuses on practical, reviewable automation:
-
-1. Scaffold a local CLI and package metadata.
-2. Parse roadmap task headings from `.ai/AUTONOMOUS_PLAN.md`.
-3. Select one eligible task deterministically.
-4. Produce a read-only dry-run repository report.
-5. Document repository policy boundaries before any higher-risk behavior.
-6. Parse the repository policy into a conservative read-only summary.
-7. Surface policy readiness in dry-run reports without enforcing path decisions.
-8. Lint roadmap task blocks before adding higher-risk automation.
-9. Document command output contracts so contributors and future automation understand current CLI behavior.
-10. Define a local run-summary format before any command is allowed to write execution history.
-11. Preview the documented run-summary format without writing files.
-12. Define repository health inventory scope before adding an inventory command.
-13. Print read-only repository health file-presence signals without scoring or scanning.
-14. Keep contributor setup and safety guidance clear as the CLI evolves.
-
-## Repository policy boundaries
-
-Policy documentation lives in `docs/POLICY.md`. The current example policy lives in `.forge/policy.md` and defines:
-
-- paths that routine autonomous work may consider;
-- prohibited paths that should not be changed automatically;
-- categories that require explicit human approval;
-- validation expectations before a change is committed.
-
-The policy format is conservative by design. If future tooling cannot read or understand a policy file, it should avoid implementation work rather than guessing.
+Autonomous Forge is pre-1.0 but functional end-to-end: Roadmap v1–v4 are complete (37/37 tasks), with the full pipeline, policy enforcement, drift detection, session handoff, run metrics, and Forgejo sync all implemented and tested (253 tests passing). See `.ai/AUTONOMOUS_PLAN.md` and `.ai/AUTONOMOUS_STATE.md` for the current roadmap and state.
 
 ## Install for local development
 
@@ -65,73 +28,66 @@ forge --help
 
 For full setup, contribution workflow, and safety expectations, see `CONTRIBUTING.md`.
 
-## Inspect roadmap tasks
+## Quickstart
 
 ```bash
-forge tasks --plan .ai/AUTONOMOUS_PLAN.md
+# See what's next on the roadmap
+forge status
+
+# Preview what a run would do, without changing anything
+forge run --dry-run
+
+# Run the next eligible task, then commit, push, and sync it
+forge pipeline --commit --push --sync
+
+# Check plan/state/policy consistency and run validation
+forge check
+
+# Capture session context before stepping away
+forge pause --working-on "..." --next-steps "..."
+
+# Pick back up later, or across multiple repos
+forge resume
+forge resume --roots ../repo-a,../repo-b
 ```
 
-The command reads the roadmap and prints task IDs, priorities, statuses, and titles without changing files.
+## Command reference
 
-## Select the next eligible task
+Every command's inputs, output format, exit codes, and safety limits are documented in `docs/COMMANDS.md`. Highlights:
 
-```bash
-forge tasks --plan .ai/AUTONOMOUS_PLAN.md --next
-```
+| Command | Purpose |
+|---|---|
+| `forge tasks [--next]` | List or select roadmap tasks (read-only) |
+| `forge lint-plan` | Validate roadmap structure (read-only) |
+| `forge drift` | Detect plan/state/changelog/policy inconsistency (read-only) |
+| `forge report` | Dry-run repository summary (read-only) |
+| `forge run` | Select, validate, diff-check, and record one task cycle |
+| `forge commit` | Policy-checked, validated auto-commit |
+| `forge push` | Push committed work to the git remote |
+| `forge sync [--report-orphans]` | One-way plan → Forgejo issue sync, or read-only orphan report |
+| `forge pipeline` | Run → commit → push → sync, each stage opt-in |
+| `forge mark` / `forge plan add` | Update task status / append a new task |
+| `forge check` / `forge watch` | Run (or periodically re-run) lint + drift + diff-check + validation |
+| `forge log` / `forge metrics` | Run history and aggregate stats |
+| `forge pause` / `forge resume` | Session handoff, single-repo or cross-repo |
+| `forge policy` / `forge inventory` | Policy readiness / repository health signals (read-only) |
 
-The selector only considers `TODO` tasks. It chooses the highest priority in `P0`, `P1`, `P2`, `P3` order and preserves roadmap source order when priorities tie.
+See also:
 
-## Lint the roadmap structure
+- `docs/COMMANDS.md` — full command output contracts.
+- `docs/RUN_SUMMARIES.md` — the local run-summary format written by `forge run`.
+- `docs/HEALTH_INVENTORY.md` — the `forge inventory` scope and safety boundaries.
 
-```bash
-forge lint-plan --plan .ai/AUTONOMOUS_PLAN.md
-```
+## Repository policy boundaries
 
-The command is read-only. It checks roadmap task headings, required task fields, supported priorities, and supported statuses. It prints `Plan lint: ok` when the roadmap is structurally valid and exits with diagnostics when a task block is ambiguous or incomplete.
+Policy documentation lives in `docs/POLICY.md`. The current example policy lives in `.forge/policy.md` and defines:
 
-## Produce a dry-run repository report
+- paths that routine autonomous work may consider;
+- prohibited paths that should not be changed automatically;
+- categories that require explicit human approval;
+- validation expectations before a change is committed.
 
-```bash
-forge report --plan .ai/AUTONOMOUS_PLAN.md --state .ai/AUTONOMOUS_STATE.md --policy .forge/policy.md
-```
-
-The report is read-only. It summarizes roadmap task counts, the next eligible task, state-file availability, policy-file readiness, and the suggested validation command without changing repository files. Policy readiness is only informational; the report does not enforce path decisions.
-
-## Inspect repository policy
-
-```bash
-forge policy --policy .forge/policy.md
-```
-
-The command is read-only. It parses the documented policy headings and reports how many entries are present for allowed paths, prohibited paths, human-approval requirements, and validation expectations. It does not enforce path decisions or change repository files.
-
-## Preview a local run summary
-
-```bash
-forge run-summary --plan .ai/AUTONOMOUS_PLAN.md --policy .forge/policy.md
-```
-
-The command is read-only. It prints the documented run-summary fields to standard output, including selected task, policy status, validation plan, validation result, changed-files summary placeholder, commit placeholder, and notes. It does not write execution history files.
-
-## Inspect repository health inventory
-
-```bash
-forge inventory --root .
-```
-
-The command is read-only. It reports deterministic file-presence signals for the documented repository health inventory scope. It does not calculate a score, scan secrets, read environment variables, call networks, run external commands, enforce policy decisions, or change repository files.
-
-## Command output contracts
-
-See `docs/COMMANDS.md` for the current command purposes, expected output patterns, exit-code expectations, and safety limitations.
-
-## Local run summaries
-
-See `docs/RUN_SUMMARIES.md` for the local run-summary format. Autonomous Forge can preview this format, but it does not automatically write execution history files yet.
-
-## Repository health inventory
-
-See `docs/HEALTH_INVENTORY.md` for the implemented read-only inventory command scope and safety boundaries.
+The policy format is conservative by design. If future tooling cannot read or understand a policy file, it should avoid implementation work rather than guessing. `forge commit`, `forge check`, and `forge pipeline` all enforce this policy before committing.
 
 ## Run tests
 
@@ -141,4 +97,4 @@ PYTHONPATH=src python -m pytest
 
 ## Safe contribution expectations
 
-Contributions should stay small, local-first, and reviewable. Do not add network actions, external command execution, secret handling, deployment behavior, telemetry, or repository-permission changes unless the roadmap and repository policy explicitly allow it.
+Contributions should stay small, local-first, and reviewable. Higher-risk categories (network actions beyond documented Forgejo sync, external command execution beyond documented validation, secret handling, deployment behavior, telemetry, or repository-permission changes) require explicit roadmap and policy approval — see `CONTRIBUTING.md` and `.forge/policy.md`.
