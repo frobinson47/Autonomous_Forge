@@ -6,6 +6,7 @@ import subprocess
 from dataclasses import dataclass
 from pathlib import Path
 
+from autonomous_forge.changelog import append_changelog_entries, find_newly_done_tasks
 from autonomous_forge.diffcheck import check_diff_against_policy, get_changed_files
 from autonomous_forge.plan import parse_plan_tasks, select_eligible_task
 from autonomous_forge.validate import run_validation
@@ -33,6 +34,7 @@ class CommitResult:
     commit_hash: str
     message: str
     pre_flight: CommitPreFlight
+    changelog_task_ids: tuple[str, ...] = ()
 
 
 def _safe_read(path: Path) -> str | None:
@@ -155,8 +157,14 @@ def execute_commit(
     validate: bool = True,
     validate_command: str | None = None,
     staged_only: bool = True,
+    timestamp: str | None = None,
 ) -> CommitResult:
-    """Run pre-flight checks and commit if safe."""
+    """Run pre-flight checks and commit if safe.
+
+    Before committing, appends one changelog line per task whose Status
+    just flipped to DONE (compared to HEAD) and stages that change, so it
+    lands in the same commit — see `autonomous_forge.changelog`.
+    """
     if pre_flight is None:
         pre_flight = run_pre_flight(
             root, plan_path=plan_path, policy_path=policy_path,
@@ -177,6 +185,14 @@ def execute_commit(
             message = f"forge: {pre_flight.task_id} — {pre_flight.task_title}"
         else:
             message = "forge: autonomous commit"
+
+    newly_done = find_newly_done_tasks(root, plan_path=plan_path)
+    changelog_task_ids: tuple[str, ...] = ()
+    if newly_done:
+        changelog_p = append_changelog_entries(newly_done, root=root, timestamp=timestamp)
+        if changelog_p is not None:
+            changelog_task_ids = tuple(t.task_id for t in newly_done)
+            _run_git(["add", str(changelog_p)], root)
 
     try:
         result = subprocess.run(
@@ -204,6 +220,7 @@ def execute_commit(
         commit_hash=commit_hash,
         message=message,
         pre_flight=pre_flight,
+        changelog_task_ids=changelog_task_ids,
     )
 
 
@@ -242,6 +259,8 @@ def format_commit_result(result: CommitResult) -> str:
     if result.committed:
         lines.append(f"\nCommitted: {result.commit_hash}")
         lines.append(f"Message: {result.message}")
+        if result.changelog_task_ids:
+            lines.append(f"Changelog updated: {', '.join(result.changelog_task_ids)}")
     elif result.pre_flight.block_reason:
         lines.append(f"\nNot committed: {result.pre_flight.block_reason}")
     else:

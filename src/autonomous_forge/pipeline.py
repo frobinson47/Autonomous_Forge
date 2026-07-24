@@ -152,6 +152,7 @@ def _execute_pipeline_body(
         policy_path=policy_path,
         validate=False,  # already validated in the run stage
         staged_only=True,
+        timestamp=timestamp,
     )
 
     if not commit_result.committed:

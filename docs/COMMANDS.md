@@ -499,6 +499,7 @@ Result: <SAFE to commit|BLOCKED — reason>
 
 Committed: <short hash>
 Message: <commit message>
+Changelog updated: <comma-separated AUTO-### list, if any task's Status flipped to DONE>
 ```
 
 Exit codes:
@@ -506,7 +507,7 @@ Exit codes:
 - `0` when the commit succeeds (or `--check-only` reports SAFE).
 - `1` when blocked by prohibited files, validation failure, no changes, or git error.
 
-Safety limits: **this command runs git commit** and **runs external validation commands** via subprocess. It checks staged files against policy before committing. It does NOT push, modify the plan file, or auto-stage files. Auto-generated commit messages use the format `forge: AUTO-### — title`.
+Safety limits: **this command runs git commit** and **runs external validation commands** via subprocess. It checks staged files against policy before committing. It does NOT push or modify the plan file. It does NOT auto-stage arbitrary files — the one exception is `.ai/AUTONOMOUS_CHANGELOG.md`: if any task's Status flipped to DONE compared to HEAD (e.g. via a preceding `forge mark`), one dated line per newly-done task (`- <date>: AUTO-### — <title> (DONE)`, no commit hash — it doesn't exist yet) is appended to an *already-existing* changelog file and staged, landing in the same commit. Existing changelog content is never rewritten or reordered. See `autonomous_forge.changelog`. Auto-generated commit messages use the format `forge: AUTO-### — title`.
 
 ## `forge push`
 

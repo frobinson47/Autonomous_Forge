@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import subprocess
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
@@ -228,3 +229,64 @@ class TestCommitCLI:
         captured = capsys.readouterr()
         assert code == 1
         assert "BLOCKED" in captured.out
+
+
+def _git(args: list[str], cwd: Path) -> None:
+    subprocess.run(["git"] + args, cwd=cwd, check=True, capture_output=True, text=True)
+
+
+def _init_real_repo(tmp_path: Path) -> None:
+    """Set up a real (isolated, tmp_path-local) git repo for changelog integration tests.
+
+    find_newly_done_tasks compares the working-tree plan against HEAD via a
+    real `git show`, so this is more faithful here than mocking subprocess.
+    """
+    _git(["init"], tmp_path)
+    _git(["config", "user.email", "test@example.com"], tmp_path)
+    _git(["config", "user.name", "Test"], tmp_path)
+    (tmp_path / ".ai").mkdir()
+    (tmp_path / ".ai/AUTONOMOUS_PLAN.md").write_text(PLAN_WITH_TODO, encoding="utf-8")
+    (tmp_path / ".ai/AUTONOMOUS_CHANGELOG.md").write_text("# Changelog\n", encoding="utf-8")
+    (tmp_path / ".forge").mkdir()
+    (tmp_path / ".forge/policy.md").write_text(POLICY, encoding="utf-8")
+    _git(["add", "-A"], tmp_path)
+    _git(["commit", "-m", "initial"], tmp_path)
+
+
+class TestExecuteCommitChangelogIntegration:
+    @patch("autonomous_forge.commit.get_changed_files", return_value=["src/foo.py"])
+    def test_changelog_line_lands_in_same_commit(self, mock_git, tmp_path):
+        _init_real_repo(tmp_path)
+        (tmp_path / ".ai/AUTONOMOUS_PLAN.md").write_text(PLAN_ALL_DONE, encoding="utf-8")
+        (tmp_path / "src").mkdir()
+        (tmp_path / "src/foo.py").write_text("# code\n", encoding="utf-8")
+        _git(["add", "-A"], tmp_path)
+
+        result = execute_commit(root=tmp_path, validate=False)
+
+        assert result.committed
+        assert result.changelog_task_ids == ("AUTO-001",)
+
+        changelog_text = (tmp_path / ".ai/AUTONOMOUS_CHANGELOG.md").read_text(encoding="utf-8")
+        assert "AUTO-001 — Build widget (DONE)" in changelog_text
+
+        # The changelog line must be part of THIS commit, not left dangling.
+        status = subprocess.run(
+            ["git", "status", "--porcelain"], cwd=tmp_path,
+            capture_output=True, text=True,
+        )
+        assert status.stdout.strip() == ""
+
+    @patch("autonomous_forge.commit.get_changed_files", return_value=["src/foo.py"])
+    def test_no_changelog_touch_when_no_task_flips_to_done(self, mock_git, tmp_path):
+        _init_real_repo(tmp_path)
+        (tmp_path / "src").mkdir()
+        (tmp_path / "src/foo.py").write_text("# code\n", encoding="utf-8")
+        _git(["add", "-A"], tmp_path)
+
+        result = execute_commit(root=tmp_path, validate=False)
+
+        assert result.committed
+        assert result.changelog_task_ids == ()
+        changelog_text = (tmp_path / ".ai/AUTONOMOUS_CHANGELOG.md").read_text(encoding="utf-8")
+        assert changelog_text == "# Changelog\n"
