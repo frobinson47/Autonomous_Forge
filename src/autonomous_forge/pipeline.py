@@ -5,7 +5,10 @@ from __future__ import annotations
 from dataclasses import dataclass
 from pathlib import Path
 
+from datetime import datetime, timezone
+
 from autonomous_forge.commit import CommitResult, execute_commit, run_pre_flight
+from autonomous_forge.lock import LockHeldError, acquire_lock
 from autonomous_forge.push import PushResult, execute_push
 from autonomous_forge.run import RunOutcome, execute_run, record_commit_hash, save_run_outcome
 from autonomous_forge.sync import SyncResult, execute_sync
@@ -35,7 +38,62 @@ def execute_pipeline(
     dry_run: bool = False,
     timestamp: str | None = None,
 ) -> PipelineResult:
-    """Execute the full forge pipeline: run -> commit -> push -> sync."""
+    """Execute the full forge pipeline: run -> commit -> push -> sync.
+
+    Holds the `.forge/.lock` guard (see `autonomous_forge.lock`) for the
+    entire pipeline, not just the run stage — the internal `execute_run`
+    call is made with locking disabled since this function already holds it.
+    """
+    ts = timestamp or datetime.now(timezone.utc).astimezone().isoformat(timespec="seconds")
+
+    try:
+        lock = acquire_lock(root, timestamp=ts)
+    except LockHeldError as exc:
+        blocked_outcome = RunOutcome(
+            timestamp=ts,
+            selected_task=None,
+            validation_passed=None,
+            validation_command="",
+            validation_output="",
+            diff_violations=0,
+            diff_details=(),
+            drift_signals=0,
+            changed_files=(),
+            policy_status="unknown",
+            blocked=True,
+            block_reason=str(exc),
+        )
+        return PipelineResult(
+            run_outcome=blocked_outcome,
+            commit_result=None,
+            push_result=None,
+            sync_result=None,
+            stage_reached="run",
+            stopped_reason=f"Blocked: {blocked_outcome.block_reason}",
+        )
+
+    try:
+        return _execute_pipeline_body(
+            root, plan_path, policy_path, validate_command,
+            commit, push, sync, commit_message, dry_run, ts,
+        )
+    finally:
+        lock.release()
+
+
+def _execute_pipeline_body(
+    root: Path,
+    plan_path: Path | None,
+    policy_path: Path | None,
+    validate_command: str | None,
+    commit: bool,
+    push: bool,
+    sync: bool,
+    commit_message: str | None,
+    dry_run: bool,
+    timestamp: str,
+) -> PipelineResult:
+    """Run each pipeline stage in sequence (no locking — caller holds it)."""
     run_outcome = execute_run(
         root,
         plan_path=plan_path,
@@ -43,6 +101,7 @@ def execute_pipeline(
         validate_command=validate_command,
         dry_run=dry_run,
         timestamp=timestamp,
+        use_lock=False,
     )
     run_report_path = save_run_outcome(run_outcome, root)
 

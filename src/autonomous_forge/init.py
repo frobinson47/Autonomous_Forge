@@ -122,7 +122,7 @@ _POLICY_TEMPLATE = """\
 - Record unavailable validation honestly in `.ai/AUTONOMOUS_STATE.md`.
 """
 
-_GITIGNORE_ADDITION = "\n# Autonomous Forge session files\n.forge/sessions/\n"
+_GITIGNORE_ADDITION = "\n# Autonomous Forge session files\n.forge/sessions/\n.forge/.lock\n"
 
 
 def _write_if_missing(path: Path, content: str) -> bool:

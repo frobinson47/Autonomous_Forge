@@ -412,10 +412,12 @@ Run saved: .forge/runs/run-<timestamp>.md
 Exit codes:
 
 - `0` when the run completes without being blocked.
-- `1` when the run is blocked (prohibited files, error-level drift).
+- `1` when the run is blocked (prohibited files, error-level drift, or a concurrent run already holding the lock — see below).
 - `2` when required input files are missing.
 
 Safety limits: **this command runs external commands** (validation suite via subprocess) and **writes files** to `.forge/runs/`. It runs `git` to detect changed files. It does NOT auto-commit, push, or modify tracked repository files. Blocked runs halt before validation. Run outcome files are local working state and should be gitignored.
+
+Locking: `forge run` (and `forge pipeline`, which calls it internally) acquires a `.forge/.lock` file for the duration of the run, so two concurrent invocations against the same repo — e.g. a human and an agent, or two agent sessions — cannot race or double-commit. A second concurrent invocation reports `BLOCKED: already running (pid <N>, since <timestamp>)` and exits `1` without touching the lock. A stale lock (its recorded process is no longer alive) is detected and cleared automatically — no manual cleanup needed. `.forge/.lock` is gitignored local working state, same as `.forge/runs/` and `.forge/sessions/`.
 
 ## `forge sync`
 

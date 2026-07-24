@@ -531,16 +531,16 @@ Notes: Also normalized six legacy commands (`tasks`, `lint-plan`, `report`, `pol
 
 ### AUTO-040 — Prevent concurrent forge run/pipeline collisions
 Priority: P1
-Status: TODO
+Status: DONE
 
 Goal: Add a lightweight lock file so two concurrent `forge run`/`forge pipeline` invocations against the same repo cannot double-commit or race.
-Why it matters: TBD
+Why it matters: Nothing previously stopped a human and an agent, or two agent sessions, from running `forge run`/`forge pipeline` against the same repo at the same time — a realistic scenario now that the pipeline is used both interactively and by autonomous loops. Without a lock, two concurrent invocations could both select the same task, both commit, or interleave git operations.
 Scope: Acquire a .forge/.lock file (PID + timestamp) at the start of run/pipeline, release on exit (including on error), and fail fast with a clear message if a live lock is already held.
 Expected files or areas: src/autonomous_forge/lock.py, src/autonomous_forge/run.py, src/autonomous_forge/pipeline.py, tests, docs/COMMANDS.md
 Acceptance criteria: A second concurrent invocation fails fast with a clear 'already running (pid X)' message instead of racing; a stale lock (process no longer alive) is detected and cleared automatically; normal single-invocation runs are unaffected.
-Validation: TBD
-Risks or assumptions: None.
-Notes: Guards against the realistic case of a human and an agent (or two agent sessions) running against the same repo at once — currently nothing prevents this.
+Validation: 18 new tests pass (`test_lock.py` + additions to `test_run.py`/`test_pipeline.py`); full suite 289 tests pass. Runtime confirmed against this repo with a genuinely live Windows PID: a second `forge run` correctly reported `BLOCKED: already running (pid N, ...)` and exited 1 without touching the lock; after killing that process, the next `forge run` detected the stale lock, cleared it, and completed normally (exit 0), and a normal run leaves no lock file behind.
+Risks or assumptions: `os.kill(pid, 0)` is unsafe as a liveness probe on Windows — passing signal 0 there maps to `TerminateProcess(handle, 0)`, which would actually kill the process instead of just checking it. Windows uses `ctypes`/`OpenProcess` instead, which only queries. `execute_pipeline` acquires the lock once for the whole pipeline (run+commit+push+sync) and calls `execute_run` internally with `use_lock=False`, rather than each stage double-acquiring.
+Notes: Guards against the realistic case of a human and an agent (or two agent sessions) running against the same repo at once — currently nothing prevents this. `.forge/.lock` is gitignored, same as `.forge/sessions/` and `.forge/runs/`.
 
 ### AUTO-041 — Auto-append completed tasks to the changelog
 Priority: P2

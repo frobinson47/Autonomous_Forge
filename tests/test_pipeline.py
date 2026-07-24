@@ -84,6 +84,29 @@ class TestExecutePipeline:
         assert "Commit not requested" in result.stopped_reason
         assert result.commit_result is None
 
+    def test_blocked_when_lock_already_held(self, tmp_path):
+        import json
+
+        _setup(tmp_path)
+        (tmp_path / ".forge/.lock").write_text(
+            json.dumps({"pid": 999999, "acquired_at": "2026-01-01T00:00:00"}),
+            encoding="utf-8",
+        )
+        with patch("autonomous_forge.lock._pid_alive", return_value=True):
+            result = execute_pipeline(
+                root=tmp_path,
+                dry_run=True,
+                timestamp="2026-01-01T00:05:00+00:00",
+            )
+        assert result.stage_reached == "run"
+        assert "already running (pid 999999" in result.stopped_reason
+        assert result.run_outcome.blocked
+
+    def test_releases_lock_after_pipeline(self, tmp_path):
+        _setup(tmp_path, plan=PLAN_DONE)
+        execute_pipeline(root=tmp_path, dry_run=True, timestamp="2026-01-01T00:00:00+00:00")
+        assert not (tmp_path / ".forge" / ".lock").exists()
+
     @patch("autonomous_forge.run.get_changed_files", return_value=[".env"])
     def test_blocked_by_prohibited(self, mock_git, tmp_path):
         _setup(tmp_path)

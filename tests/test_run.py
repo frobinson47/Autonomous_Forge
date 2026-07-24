@@ -83,6 +83,50 @@ class TestExecuteRun:
         assert outcome.block_reason == "No eligible TODO task."
         assert not outcome.blocked
 
+    def test_blocked_when_lock_already_held(self, tmp_path: Path):
+        import json
+        import os
+
+        _setup_metadata(tmp_path, MINIMAL_PLAN, MINIMAL_POLICY)
+        lock_dir = tmp_path / ".forge"
+        (lock_dir / ".lock").write_text(
+            json.dumps({"pid": 999999, "acquired_at": "2026-01-01T00:00:00"}),
+            encoding="utf-8",
+        )
+        with patch("autonomous_forge.lock._pid_alive", return_value=True):
+            outcome = execute_run(
+                root=tmp_path,
+                timestamp="2026-01-01T00:05:00+00:00",
+                dry_run=True,
+            )
+        assert outcome.blocked
+        assert "already running (pid 999999" in outcome.block_reason
+        assert outcome.selected_task is None
+
+    def test_use_lock_false_bypasses_lock_check(self, tmp_path: Path):
+        import json
+
+        _setup_metadata(tmp_path, DONE_PLAN, MINIMAL_POLICY)
+        lock_dir = tmp_path / ".forge"
+        (lock_dir / ".lock").write_text(
+            json.dumps({"pid": 999999, "acquired_at": "2026-01-01T00:00:00"}),
+            encoding="utf-8",
+        )
+        with patch("autonomous_forge.lock._pid_alive", return_value=True):
+            outcome = execute_run(
+                root=tmp_path,
+                timestamp="2026-01-01T00:05:00+00:00",
+                dry_run=True,
+                use_lock=False,
+            )
+        assert not outcome.blocked
+        assert outcome.block_reason == "No eligible TODO task."
+
+    def test_releases_lock_after_run(self, tmp_path: Path):
+        _setup_metadata(tmp_path, DONE_PLAN, MINIMAL_POLICY)
+        execute_run(root=tmp_path, timestamp="2026-01-01T00:00:00+00:00", dry_run=True)
+        assert not (tmp_path / ".forge" / ".lock").exists()
+
     @patch("autonomous_forge.run.get_changed_files", return_value=[])
     def test_selects_task_dry_run(self, mock_git, tmp_path: Path):
         _setup_metadata(tmp_path, MINIMAL_PLAN, MINIMAL_POLICY)

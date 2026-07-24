@@ -18,6 +18,7 @@ venv/
 # Forge local working state
 .forge/sessions/
 .forge/runs/
+.forge/.lock
 
 # OS and editors
 .DS_Store

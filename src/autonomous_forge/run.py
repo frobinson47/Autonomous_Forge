@@ -8,6 +8,7 @@ from pathlib import Path
 
 from autonomous_forge.diffcheck import check_diff_against_policy, get_changed_files
 from autonomous_forge.drift import collect_drift_signals
+from autonomous_forge.lock import LockHeldError, acquire_lock
 from autonomous_forge.plan import (
     PlanTask,
     parse_plan_tasks,
@@ -55,14 +56,65 @@ def execute_run(
     validate_timeout: int = 300,
     timestamp: str | None = None,
     dry_run: bool = False,
+    use_lock: bool = True,
 ) -> RunOutcome:
-    """Execute one autonomous cycle: select, validate, diff-check, record."""
+    """Execute one autonomous cycle: select, validate, diff-check, record.
+
+    Guarded by a `.forge/.lock` file (see `autonomous_forge.lock`) unless
+    ``use_lock`` is False — set False by `execute_pipeline`, which acquires
+    its own lock covering run+commit+push+sync and calls this internally.
+    """
+    ts = timestamp or datetime.now(timezone.utc).astimezone().isoformat(timespec="seconds")
+
+    if not use_lock:
+        return _execute_run_body(
+            root, plan_path, state_path, changelog_path, policy_path,
+            validate, validate_command, validate_timeout, ts, dry_run,
+        )
+
+    try:
+        lock = acquire_lock(root, timestamp=ts)
+    except LockHeldError as exc:
+        return RunOutcome(
+            timestamp=ts,
+            selected_task=None,
+            validation_passed=None,
+            validation_command="",
+            validation_output="",
+            diff_violations=0,
+            diff_details=(),
+            drift_signals=0,
+            changed_files=(),
+            policy_status="unknown",
+            blocked=True,
+            block_reason=str(exc),
+        )
+    try:
+        return _execute_run_body(
+            root, plan_path, state_path, changelog_path, policy_path,
+            validate, validate_command, validate_timeout, ts, dry_run,
+        )
+    finally:
+        lock.release()
+
+
+def _execute_run_body(
+    root: Path,
+    plan_path: Path | None,
+    state_path: Path | None,
+    changelog_path: Path | None,
+    policy_path: Path | None,
+    validate: bool,
+    validate_command: str | None,
+    validate_timeout: int,
+    ts: str,
+    dry_run: bool,
+) -> RunOutcome:
+    """Select, validate, diff-check, and record one run cycle (no locking)."""
     plan_p = plan_path or (root / ".ai/AUTONOMOUS_PLAN.md")
     state_p = state_path or (root / ".ai/AUTONOMOUS_STATE.md")
     changelog_p = changelog_path or (root / ".ai/AUTONOMOUS_CHANGELOG.md")
     policy_p = policy_path or (root / ".forge/policy.md")
-
-    ts = timestamp or datetime.now(timezone.utc).astimezone().isoformat(timespec="seconds")
 
     plan_text = plan_p.read_text(encoding="utf-8")
     state_text = _safe_read(state_p)
