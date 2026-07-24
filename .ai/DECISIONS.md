@@ -1,12 +1,12 @@
 # Autonomous Decisions
 
-## DEC-011 — 2026-07-24 — Add .forge/** to the policy allowed paths
+## DEC-011 — 2026-07-24 — Add .forge/**, .gitignore, and pyproject.toml to the policy allowed paths
 
-Context: AUTO-039 added `.forge/config.toml`. `forge commit`'s pre-flight flagged it as "not covered by any allowed path pattern" — a soft warning, not a block — because `.forge/policy.md`'s own allowed-paths list never included `.forge/**`. That gap predates AUTO-039: the policy file itself, `.forge/policy.md`, was never technically "allowed" by its own rules either.
-Decision: Add `.forge/**` to the allowed paths in `.forge/policy.md`. `.forge/sessions/` and `.forge/runs/` are already gitignored and never reach a commit regardless, so this only practically affects committed files like `policy.md` and `config.toml`.
-Alternatives considered: Leave it as a permanent soft warning (rejected — it would fire on every future `.forge/` metadata change forever, training reviewers to ignore diff-check output); scope the allow-list narrowly to `.forge/policy.md` and `.forge/config.toml` by name instead of `.forge/**` (rejected — needlessly brittle for a directory whose only other contents are already gitignored).
-Consequences: `forge check`/`forge commit` pre-flight no longer flags legitimate `.forge/` metadata commits. No safety regression — prohibited paths (`.env`, secrets, `.github/workflows/**`) are unaffected, and the gitignored subdirectories still never appear in a diff.
-Human decision still required: No — policy allow-list additions for the project's own existing metadata directory are routine, not the kind of prohibited-path or approval-category change requiring separate sign-off.
+Context: AUTO-039 added `.forge/config.toml`. `forge commit`'s pre-flight flagged it as "not covered by any allowed path pattern" — a soft warning, not a block — because `.forge/policy.md`'s own allowed-paths list never included `.forge/**`. That gap predates AUTO-039: the policy file itself, `.forge/policy.md`, was never technically "allowed" by its own rules either. AUTO-040's commit (adding `.forge/.lock` to `.gitignore`) surfaced the same gap for `.gitignore` itself; checking further found `pyproject.toml` — routinely edited for version bumps or dependency changes — was never allowed either.
+Decision: Add `.forge/**`, `.gitignore`, and `pyproject.toml` to the allowed paths in `.forge/policy.md`. `.forge/sessions/` and `.forge/runs/` are already gitignored and never reach a commit regardless, so `.forge/**` only practically affects committed files like `policy.md` and `config.toml`.
+Alternatives considered: Leave it as a permanent soft warning (rejected — it would fire on every future commit touching these routine project files forever, training reviewers to ignore diff-check output); scope the allow-list narrowly to specific filenames instead of `.forge/**` (rejected for `.forge/` — needlessly brittle for a directory whose only other contents are already gitignored; not applicable to `.gitignore`/`pyproject.toml`, which are already exact filenames).
+Consequences: `forge check`/`forge commit` pre-flight no longer flags legitimate commits to the project's own core metadata and packaging files. No safety regression — prohibited paths (`.env`, secrets, `.github/workflows/**`) are unaffected, and the gitignored `.forge/` subdirectories still never appear in a diff.
+Human decision still required: No — policy allow-list additions for the project's own existing, routinely-edited files are ordinary maintenance, not the kind of prohibited-path or approval-category change requiring separate sign-off.
 
 ## DEC-010 — 2026-07-23 — Allow explicit, human-triggered Forgejo-to-plan import
 

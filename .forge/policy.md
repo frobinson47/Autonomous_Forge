@@ -8,6 +8,8 @@
 - `README.md`
 - `.ai/**`
 - `.forge/**`
+- `.gitignore`
+- `pyproject.toml`
 
 ## Prohibited paths
 
