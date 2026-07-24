@@ -518,16 +518,16 @@ Notes: Motivated directly by two silent-failure incidents already hit in this pr
 
 ### AUTO-039 — Repo-level config defaults
 Priority: P1
-Status: TODO
+Status: DONE
 
 Goal: Add a `.forge/config.toml` (or similar) read by all commands, so repo-level defaults for --plan, --policy, --root, and --cmd stop needing to be passed on every invocation.
-Why it matters: TBD
+Why it matters: Every command invocation was repeating the same --plan/--policy/--cmd paths for a given repo. A one-time repo-level default removes that repetition without weakening the "explicit flag always wins" safety property.
 Scope: New optional config file, parsed once and merged with explicit CLI flags (explicit flags always win). forge init should scaffold a default config alongside existing templates.
 Expected files or areas: src/autonomous_forge/config.py, src/autonomous_forge/cli.py, src/autonomous_forge/init.py, tests, docs/COMMANDS.md
 Acceptance criteria: Commands use config-file values when a flag is omitted, explicit flags override config values, missing config file falls back to current hardcoded defaults with no behavior change.
-Validation: TBD
-Risks or assumptions: None.
-Notes: Zero-dependency parsing preferred (stdlib tomllib on Python 3.11+, or a minimal conservative parser if broader Python support is required).
+Validation: 22 new tests pass (`test_config.py` + updated `test_init.py`); full suite 274 tests pass. Runtime confirmed: a `.forge/config.toml` pointing `plan` at a different file was picked up with no `--plan` flag, and an explicit `--plan` flag correctly overrode it.
+Risks or assumptions: `--root` was scoped out of config values (it's needed to locate the config file itself, so it can't be sourced from it) — only `--plan`, `--policy`, and every `--cmd`-family flag are covered. Uses a minimal hand-written parser, not stdlib `tomllib`, since this project supports Python 3.10+ and `tomllib` requires 3.11+.
+Notes: Also normalized six legacy commands (`tasks`, `lint-plan`, `report`, `policy`, `run-summary`, `drift`) that previously hardcoded `--plan`/`--policy` defaults directly in argparse — they now default to `None` like every other command, with the hardcoded path applied as a fallback at dispatch, so config defaults can actually reach them.
 
 ### AUTO-040 — Prevent concurrent forge run/pipeline collisions
 Priority: P1

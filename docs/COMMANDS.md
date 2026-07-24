@@ -11,6 +11,7 @@ These contracts describe implemented behavior only. They are intentionally plain
 - Commands return exit code `2` for missing required input files or malformed roadmap/policy input.
 - Most commands should not create, edit, delete, commit, push, run external commands, call networks, read environment variables, scan secrets, or enforce policy decisions. Exceptions are noted per command.
 - Output is human-readable and may be extended conservatively, but existing status phrases should remain stable when practical.
+- Any command's `--plan`, `--policy`, or `--cmd`-family flag left unset falls back to `.forge/config.toml`'s `[defaults]` values before falling back to the command's own hardcoded default. An explicit flag always wins. See `.forge/config.toml` below.
 
 ## `forge`
 
@@ -791,6 +792,23 @@ Exit codes:
 - `1` when any check fails.
 
 Safety limits: **read-only** except for a single GET request to the Forgejo API when checking repo reachability. Never creates, updates, or fixes anything — it only diagnoses and suggests remediation.
+
+## `.forge/config.toml`
+
+Purpose: repository-level defaults for `--plan`, `--policy`, and every `--cmd`-family flag (`run`, `commit`, `pipeline`, `check`, `watch`, `validate`), so a repo that always uses the same paths doesn't need to pass them on every invocation.
+
+Format — a minimal, dependency-free subset of TOML (this project targets Python 3.10+, and stdlib `tomllib` requires 3.11+): a single `[defaults]` section with `plan`, `policy`, and/or `cmd` string keys. Any other section, key, or malformed line is ignored rather than raised.
+
+```toml
+[defaults]
+plan = ".ai/AUTONOMOUS_PLAN.md"
+policy = ".forge/policy.md"
+cmd = "PYTHONPATH=src python -m pytest"
+```
+
+Precedence: an explicit CLI flag always wins; a config value fills in a flag left unset; a missing or malformed config file (or a key left unset within it) falls back to that command's existing hardcoded default with no behavior change. `forge init` scaffolds a commented-out template at `.forge/config.toml` alongside the other metadata files.
+
+Safety limits: read-only — no command writes to `.forge/config.toml` except `forge init`, which only creates it if missing.
 
 ## `forge plan add`
 

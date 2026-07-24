@@ -73,6 +73,8 @@ Every command's inputs, output format, exit codes, and safety limits are documen
 | `forge pause` / `forge resume` | Session handoff, single-repo or cross-repo |
 | `forge policy` / `forge inventory` | Policy readiness / repository health signals (read-only) |
 
+Repo-level defaults for `--plan`/`--policy`/`--cmd` can be set once in `.forge/config.toml` (scaffolded by `forge init`) instead of passed on every invocation — see `docs/COMMANDS.md`.
+
 See also:
 
 - `docs/COMMANDS.md` — full command output contracts.

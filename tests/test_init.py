@@ -10,6 +10,7 @@ def test_init_creates_all_metadata_files(tmp_path):
     assert ".ai/AUTONOMOUS_CHANGELOG.md" in result.created
     assert ".ai/DECISIONS.md" in result.created
     assert ".forge/policy.md" in result.created
+    assert ".forge/config.toml" in result.created
     assert ".gitignore" in result.created
 
     plan = (tmp_path / ".ai" / "AUTONOMOUS_PLAN.md").read_text(encoding="utf-8")

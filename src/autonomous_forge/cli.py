@@ -6,6 +6,7 @@ import argparse
 from pathlib import Path
 
 from autonomous_forge.check import execute_check, format_check_result
+from autonomous_forge.config import apply_config_defaults, load_config
 from autonomous_forge.watch import run_watch
 from autonomous_forge.commit import (
     execute_commit,
@@ -78,8 +79,8 @@ def build_parser() -> argparse.ArgumentParser:
     )
     tasks_parser.add_argument(
         "--plan",
-        default=".ai/AUTONOMOUS_PLAN.md",
-        help="path to the autonomous roadmap file",
+        default=None,
+        help="path to the autonomous roadmap file (default: .ai/AUTONOMOUS_PLAN.md)",
     )
     tasks_parser.add_argument(
         "--next",
@@ -103,8 +104,8 @@ def build_parser() -> argparse.ArgumentParser:
     )
     lint_parser.add_argument(
         "--plan",
-        default=".ai/AUTONOMOUS_PLAN.md",
-        help="path to the autonomous roadmap file",
+        default=None,
+        help="path to the autonomous roadmap file (default: .ai/AUTONOMOUS_PLAN.md)",
     )
 
     report_parser = subparsers.add_parser(
@@ -113,8 +114,8 @@ def build_parser() -> argparse.ArgumentParser:
     )
     report_parser.add_argument(
         "--plan",
-        default=".ai/AUTONOMOUS_PLAN.md",
-        help="path to the autonomous roadmap file",
+        default=None,
+        help="path to the autonomous roadmap file (default: .ai/AUTONOMOUS_PLAN.md)",
     )
     report_parser.add_argument(
         "--state",
@@ -123,8 +124,8 @@ def build_parser() -> argparse.ArgumentParser:
     )
     report_parser.add_argument(
         "--policy",
-        default=".forge/policy.md",
-        help="path to the repository policy file",
+        default=None,
+        help="path to the repository policy file (default: .forge/policy.md)",
     )
 
     policy_parser = subparsers.add_parser(
@@ -133,8 +134,8 @@ def build_parser() -> argparse.ArgumentParser:
     )
     policy_parser.add_argument(
         "--policy",
-        default=".forge/policy.md",
-        help="path to the repository policy file",
+        default=None,
+        help="path to the repository policy file (default: .forge/policy.md)",
     )
 
     run_summary_parser = subparsers.add_parser(
@@ -143,13 +144,13 @@ def build_parser() -> argparse.ArgumentParser:
     )
     run_summary_parser.add_argument(
         "--plan",
-        default=".ai/AUTONOMOUS_PLAN.md",
-        help="path to the autonomous roadmap file",
+        default=None,
+        help="path to the autonomous roadmap file (default: .ai/AUTONOMOUS_PLAN.md)",
     )
     run_summary_parser.add_argument(
         "--policy",
-        default=".forge/policy.md",
-        help="path to the repository policy file",
+        default=None,
+        help="path to the repository policy file (default: .forge/policy.md)",
     )
     run_summary_parser.add_argument(
         "--timestamp",
@@ -173,8 +174,8 @@ def build_parser() -> argparse.ArgumentParser:
     )
     drift_parser.add_argument(
         "--plan",
-        default=".ai/AUTONOMOUS_PLAN.md",
-        help="path to the autonomous roadmap file",
+        default=None,
+        help="path to the autonomous roadmap file (default: .ai/AUTONOMOUS_PLAN.md)",
     )
     drift_parser.add_argument(
         "--state",
@@ -188,8 +189,8 @@ def build_parser() -> argparse.ArgumentParser:
     )
     drift_parser.add_argument(
         "--policy",
-        default=".forge/policy.md",
-        help="path to the repository policy file",
+        default=None,
+        help="path to the repository policy file (default: .forge/policy.md)",
     )
     drift_parser.add_argument(
         "--root",
@@ -959,6 +960,9 @@ def main(argv: list[str] | None = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
 
+    config = load_config(Path(getattr(args, "root", ".")))
+    apply_config_defaults(args, config)
+
     if args.version:
         from autonomous_forge import __version__
 
@@ -967,33 +971,41 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.command == "tasks":
         return _print_tasks(
-            Path(args.plan),
+            Path(args.plan or ".ai/AUTONOMOUS_PLAN.md"),
             next_only=args.next,
             status_filter=args.status,
             priority_filter=args.priority,
         )
 
     if args.command == "lint-plan":
-        return _print_lint_plan(Path(args.plan))
+        return _print_lint_plan(Path(args.plan or ".ai/AUTONOMOUS_PLAN.md"))
 
     if args.command == "report":
-        return _print_report(Path(args.plan), Path(args.state), Path(args.policy))
+        return _print_report(
+            Path(args.plan or ".ai/AUTONOMOUS_PLAN.md"),
+            Path(args.state),
+            Path(args.policy or ".forge/policy.md"),
+        )
 
     if args.command == "policy":
-        return _print_policy(Path(args.policy))
+        return _print_policy(Path(args.policy or ".forge/policy.md"))
 
     if args.command == "run-summary":
-        return _print_run_summary(Path(args.plan), Path(args.policy), args.timestamp)
+        return _print_run_summary(
+            Path(args.plan or ".ai/AUTONOMOUS_PLAN.md"),
+            Path(args.policy or ".forge/policy.md"),
+            args.timestamp,
+        )
 
     if args.command == "inventory":
         return _print_inventory(Path(args.root))
 
     if args.command == "drift":
         return _print_drift(
-            Path(args.plan),
+            Path(args.plan or ".ai/AUTONOMOUS_PLAN.md"),
             Path(args.state),
             Path(args.changelog),
-            Path(args.policy),
+            Path(args.policy or ".forge/policy.md"),
             Path(args.root),
         )
 

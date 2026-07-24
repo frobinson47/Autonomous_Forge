@@ -5,6 +5,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from pathlib import Path
 
+from autonomous_forge.config import DEFAULT_CONFIG_TEMPLATE
+
 
 @dataclass(frozen=True)
 class InitResult:
@@ -148,6 +150,7 @@ def init_forge(
         (".ai/AUTONOMOUS_CHANGELOG.md", _CHANGELOG_TEMPLATE.format(project_name=name, date=date)),
         (".ai/DECISIONS.md", _DECISIONS_TEMPLATE),
         (".forge/policy.md", _POLICY_TEMPLATE.format(project_name=name)),
+        (".forge/config.toml", DEFAULT_CONFIG_TEMPLATE),
     ]
 
     for rel_path, content in files:
