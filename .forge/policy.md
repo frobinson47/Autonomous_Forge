@@ -7,6 +7,7 @@
 - `docs/**`
 - `README.md`
 - `.ai/**`
+- `.forge/**`
 
 ## Prohibited paths
 

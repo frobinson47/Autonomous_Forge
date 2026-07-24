@@ -1,5 +1,13 @@
 # Autonomous Decisions
 
+## DEC-011 — 2026-07-24 — Add .forge/** to the policy allowed paths
+
+Context: AUTO-039 added `.forge/config.toml`. `forge commit`'s pre-flight flagged it as "not covered by any allowed path pattern" — a soft warning, not a block — because `.forge/policy.md`'s own allowed-paths list never included `.forge/**`. That gap predates AUTO-039: the policy file itself, `.forge/policy.md`, was never technically "allowed" by its own rules either.
+Decision: Add `.forge/**` to the allowed paths in `.forge/policy.md`. `.forge/sessions/` and `.forge/runs/` are already gitignored and never reach a commit regardless, so this only practically affects committed files like `policy.md` and `config.toml`.
+Alternatives considered: Leave it as a permanent soft warning (rejected — it would fire on every future `.forge/` metadata change forever, training reviewers to ignore diff-check output); scope the allow-list narrowly to `.forge/policy.md` and `.forge/config.toml` by name instead of `.forge/**` (rejected — needlessly brittle for a directory whose only other contents are already gitignored).
+Consequences: `forge check`/`forge commit` pre-flight no longer flags legitimate `.forge/` metadata commits. No safety regression — prohibited paths (`.env`, secrets, `.github/workflows/**`) are unaffected, and the gitignored subdirectories still never appear in a diff.
+Human decision still required: No — policy allow-list additions for the project's own existing metadata directory are routine, not the kind of prohibited-path or approval-category change requiring separate sign-off.
+
 ## DEC-010 — 2026-07-23 — Allow explicit, human-triggered Forgejo-to-plan import
 
 Context: AUTO-035 (Roadmap v4) deliberately made orphan-issue detection read-only, with the stated principle that a human decides what, if anything, gets promoted from Forgejo into the plan, preserving "the plan is the source of truth." Roadmap v5 now wants a command that actually creates `AUTO-xxx` plan stubs from orphan Forgejo issues, which is a partial reversal of that stance.
