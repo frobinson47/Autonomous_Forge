@@ -675,16 +675,16 @@ Notes: See DEC-012. This exact gap was hit directly this session - .forge/config
 
 ### AUTO-050 — Define structured approval semantics for policy's Human approval required section
 Priority: P1
-Status: TODO
+Status: DONE
 
 Goal: Replace the prose-only 'Human approval required' policy section with a structured mechanism that actually gates matching actions, instead of being surfaced only in context/reporting with no enforcement.
-Why it matters: TBD
+Why it matters: A policy section that lists approval-required categories but is only ever displayed, never enforced, gives a false sense of safety — identical in kind to the two gaps DEC-012 already fixed, just for behavioral categories instead of file paths.
 Scope: Design question, not just implementation - needs a decision on mechanism (an approved-task-ID list, a recorded approval note referenced by forge commit, or a required interactive confirmation scoped to the matching category) before building. Should integrate with the fail-closed changes in this same roadmap rather than being a third, inconsistent enforcement path.
-Expected files or areas: src/autonomous_forge/policy.py, src/autonomous_forge/commit.py, src/autonomous_forge/cli.py, tests, docs/COMMANDS.md, docs/POLICY.md
-Acceptance criteria: A policy-flagged approval-required action (e.g. adding network access) is detected against the actual diff and blocks without some form of recorded approval; the exact approval mechanism is decided and documented before implementation begins.
-Validation: TBD
-Risks or assumptions: None.
-Notes: The biggest open design question in Roadmap v7 - do not silently pick a mechanism; confirm with the user first, same as DEC-010's Forgejo-import design discussion.
+Expected files or areas: src/autonomous_forge/plan.py, src/autonomous_forge/approvals.py (new), src/autonomous_forge/commit.py, src/autonomous_forge/run.py, src/autonomous_forge/cli.py, tests, docs/COMMANDS.md, docs/POLICY.md
+Acceptance criteria: A task whose plan entry sets `Approval needed: <category>` blocks `forge run`/`forge commit`/`forge pipeline` by default until `forge approve <task-id> "<category>"` records a matching entry in `.forge/approvals.md`; the exact mechanism was decided and confirmed with the user (DEC-013) before implementation began.
+Validation: `python -m pytest` — 367 tests pass (16 new: test_plan.py x1, test_approvals.py x9 in a new file, test_commit.py x3, test_run.py x2, plus one CLI end-to-end case). `forge lint-plan` — ok. Manually smoke-tested the full flow (blocked -> forge approve -> unblocked) in a scratch repo.
+Risks or assumptions: Deviated from the acceptance criteria's original "detected against the actual diff" framing — confirmed with the user that automatic diff/content detection was rejected as too heuristic (see DEC-013 alternatives); detection is self-declared via the plan's `Approval needed:` field instead, not diff-derived. A task author who omits the field gets no gate — an accepted limitation, not an oversight, matching the trust model already extended to every other self-reported plan field.
+Notes: The biggest open design question in Roadmap v7 - do not silently pick a mechanism; confirm with the user first, same as DEC-010's Forgejo-import design discussion. See DEC-013 for the full design record, including alternatives considered (automatic keyword matching, interactive-only confirmation, descoping entirely) and why each was rejected.
 
 ### AUTO-051 — Replace shell=True in forge validate with safer execution
 Priority: P1

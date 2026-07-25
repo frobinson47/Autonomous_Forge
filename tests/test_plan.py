@@ -44,6 +44,21 @@ def test_parse_valid_task_blocks():
     assert tasks[0].title == "First task"
     assert tasks[0].priority == "P1"
     assert tasks[0].status == "TODO"
+    assert tasks[0].approval_needed == ""
+
+
+def test_parse_reads_approval_needed_field():
+    plan = """### AUTO-001 — Add telemetry
+Priority: P1
+Status: TODO
+Approval needed: Adding telemetry, analytics, tracking, or personal-data collection.
+Goal: Add usage analytics.
+"""
+    tasks = parse_plan_tasks(plan)
+
+    assert tasks[0].approval_needed == (
+        "Adding telemetry, analytics, tracking, or personal-data collection."
+    )
 
 
 def test_parse_normalizes_pending_and_complete_status_aliases():

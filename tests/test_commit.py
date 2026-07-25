@@ -38,6 +38,17 @@ Status: DONE
 Goal: Build a widget.
 """
 
+PLAN_WITH_APPROVAL = """\
+# Roadmap
+
+### AUTO-001 — Add network call
+Priority: P1
+Status: TODO
+Approval needed: Adding network access.
+
+Goal: Build a widget that calls a network API.
+"""
+
 POLICY = """\
 # Repository Policy
 
@@ -153,6 +164,23 @@ class TestPreFlight:
         pf = run_pre_flight(root=tmp_path, validate=False, advisory_paths=True)
         assert pf.safe
         assert any("not-allowed" in v for v in pf.violations)
+
+    @patch("autonomous_forge.commit.get_changed_files", return_value=["src/foo.py"])
+    def test_approval_needed_blocks_without_record(self, mock_git, tmp_path):
+        _setup(tmp_path, plan=PLAN_WITH_APPROVAL)
+        pf = run_pre_flight(root=tmp_path, validate=False)
+        assert not pf.safe
+        assert "requires human approval" in pf.block_reason
+        assert "forge approve AUTO-001" in pf.block_reason
+
+    @patch("autonomous_forge.commit.get_changed_files", return_value=["src/foo.py"])
+    def test_approval_needed_allows_commit_once_recorded(self, mock_git, tmp_path):
+        from autonomous_forge.approvals import record_approval
+
+        _setup(tmp_path, plan=PLAN_WITH_APPROVAL)
+        record_approval("AUTO-001", "Adding network access.", root=tmp_path)
+        pf = run_pre_flight(root=tmp_path, validate=False)
+        assert pf.safe
 
 
 class TestExecuteCommit:
@@ -293,6 +321,38 @@ class TestCommitCLI:
 
         code = main([
             "commit", "--check-only", "--no-validate", "--no-policy-required",
+            "--root", str(tmp_path),
+            "--plan", str(tmp_path / ".ai/AUTONOMOUS_PLAN.md"),
+            "--policy", str(tmp_path / ".forge/policy.md"),
+        ])
+        captured = capsys.readouterr()
+        assert code == 0
+        assert "SAFE" in captured.out
+
+    @patch("autonomous_forge.commit.get_changed_files", return_value=["src/foo.py"])
+    def test_forge_approve_unblocks_check_only(self, mock_git, tmp_path, capsys):
+        _setup(tmp_path, plan=PLAN_WITH_APPROVAL)
+        from autonomous_forge.cli import main
+
+        code = main([
+            "commit", "--check-only", "--no-validate",
+            "--root", str(tmp_path),
+            "--plan", str(tmp_path / ".ai/AUTONOMOUS_PLAN.md"),
+            "--policy", str(tmp_path / ".forge/policy.md"),
+        ])
+        assert code == 1
+        capsys.readouterr()
+
+        code = main([
+            "approve", "AUTO-001", "Adding network access.",
+            "--root", str(tmp_path),
+        ])
+        approve_out = capsys.readouterr().out
+        assert code == 0
+        assert "AUTO-001" in approve_out
+
+        code = main([
+            "commit", "--check-only", "--no-validate",
             "--root", str(tmp_path),
             "--plan", str(tmp_path / ".ai/AUTONOMOUS_PLAN.md"),
             "--policy", str(tmp_path / ".forge/policy.md"),

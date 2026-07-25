@@ -266,3 +266,4 @@
 - 2026-07-25: AUTO-047 — Add forge revert to undo a completed task's commit (DONE)
 - 2026-07-25: AUTO-048 — Make policy fail-closed on missing/malformed policy (DONE)
 - 2026-07-25: AUTO-049 — Enforce the allowlist - not-allowed violations block by default (DONE)
+- 2026-07-25: AUTO-050 — Define structured approval semantics for policy's Human approval required section (DONE)

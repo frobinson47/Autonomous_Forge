@@ -45,7 +45,7 @@ A policy file should include these headings:
 
 - `Allowed paths` describes where routine autonomous edits may be considered. `forge run`, `forge commit`, and `forge pipeline` block by default if a changed file falls outside every allowed pattern (see DEC-012); pass `--advisory-paths` to report such files instead of blocking.
 - `Prohibited paths` always wins over `Allowed paths` and is never overridable by `--advisory-paths`.
-- `Human approval required` lists categories that must be blocked until a person explicitly approves them.
+- `Human approval required` lists categories that a task's own plan entry can self-declare against via an `Approval needed: <category text>` field (see DEC-013). A task with that field set is blocked from `forge run`/`forge commit`/`forge pipeline` until a human runs `forge approve <task-id> "<category>"`, which appends a record to `.forge/approvals.md`. There is no automatic detection — forge does not scan diffs or task prose for these categories; if a task's author forgets to set the field, no gate is applied. This section is only as effective as the honesty of whoever writes each task.
 - `Validation expectations` lists checks that should be attempted before a change is committed.
 
 ## Conservative defaults

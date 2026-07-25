@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 from pathlib import Path
 
+from autonomous_forge.approvals import format_approval_confirmation, record_approval
 from autonomous_forge.check import execute_check, format_check_result
 from autonomous_forge.config import apply_config_defaults, load_config
 from autonomous_forge.watch import run_watch
@@ -567,6 +568,29 @@ def build_parser() -> argparse.ArgumentParser:
         "--plan",
         default=None,
         help="path to the autonomous roadmap file",
+    )
+
+    approve_parser = subparsers.add_parser(
+        "approve",
+        help="record a human approval for a task's 'Approval needed' category (see DEC-013)",
+    )
+    approve_parser.add_argument(
+        "task_id",
+        help="task ID (e.g. AUTO-001)",
+    )
+    approve_parser.add_argument(
+        "category",
+        help="the approval-required category text being approved",
+    )
+    approve_parser.add_argument(
+        "--note",
+        default="",
+        help="optional note explaining why this was approved",
+    )
+    approve_parser.add_argument(
+        "--root",
+        default=".",
+        help="repository root",
     )
 
     revert_parser = subparsers.add_parser(
@@ -1242,6 +1266,14 @@ def main(argv: list[str] | None = None) -> int:
         result = mark_task_status(args.task_id, args.new_status, plan_path)
         print(format_mark_result(result))
         return 0 if result.updated else 1
+
+    if args.command == "approve":
+        path = record_approval(
+            args.task_id, args.category,
+            root=Path(args.root), note=args.note,
+        )
+        print(format_approval_confirmation(args.task_id, args.category, path))
+        return 0
 
     if args.command == "revert":
         root = Path(args.root)

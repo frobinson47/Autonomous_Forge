@@ -683,6 +683,32 @@ Exit codes:
 
 Safety limits: **this command writes to the plan file** — it modifies only the `Status:` line of the target task. All other content is preserved. It does not commit, push, run external commands, or call networks.
 
+## `forge approve`
+
+Purpose: record a human approval for a task whose plan entry declares an `Approval needed:` field (see DEC-013). A task's author sets `Approval needed: <category text>` in its plan block when the task's Scope touches one of the repository policy's `Human approval required` categories; `forge run`/`forge commit`/`forge pipeline` then block that task by default until a matching approval record exists.
+
+This is deliberately **not** automatic — forge does not analyze diffs or task text to detect approval-required categories. Detection is self-declared (the `Approval needed:` field), and clearing the gate is a deliberate human action (running this command), not an inference.
+
+Inputs:
+
+- `task_id`: task ID (e.g. `AUTO-001`).
+- `category`: the approval-required category text being approved (freeform; not string-matched against the plan or policy text).
+- `--note`: optional note explaining why this was approved.
+- `--root`: repository root, defaulting to `.`.
+
+Expected successful output:
+
+```text
+Approved AUTO-001 — Adding network access.
+Recorded in: .forge/approvals.md
+```
+
+Exit codes:
+
+- `0` always — recording an approval is a deliberate, explicit action with no failure mode short of a filesystem error.
+
+Safety limits: **appends to `.forge/approvals.md`** (git-tracked, human-readable) — never deletes or edits prior entries. A task ID can accumulate multiple approval records over time; `forge run`/`forge commit` only check that *any* record exists for the task ID, not that its category text matches the plan's `Approval needed:` field verbatim.
+
 ## `forge revert`
 
 Purpose: undo a completed task's commit and flip its plan status back to TODO, for when a DONE task turns out to be wrong.

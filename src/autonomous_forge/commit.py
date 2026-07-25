@@ -6,6 +6,7 @@ import subprocess
 from dataclasses import dataclass
 from pathlib import Path
 
+from autonomous_forge.approvals import has_approval
 from autonomous_forge.changelog import append_changelog_entries, find_newly_done_tasks
 from autonomous_forge.diffcheck import check_diff_against_policy, get_changed_files
 from autonomous_forge.plan import parse_plan_tasks, select_eligible_task
@@ -69,6 +70,7 @@ def run_pre_flight(
 
     task_id = ""
     task_title = ""
+    approval_needed = ""
     if plan_p.exists():
         plan_text = plan_p.read_text(encoding="utf-8")
         tasks = parse_plan_tasks(plan_text)
@@ -76,6 +78,23 @@ def run_pre_flight(
         if selected:
             task_id = selected.task_id
             task_title = selected.title
+            approval_needed = selected.approval_needed
+
+    if approval_needed and not has_approval(task_id, root=root):
+        return CommitPreFlight(
+            safe=False,
+            changed_files=(),
+            violations=(),
+            validation_passed=None,
+            validation_output="",
+            task_id=task_id,
+            task_title=task_title,
+            block_reason=(
+                f"{task_id} requires human approval: {approval_needed} "
+                f"No matching record in .forge/approvals.md. "
+                f'Run: forge approve {task_id} "{approval_needed}"'
+            ),
+        )
 
     changed = get_changed_files(root, staged_only=staged_only)
     if not changed:

@@ -6,6 +6,7 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 
+from autonomous_forge.approvals import has_approval
 from autonomous_forge.diffcheck import check_diff_against_policy, get_changed_files
 from autonomous_forge.drift import collect_drift_signals
 from autonomous_forge.lock import LockHeldError, acquire_lock
@@ -157,6 +158,26 @@ def _execute_run_body(
             policy_status=policy_status,
             blocked=False,
             block_reason="No eligible TODO task.",
+        )
+
+    if selected_task.approval_needed and not has_approval(selected_task.task_id, root=root):
+        return RunOutcome(
+            timestamp=ts,
+            selected_task=selected_task,
+            validation_passed=None,
+            validation_command="",
+            validation_output="",
+            diff_violations=0,
+            diff_details=(),
+            drift_signals=drift_count,
+            changed_files=(),
+            policy_status=policy_status,
+            blocked=True,
+            block_reason=(
+                f"{selected_task.task_id} requires human approval: {selected_task.approval_needed} "
+                f"No matching record in .forge/approvals.md. "
+                f'Run: forge approve {selected_task.task_id} "{selected_task.approval_needed}"'
+            ),
         )
 
     if drift_count > 0:

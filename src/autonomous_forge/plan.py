@@ -9,6 +9,7 @@ import re
 _TASK_HEADING_RE = re.compile(r"^### (AUTO-\d{3}) — (.+)$")
 _FIELD_RE = re.compile(r"^([^:]+):\s*(.*)$")
 _TASK_FIELD_RE = re.compile(r"^(Priority|Status):\s*(.+)$")
+_APPROVAL_FIELD_RE = re.compile(r"^Approval needed:\s*(.*)$")
 _PRIORITY_ORDER = {"P0": 0, "P1": 1, "P2": 2, "P3": 3}
 _SUPPORTED_STATUSES = {"TODO", "DONE", "BLOCKED", "SKIPPED"}
 _STATUS_ALIASES = {"PENDING": "TODO", "COMPLETE": "DONE"}
@@ -50,6 +51,7 @@ class PlanTask:
     priority: str
     status: str
     line_number: int
+    approval_needed: str = ""
 
 
 @dataclass(frozen=True)
@@ -83,12 +85,17 @@ def parse_plan_tasks(plan_text: str) -> list[PlanTask]:
         task_id, title = heading_match.groups()
         line_number = index + 1
         fields: dict[str, str] = {}
+        approval_needed = ""
         index += 1
 
         while index < len(lines) and not lines[index].startswith("### "):
             field_match = _TASK_FIELD_RE.match(lines[index])
             if field_match:
                 fields[field_match.group(1)] = field_match.group(2).strip()
+            else:
+                approval_match = _APPROVAL_FIELD_RE.match(lines[index])
+                if approval_match:
+                    approval_needed = approval_match.group(1).strip()
             index += 1
 
         missing = [field for field in ("Priority", "Status") if field not in fields]
@@ -105,6 +112,7 @@ def parse_plan_tasks(plan_text: str) -> list[PlanTask]:
                 priority=fields["Priority"],
                 status=_normalize_status(fields["Status"]),
                 line_number=line_number,
+                approval_needed=approval_needed,
             )
         )
 

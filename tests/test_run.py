@@ -36,6 +36,17 @@ Status: DONE
 Goal: Test task.
 """
 
+PLAN_WITH_APPROVAL = """\
+# Roadmap
+
+### AUTO-001 — Add network call
+Priority: P1
+Status: TODO
+Approval needed: Adding network access.
+
+Goal: Test task that needs approval.
+"""
+
 MINIMAL_POLICY = """\
 # Repository Policy
 
@@ -238,6 +249,31 @@ class TestExecuteRun:
         assert outcome.blocked
         assert "random.txt" in outcome.block_reason
         assert "--advisory-paths" in outcome.block_reason
+
+    @patch("autonomous_forge.run.get_changed_files", return_value=[])
+    def test_approval_needed_blocks_without_record(self, mock_git, tmp_path: Path):
+        _setup_metadata(tmp_path, PLAN_WITH_APPROVAL, MINIMAL_POLICY)
+        outcome = execute_run(
+            root=tmp_path,
+            timestamp="2026-01-01T00:00:00+00:00",
+            dry_run=True,
+        )
+        assert outcome.blocked
+        assert "requires human approval" in outcome.block_reason
+        assert "forge approve AUTO-001" in outcome.block_reason
+
+    @patch("autonomous_forge.run.get_changed_files", return_value=[])
+    def test_approval_needed_allows_run_once_recorded(self, mock_git, tmp_path: Path):
+        from autonomous_forge.approvals import record_approval
+
+        _setup_metadata(tmp_path, PLAN_WITH_APPROVAL, MINIMAL_POLICY)
+        record_approval("AUTO-001", "Adding network access.", root=tmp_path)
+        outcome = execute_run(
+            root=tmp_path,
+            timestamp="2026-01-01T00:00:00+00:00",
+            dry_run=True,
+        )
+        assert not outcome.blocked
 
     @patch("autonomous_forge.run.get_changed_files", return_value=["random.txt"])
     def test_advisory_paths_override_allows_run(self, mock_git, tmp_path: Path):
