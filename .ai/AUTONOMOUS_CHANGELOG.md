@@ -258,3 +258,4 @@
 - Commit hash: pending
 - Follow-up notes: Start AUTO-001 next.
 - 2026-07-24: AUTO-041 — Auto-append completed tasks to the changelog (DONE)
+- 2026-07-24: AUTO-042 — Import orphan Forgejo issues into the plan as AUTO-xxx stubs (DONE)

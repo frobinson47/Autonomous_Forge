@@ -30,8 +30,10 @@ from autonomous_forge.push import execute_push, format_push_result
 from autonomous_forge.inventory import build_repository_inventory
 from autonomous_forge.run import execute_run, format_run_outcome, save_run_outcome
 from autonomous_forge.sync import (
+    execute_import_orphans,
     execute_orphan_report,
     execute_sync,
+    format_import_result,
     format_orphan_report,
     format_sync_result,
 )
@@ -377,6 +379,11 @@ def build_parser() -> argparse.ArgumentParser:
         "--report-orphans",
         action="store_true",
         help="read-only: list open Forgejo issues with no matching AUTO-### plan task",
+    )
+    sync_parser.add_argument(
+        "--import-orphans",
+        action="store_true",
+        help="write AUTO-### plan stubs for current orphan Forgejo issues (see DEC-010)",
     )
 
     commit_parser = subparsers.add_parser(
@@ -1064,6 +1071,18 @@ def main(argv: list[str] | None = None) -> int:
     if args.command == "sync":
         root = Path(args.root)
         plan_path = Path(args.plan) if args.plan else None
+        if args.import_orphans:
+            try:
+                import_result = execute_import_orphans(
+                    root,
+                    plan_path=plan_path,
+                    repo_override=args.repo,
+                )
+            except FileNotFoundError as exc:
+                print(f"File not found: {exc}")
+                return 2
+            print(format_import_result(import_result))
+            return 1 if import_result.errors else 0
         if args.report_orphans:
             try:
                 orphan_report = execute_orphan_report(

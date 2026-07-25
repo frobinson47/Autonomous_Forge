@@ -14,7 +14,7 @@ The project has two interfaces: a Python CLI (`forge`) and Claude Code skills (`
 
 ## Current implementation status
 
-Roadmaps v1 through v4 are complete (37 tasks). Roadmap v4 added commit-hash-linked run reports, a read-only Forgejo orphan-issue report, cross-repo session handoff aggregation, and `forge watch`. All 251 tests pass at runtime.
+Roadmaps v1 through v5 are complete (42 tasks). Roadmap v5 added `forge doctor`, repo-level config defaults (`.forge/config.toml`), a `.forge/.lock` guard against concurrent `forge run`/`forge pipeline` invocations, automatic changelog append on DONE commits, and `forge sync --import-orphans`. All 312 tests pass at runtime.
 
 ## Technical debt
 
@@ -557,16 +557,16 @@ Notes: The changelog file already exists in the metadata scaffold but nothing cu
 
 ### AUTO-042 — Import orphan Forgejo issues into the plan as AUTO-xxx stubs
 Priority: P2
-Status: TODO
+Status: DONE
 
 Goal: Add `forge sync --import-orphans` that converts current orphan Forgejo issues (from AUTO-035's --report-orphans) into new AUTO-xxx task stubs appended to the plan file, in one explicit, human-triggered run.
-Why it matters: TBD
+Why it matters: Issues filed directly in Forgejo (bug reports, ideas) had no path into the plan short of a human manually re-typing them with `forge plan add`. This closes that gap while keeping a human review point, completing Roadmap v5.
 Scope: Reuse the existing orphan-issue detection from AUTO-035. For each orphan issue, append a new AUTO-xxx task block (title from issue title, Notes referencing the source issue number/URL, Status TODO, Priority P2 default) before Future Ideas, matching forge plan add's existing insertion behavior. No per-issue prompt; the human reviews the resulting plan diff before committing it. --report-orphans stays read-only and unchanged; --import-orphans is a separate, opt-in flag.
 Expected files or areas: src/autonomous_forge/sync.py, src/autonomous_forge/planadd.py, src/autonomous_forge/cli.py, tests, docs/COMMANDS.md
 Acceptance criteria: Running --import-orphans creates one AUTO-xxx stub per current orphan issue with correct auto-incremented IDs, each stub's Notes references the source Forgejo issue number; --report-orphans and plain --dry-run behavior are unaffected; re-running after a previous import does not duplicate stubs for issues already imported (idempotent against issues already referenced by an AUTO-xxx Notes field).
-Validation: TBD
-Risks or assumptions: None.
-Notes: See DEC-010 in .ai/DECISIONS.md: this is an explicit, human-triggered partial reversal of AUTO-035's read-only-only stance — the human still reviews the plan diff before committing, preserving the plan as source of truth.
+Validation: 12 new tests pass (`TestExecuteImportOrphans`/`TestFormatImportResult` in `test_sync.py` + a CLI test); full suite 312 tests pass. Runtime confirmed against this repo with `--report-orphans` and `--import-orphans` (no live orphans currently exist, so both correctly reported none — write-path and idempotency verified via the mocked test suite instead of creating throwaway issues on the live tracker).
+Risks or assumptions: Idempotency is detected via a Notes-field text match (`Forgejo issue #<N>`) rather than a structured field — if a human hand-edits that Notes text, re-running --import-orphans could re-import the same issue. Acceptable given this is explicit and human-reviewed, not autonomous.
+Notes: See DEC-010 in .ai/DECISIONS.md: this is an explicit, human-triggered partial reversal of AUTO-035's read-only-only stance — the human still reviews the plan diff before committing, preserving the plan as source of truth. Completes Roadmap v5 (AUTO-038 through AUTO-042, all DONE).
 
 ## Future Ideas
 

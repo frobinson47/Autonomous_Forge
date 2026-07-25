@@ -430,6 +430,7 @@ Inputs:
 - `--repo`: Forgejo `owner/repo` (auto-detected from git remote if omitted).
 - `--dry-run`: show what would be synced without making API calls.
 - `--report-orphans`: read-only — list open Forgejo issues that have no matching `[AUTO-###]` task in the current plan, instead of running a sync. Skips the sync entirely; makes GET calls only.
+- `--import-orphans`: write a new `AUTO-###` plan task stub for each current orphan issue, instead of running a sync. See DEC-010 in `.ai/DECISIONS.md`.
 
 Expected successful output:
 
@@ -465,13 +466,32 @@ Repo: <owner/repo>
 No orphan issues.
 ```
 
+`--import-orphans` output:
+
+```text
+Forge orphan-issue import
+Repo: <owner/repo>
+Imported: <count>
+  AUTO-###: imported from issue #5 — Manually filed bug
+Already imported (skipped): <count>
+  issue #9
+```
+
+or, when there is nothing to import:
+
+```text
+Forge orphan-issue import
+Repo: <owner/repo>
+No orphan issues to import.
+```
+
 Exit codes:
 
-- `0` when the sync (or orphan report) completes without errors.
+- `0` when the sync (or orphan report/import) completes without errors.
 - `1` when API errors occur.
 - `2` when required input files are missing.
 
-Safety limits: **this command makes network API calls** to the Forgejo instance at `forgejo.familytechlab.com`. Without `--report-orphans`, it creates and updates issues, labels, and milestones. With `--report-orphans`, it makes GET calls only — it never creates, updates, or comments on issues. Neither mode modifies local files, commits, pushes, or changes the plan file. Requires `FORGEJO_TOKEN` in environment or `~/.claude/.secrets.env`. The plan file remains the source of truth — Forgejo is the read-only mirror. Re-running is idempotent. `--report-orphans` is deliberately read-only: it never writes plan task stubs from orphan issues — a human decides what, if anything, to add to the plan.
+Safety limits: **this command makes network API calls** to the Forgejo instance at `forgejo.familytechlab.com`. Without `--report-orphans`/`--import-orphans`, it creates and updates issues, labels, and milestones. With `--report-orphans`, it makes GET calls only — it never creates, updates, or comments on issues. With `--import-orphans`, it also makes GET calls only against Forgejo (reuses `--report-orphans`' detection) but **does write to the local plan file** — it appends one new `AUTO-###` task stub (`Status: TODO`, `Priority: P2`, a `Notes` line referencing the source `Forgejo issue #<N>`) per orphan not already imported, via the same insertion logic as `forge plan add`. It never commits, pushes, or calls back to Forgejo to close/comment on the source issue — the human reviews the resulting plan diff and decides whether to commit it, same as any other plan edit (see DEC-010 in `.ai/DECISIONS.md`). Re-running `--import-orphans` is idempotent: an issue already referenced by an existing task's Notes field is skipped, reported under "Already imported." Requires `FORGEJO_TOKEN` in environment or `~/.claude/.secrets.env`. The plan file remains the source of truth — Forgejo is the mirror, and `--import-orphans` is the one explicit, human-triggered exception to "Forgejo never writes to the plan."
 
 ## `forge commit`
 
