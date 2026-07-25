@@ -139,6 +139,21 @@ class TestPreFlight:
         assert not pf.safe
         assert "malformed" in pf.block_reason
 
+    @patch("autonomous_forge.commit.get_changed_files", return_value=["random.txt"])
+    def test_not_allowed_file_blocks_by_default(self, mock_git, tmp_path):
+        _setup(tmp_path)
+        pf = run_pre_flight(root=tmp_path, validate=False)
+        assert not pf.safe
+        assert "random.txt" in pf.block_reason
+        assert "--advisory-paths" in pf.block_reason
+
+    @patch("autonomous_forge.commit.get_changed_files", return_value=["random.txt"])
+    def test_advisory_paths_override_allows_commit(self, mock_git, tmp_path):
+        _setup(tmp_path)
+        pf = run_pre_flight(root=tmp_path, validate=False, advisory_paths=True)
+        assert pf.safe
+        assert any("not-allowed" in v for v in pf.violations)
+
 
 class TestExecuteCommit:
     @patch("autonomous_forge.commit.get_changed_files", return_value=[])
@@ -278,6 +293,37 @@ class TestCommitCLI:
 
         code = main([
             "commit", "--check-only", "--no-validate", "--no-policy-required",
+            "--root", str(tmp_path),
+            "--plan", str(tmp_path / ".ai/AUTONOMOUS_PLAN.md"),
+            "--policy", str(tmp_path / ".forge/policy.md"),
+        ])
+        captured = capsys.readouterr()
+        assert code == 0
+        assert "SAFE" in captured.out
+
+    @patch("autonomous_forge.commit.get_changed_files", return_value=["random.txt"])
+    def test_check_only_blocked_by_not_allowed_path(self, mock_git, tmp_path, capsys):
+        _setup(tmp_path)
+        from autonomous_forge.cli import main
+
+        code = main([
+            "commit", "--check-only", "--no-validate",
+            "--root", str(tmp_path),
+            "--plan", str(tmp_path / ".ai/AUTONOMOUS_PLAN.md"),
+            "--policy", str(tmp_path / ".forge/policy.md"),
+        ])
+        captured = capsys.readouterr()
+        assert code == 1
+        assert "BLOCKED" in captured.out
+        assert "random.txt" in captured.out
+
+    @patch("autonomous_forge.commit.get_changed_files", return_value=["random.txt"])
+    def test_check_only_advisory_paths_override(self, mock_git, tmp_path, capsys):
+        _setup(tmp_path)
+        from autonomous_forge.cli import main
+
+        code = main([
+            "commit", "--check-only", "--no-validate", "--advisory-paths",
             "--root", str(tmp_path),
             "--plan", str(tmp_path / ".ai/AUTONOMOUS_PLAN.md"),
             "--policy", str(tmp_path / ".forge/policy.md"),

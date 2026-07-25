@@ -43,8 +43,8 @@ A policy file should include these headings:
 
 ## Semantics
 
-- `Allowed paths` describes where routine autonomous edits may be considered.
-- `Prohibited paths` always wins over `Allowed paths`.
+- `Allowed paths` describes where routine autonomous edits may be considered. `forge run`, `forge commit`, and `forge pipeline` block by default if a changed file falls outside every allowed pattern (see DEC-012); pass `--advisory-paths` to report such files instead of blocking.
+- `Prohibited paths` always wins over `Allowed paths` and is never overridable by `--advisory-paths`.
 - `Human approval required` lists categories that must be blocked until a person explicitly approves them.
 - `Validation expectations` lists checks that should be attempted before a change is committed.
 

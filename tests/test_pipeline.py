@@ -137,6 +137,30 @@ class TestExecutePipeline:
         )
         assert not result.run_outcome.blocked
 
+    @patch("autonomous_forge.run.get_changed_files", return_value=["random.txt"])
+    def test_not_allowed_file_blocks_pipeline_by_default(self, mock_git, tmp_path):
+        _setup(tmp_path)
+        result = execute_pipeline(
+            root=tmp_path,
+            commit=True,
+            dry_run=True,
+            timestamp="2026-01-01T00:00:00+00:00",
+        )
+        assert result.stage_reached == "run"
+        assert result.run_outcome.blocked
+        assert "random.txt" in result.run_outcome.block_reason
+
+    @patch("autonomous_forge.run.get_changed_files", return_value=["random.txt"])
+    def test_advisory_paths_override_allows_pipeline_run_stage(self, mock_git, tmp_path):
+        _setup(tmp_path)
+        result = execute_pipeline(
+            root=tmp_path,
+            dry_run=True,
+            timestamp="2026-01-01T00:00:00+00:00",
+            advisory_paths=True,
+        )
+        assert not result.run_outcome.blocked
+
     @patch("autonomous_forge.run.get_changed_files", return_value=[".env"])
     def test_blocked_by_prohibited(self, mock_git, tmp_path):
         _setup(tmp_path)

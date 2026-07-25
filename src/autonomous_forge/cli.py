@@ -352,6 +352,11 @@ def build_parser() -> argparse.ArgumentParser:
         help="allow a missing or malformed policy file instead of blocking (default: blocks)",
     )
     run_parser.add_argument(
+        "--advisory-paths",
+        action="store_true",
+        help="report files outside Allowed paths instead of blocking (default: blocks)",
+    )
+    run_parser.add_argument(
         "--timestamp",
         default=None,
         help="optional ISO-8601 timestamp for deterministic output",
@@ -436,6 +441,11 @@ def build_parser() -> argparse.ArgumentParser:
         "--no-policy-required",
         action="store_true",
         help="allow a missing or malformed policy file instead of blocking (default: blocks)",
+    )
+    commit_parser.add_argument(
+        "--advisory-paths",
+        action="store_true",
+        help="report files outside Allowed paths instead of blocking (default: blocks)",
     )
 
     push_parser = subparsers.add_parser(
@@ -529,6 +539,11 @@ def build_parser() -> argparse.ArgumentParser:
         "--no-policy-required",
         action="store_true",
         help="allow a missing or malformed policy file instead of blocking (default: blocks)",
+    )
+    pipeline_parser.add_argument(
+        "--advisory-paths",
+        action="store_true",
+        help="report files outside Allowed paths instead of blocking (default: blocks)",
     )
     pipeline_parser.add_argument(
         "--timestamp",
@@ -1105,6 +1120,7 @@ def main(argv: list[str] | None = None) -> int:
                 dry_run=args.dry_run,
                 timestamp=args.timestamp,
                 require_policy=not args.no_policy_required,
+                advisory_paths=args.advisory_paths,
             )
         except FileNotFoundError as exc:
             print(f"File not found: {exc}")
@@ -1172,6 +1188,7 @@ def main(argv: list[str] | None = None) -> int:
                 dry_run=args.dry_run,
                 timestamp=args.timestamp,
                 require_policy=not args.no_policy_required,
+                advisory_paths=args.advisory_paths,
             )
         except FileNotFoundError as exc:
             print(f"File not found: {exc}")
@@ -1200,6 +1217,7 @@ def main(argv: list[str] | None = None) -> int:
                 validate=not args.no_validate,
                 validate_command=args.commit_cmd,
                 require_policy=not args.no_policy_required,
+                advisory_paths=args.advisory_paths,
             )
             print(format_pre_flight(pf))
             return 0 if pf.safe else 1
@@ -1209,6 +1227,7 @@ def main(argv: list[str] | None = None) -> int:
             validate=not args.no_validate,
             validate_command=args.commit_cmd,
             require_policy=not args.no_policy_required,
+            advisory_paths=args.advisory_paths,
         )
         print(format_commit_result(result))
         return 0 if result.committed else 1

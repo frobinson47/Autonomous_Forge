@@ -227,6 +227,30 @@ class TestExecuteRun:
         assert outcome.blocked
         assert "malformed" in outcome.block_reason
 
+    @patch("autonomous_forge.run.get_changed_files", return_value=["random.txt"])
+    def test_not_allowed_file_blocks_by_default(self, mock_git, tmp_path: Path):
+        _setup_metadata(tmp_path, MINIMAL_PLAN, MINIMAL_POLICY)
+        outcome = execute_run(
+            root=tmp_path,
+            timestamp="2026-01-01T00:00:00+00:00",
+            dry_run=True,
+        )
+        assert outcome.blocked
+        assert "random.txt" in outcome.block_reason
+        assert "--advisory-paths" in outcome.block_reason
+
+    @patch("autonomous_forge.run.get_changed_files", return_value=["random.txt"])
+    def test_advisory_paths_override_allows_run(self, mock_git, tmp_path: Path):
+        _setup_metadata(tmp_path, MINIMAL_PLAN, MINIMAL_POLICY)
+        outcome = execute_run(
+            root=tmp_path,
+            timestamp="2026-01-01T00:00:00+00:00",
+            dry_run=True,
+            advisory_paths=True,
+        )
+        assert not outcome.blocked
+        assert outcome.diff_violations == 1
+
 
 class TestFormatRunOutcome:
     def test_idle_format(self):

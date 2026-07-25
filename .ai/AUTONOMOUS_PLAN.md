@@ -662,16 +662,16 @@ Notes: See DEC-012. Independently verified: commit.py's diff-check is entirely s
 
 ### AUTO-049 — Enforce the allowlist - not-allowed violations block by default
 Priority: P0
-Status: TODO
+Status: DONE
 
 Goal: Files outside .forge/policy.md's Allowed paths should block forge run/forge commit by default, not just get reported - currently only rule == 'prohibited' violations block; 'not-allowed' violations are collected but never stop anything.
-Why it matters: TBD
+Why it matters: An allowlist that only warns is not a boundary — the same class of gap as AUTO-048's missing-policy hole, but for the common case where a policy exists and is well-formed but a change simply falls outside it.
 Scope: run.py and commit.py both filter to only the 'prohibited' rule and only block on that list. Change the default blocking set to include 'not-allowed' too. Add an explicit opt-out (e.g. --advisory-paths or a policy-level flag) for repos that want the old warn-only allowlist behavior.
 Expected files or areas: src/autonomous_forge/run.py, src/autonomous_forge/commit.py, src/autonomous_forge/cli.py, tests, docs/COMMANDS.md
 Acceptance criteria: A changed file outside Allowed paths blocks forge run/forge commit by default with a clear message distinguishing it from a prohibited-path block; the opt-out restores today's advisory-only behavior explicitly.
-Validation: TBD
-Risks or assumptions: None.
-Notes: See DEC-012. This exact gap was hit directly this session - .forge/config.toml and .gitignore showed not-allowed warnings on every commit (AUTO-039, AUTO-040) until the allowlist was manually widened (DEC-011), because nothing actually enforced the boundary.
+Validation: `python -m pytest` — 351 tests pass (8 new: test_run.py x2, test_commit.py x4, test_pipeline.py x2). `forge lint-plan` — ok.
+Risks or assumptions: None — this repo's own .forge/policy.md already covers every path this session has touched (src/**, tests/**, docs/**, .ai/**), so turning on default blocking here caused no friction.
+Notes: See DEC-012. This exact gap was hit directly this session - .forge/config.toml and .gitignore showed not-allowed warnings on every commit (AUTO-039, AUTO-040) until the allowlist was manually widened (DEC-011), because nothing actually enforced the boundary. Added `advisory_paths` (default False) to run_pre_flight/execute_commit/execute_run/execute_pipeline, with a `--advisory-paths` CLI override on run/commit/pipeline mirroring AUTO-048's `--no-policy-required` pattern. Prohibited-path blocking is checked first and is never overridable by --advisory-paths — only the not-allowed (outside-allowlist) case is affected.
 
 ### AUTO-050 — Define structured approval semantics for policy's Human approval required section
 Priority: P1

@@ -265,3 +265,4 @@
 - 2026-07-25: AUTO-046 — Document a CI recipe for forge check (DONE)
 - 2026-07-25: AUTO-047 — Add forge revert to undo a completed task's commit (DONE)
 - 2026-07-25: AUTO-048 — Make policy fail-closed on missing/malformed policy (DONE)
+- 2026-07-25: AUTO-049 — Enforce the allowlist - not-allowed violations block by default (DONE)

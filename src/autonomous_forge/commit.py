@@ -60,6 +60,7 @@ def run_pre_flight(
     validate_command: str | None = None,
     staged_only: bool = True,
     require_policy: bool = True,
+    advisory_paths: bool = False,
 ) -> CommitPreFlight:
     """Run pre-commit safety checks: diff-check, validation, task detection."""
     plan_p = plan_path or (root / ".ai/AUTONOMOUS_PLAN.md")
@@ -127,6 +128,21 @@ def run_pre_flight(
         violations_list = [
             f"[{v.rule}] {v.path}: {v.message}" for v in diff_violations
         ]
+        not_allowed = [v for v in diff_violations if v.rule == "not-allowed"]
+        if not_allowed and not advisory_paths:
+            return CommitPreFlight(
+                safe=False,
+                changed_files=tuple(changed),
+                violations=tuple(violations_list),
+                validation_passed=None,
+                validation_output="",
+                task_id=task_id,
+                task_title=task_title,
+                block_reason=(
+                    f"File(s) outside allowed paths: {', '.join(v.path for v in not_allowed)}. "
+                    "Pass --advisory-paths to report only, or widen .forge/policy.md's Allowed paths."
+                ),
+            )
 
     validation_passed = None
     validation_output = ""
@@ -178,6 +194,7 @@ def execute_commit(
     staged_only: bool = True,
     timestamp: str | None = None,
     require_policy: bool = True,
+    advisory_paths: bool = False,
 ) -> CommitResult:
     """Run pre-flight checks and commit if safe.
 
@@ -190,6 +207,7 @@ def execute_commit(
             root, plan_path=plan_path, policy_path=policy_path,
             validate=validate, validate_command=validate_command,
             staged_only=staged_only, require_policy=require_policy,
+            advisory_paths=advisory_paths,
         )
 
     if not pre_flight.safe:

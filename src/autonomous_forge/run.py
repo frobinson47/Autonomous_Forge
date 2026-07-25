@@ -58,6 +58,7 @@ def execute_run(
     dry_run: bool = False,
     use_lock: bool = True,
     require_policy: bool = True,
+    advisory_paths: bool = False,
 ) -> RunOutcome:
     """Execute one autonomous cycle: select, validate, diff-check, record.
 
@@ -71,7 +72,7 @@ def execute_run(
         return _execute_run_body(
             root, plan_path, state_path, changelog_path, policy_path,
             validate, validate_command, validate_timeout, ts, dry_run,
-            require_policy,
+            require_policy, advisory_paths,
         )
 
     try:
@@ -95,7 +96,7 @@ def execute_run(
         return _execute_run_body(
             root, plan_path, state_path, changelog_path, policy_path,
             validate, validate_command, validate_timeout, ts, dry_run,
-            require_policy,
+            require_policy, advisory_paths,
         )
     finally:
         lock.release()
@@ -113,6 +114,7 @@ def _execute_run_body(
     ts: str,
     dry_run: bool,
     require_policy: bool = True,
+    advisory_paths: bool = False,
 ) -> RunOutcome:
     """Select, validate, diff-check, and record one run cycle (no locking)."""
     plan_p = plan_path or (root / ".ai/AUTONOMOUS_PLAN.md")
@@ -217,6 +219,26 @@ def _execute_run_body(
             policy_status=policy_status,
             blocked=True,
             block_reason=f"Prohibited file(s) changed: {', '.join(v.path for v in prohibited)}",
+        )
+
+    not_allowed = [v for v in diff_violations_list if v.rule == "not-allowed"]
+    if not_allowed and not advisory_paths:
+        return RunOutcome(
+            timestamp=ts,
+            selected_task=selected_task,
+            validation_passed=None,
+            validation_command="",
+            validation_output="",
+            diff_violations=len(diff_violations_list),
+            diff_details=tuple(f"[{v.rule}] {v.path}: {v.message}" for v in diff_violations_list),
+            drift_signals=drift_count,
+            changed_files=tuple(changed_files),
+            policy_status=policy_status,
+            blocked=True,
+            block_reason=(
+                f"File(s) outside allowed paths: {', '.join(v.path for v in not_allowed)}. "
+                "Pass --advisory-paths to report only, or widen .forge/policy.md's Allowed paths."
+            ),
         )
 
     validation_passed = None
