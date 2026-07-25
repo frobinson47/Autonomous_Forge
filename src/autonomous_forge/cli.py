@@ -56,6 +56,7 @@ from autonomous_forge.plan import (
 )
 from autonomous_forge.policy import PolicyParseError, RepositoryPolicy, parse_repository_policy
 from autonomous_forge.report import read_repository_report
+from autonomous_forge.revert import execute_revert, format_revert_result
 from autonomous_forge.run_summary import read_run_summary_preview
 
 
@@ -536,6 +537,31 @@ def build_parser() -> argparse.ArgumentParser:
         "--plan",
         default=None,
         help="path to the autonomous roadmap file",
+    )
+
+    revert_parser = subparsers.add_parser(
+        "revert",
+        help="undo a completed task's commit and flip its status back to TODO",
+    )
+    revert_parser.add_argument(
+        "task_id",
+        help="task ID (e.g. AUTO-001)",
+    )
+    revert_parser.add_argument(
+        "--root",
+        default=".",
+        help="repository root",
+    )
+    revert_parser.add_argument(
+        "--plan",
+        default=None,
+        help="path to the autonomous roadmap file",
+    )
+    revert_parser.add_argument(
+        "--commit",
+        default=None,
+        dest="revert_commit",
+        help="commit hash to revert, overriding the one recorded in run history",
     )
 
     status_parser = subparsers.add_parser(
@@ -1178,6 +1204,15 @@ def main(argv: list[str] | None = None) -> int:
         result = mark_task_status(args.task_id, args.new_status, plan_path)
         print(format_mark_result(result))
         return 0 if result.updated else 1
+
+    if args.command == "revert":
+        root = Path(args.root)
+        plan_path = Path(args.plan) if args.plan else None
+        result = execute_revert(
+            args.task_id, root, plan_path=plan_path, commit_override=args.revert_commit,
+        )
+        print(format_revert_result(result))
+        return 0 if result.reverted else 1
 
     if args.command == "status":
         root = Path(args.root)

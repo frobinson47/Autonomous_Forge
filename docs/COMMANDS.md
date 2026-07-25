@@ -677,6 +677,61 @@ Exit codes:
 
 Safety limits: **this command writes to the plan file** — it modifies only the `Status:` line of the target task. All other content is preserved. It does not commit, push, run external commands, or call networks.
 
+## `forge revert`
+
+Purpose: undo a completed task's commit and flip its plan status back to TODO, for when a DONE task turns out to be wrong.
+
+Inputs:
+
+- `task_id`: task ID (e.g. `AUTO-001`).
+- `--root`: repository root, defaulting to `.`.
+- `--plan`: roadmap Markdown path (defaults to `.ai/AUTONOMOUS_PLAN.md`).
+- `--commit`: commit hash to revert, overriding the one recorded in run history.
+
+The target commit is looked up from `.forge/runs/` run history (the most recent recorded `Commit:` line for the task) unless `--commit` is given explicitly.
+
+Expected successful output:
+
+```text
+Forge revert: AUTO-001
+Target commit: abc1234
+Reverted abc1234 as def5678. Status: DONE -> TODO.
+Result: REVERTED
+```
+
+If the reverted commit's diff already included the plan file's Status line (common, since `forge commit` usually bundles the code change and the `forge mark ... DONE` edit together), `git revert` itself already restores `Status: TODO`, and the subsequent internal `forge mark` step correctly no-ops:
+
+```text
+Forge revert: AUTO-001
+Target commit: abc1234
+Reverted abc1234 as def5678. Status unchanged (Already TODO).
+Result: REVERTED
+```
+
+Failure output:
+
+```text
+Forge revert: AUTO-001
+No recorded commit found for AUTO-001 in run history. Use --commit to specify one.
+Result: FAILED
+```
+
+or, on a conflicting revert:
+
+```text
+Forge revert: AUTO-001
+Target commit: abc1234
+git revert failed (aborted): <git's conflict detail>
+Result: FAILED
+```
+
+Exit codes:
+
+- `0` when the revert completes.
+- `1` when no commit could be found, or `git revert` fails (including conflicts).
+
+Safety limits: **this command runs `git revert`** (and `git revert --abort` if the revert conflicts) and **writes to the plan file** (via the same Status-line-only write as `forge mark`). It does not push or call networks — a subsequent `forge push` and `forge sync` are separate, manual steps. A conflicting revert is aborted automatically, leaving a clean working tree and the plan file untouched rather than a half-finished revert. Does not touch Forgejo directly — the plan file is the source of truth, so a later `forge sync` will reopen the issue naturally once the Status flips back to TODO.
+
 ## `forge status`
 
 Purpose: quick at-a-glance view of forge state.

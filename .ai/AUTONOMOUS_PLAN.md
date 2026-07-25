@@ -14,7 +14,7 @@ The project has two interfaces: a Python CLI (`forge`) and Claude Code skills (`
 
 ## Current implementation status
 
-Roadmaps v1 through v5 are complete (42 tasks). Roadmap v5 added `forge doctor`, repo-level config defaults (`.forge/config.toml`), a `.forge/.lock` guard against concurrent `forge run`/`forge pipeline` invocations, automatic changelog append on DONE commits, and `forge sync --import-orphans`. All 312 tests pass at runtime.
+Roadmaps v1 through v6 are complete (47 tasks). Roadmap v6 fixed the long-standing plan-lint Notes gap, resolved an orphaned duplicate doc, added `forge metrics --json`, documented a CI recipe, and added `forge revert`. All 329 tests pass at runtime.
 
 ## Technical debt
 
@@ -634,16 +634,16 @@ Notes: Deferred twice already (Roadmap v5 planning). Decided in Roadmap v6 plann
 
 ### AUTO-047 — Add forge revert to undo a completed task's commit
 Priority: P2
-Status: TODO
+Status: DONE
 
 Goal: Add forge revert <AUTO-###> that cleanly undoes a task's commit (via git revert) and flips its plan status back to TODO, for when a DONE task turns out to be wrong.
-Why it matters: TBD
+Why it matters: Nothing previously closed this loop — undoing a bad DONE task required manual `git revert` plus a manual `forge mark ... TODO`, with no single command tying the two together.
 Scope: Look up the task's commit hash (from forge log/run history or a --commit override), run git revert on it, and call the existing mark logic to flip Status back to TODO. Does not touch Forgejo directly — a subsequent forge sync will reopen the issue naturally since the plan is the source of truth.
 Expected files or areas: src/autonomous_forge/revert.py, src/autonomous_forge/cli.py, tests, docs/COMMANDS.md
 Acceptance criteria: forge revert AUTO-### runs git revert on the task's recorded commit, flips the task's Status back to TODO, and reports the new revert commit hash; fails clearly if no commit hash can be found for the task or if git revert conflicts.
-Validation: TBD
-Risks or assumptions: None.
-Notes: Closes a real gap: nothing currently undoes a completed task cleanly short of manual git surgery plus a manual forge mark. Originally scoped for Roadmap v5, deferred to v6 to keep v5 to its four core reliability tasks.
+Validation: 12 new tests pass (`test_revert.py`, real-git integration including a genuine conflicting-revert case); full suite 329 tests pass. Runtime confirmed in a throwaway clone of this actual repo against two real commits: a conflicting revert (aborted cleanly, working tree untouched, plan Status unchanged) and a clean revert (succeeded, created a real revert commit, correctly detected the target commit's diff had already included the Status line and reported "Already TODO" instead of double-flipping).
+Risks or assumptions: Commit lookup matches on the run-history `Task:` field's prefix, same convention as elsewhere in this codebase (e.g. `format_run_outcome`'s "Task: <id> — <title>" line) — a task with no recorded commit (e.g. `--no-save` was used, or history was pruned) requires `--commit` explicitly. A conflicting revert always aborts automatically rather than leaving a half-finished state for the human to resolve — intentionally conservative, matching the project's stated non-goal of automatic conflict resolution (see AUTO-033's push-conflict handling for the same precedent).
+Notes: Closes a real gap: nothing currently undoes a completed task cleanly short of manual git surgery plus a manual forge mark. Originally scoped for Roadmap v5, deferred to v6 to keep v5 to its four core reliability tasks. Completes Roadmap v6 (AUTO-043 through AUTO-047, all DONE).
 
 ## Future Ideas
 

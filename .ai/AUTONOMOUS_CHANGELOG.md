@@ -263,3 +263,4 @@
 - 2026-07-25: AUTO-044 — Remove duplicate workflow-reference.html (DONE)
 - 2026-07-25: AUTO-045 — Add forge metrics --json export (DONE)
 - 2026-07-25: AUTO-046 — Document a CI recipe for forge check (DONE)
+- 2026-07-25: AUTO-047 — Add forge revert to undo a completed task's commit (DONE)
