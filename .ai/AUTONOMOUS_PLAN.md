@@ -595,15 +595,15 @@ Notes: Pure cleanup, flagged repeatedly by forge check/forge lint-plan across th
 
 ### AUTO-044 — Remove duplicate workflow-reference.html
 Priority: P3
-Status: TODO
+Status: DONE
 
 Goal: Delete the duplicate workflow-reference.html at the repo root; the canonical copy is docs/workflow-reference.html.
-Why it matters: TBD
+Why it matters: Untracked, uncommitted duplicate files sitting in the working tree are exactly the kind of stray state that erodes trust in `git status` — every session for weeks noted it in "cruft, not real work" without anyone actually resolving it.
 Scope: Confirm docs/workflow-reference.html is the canonical, up-to-date copy, then delete the root-level duplicate. No content changes to the canonical file.
 Expected files or areas: workflow-reference.html (delete)
 Acceptance criteria: workflow-reference.html no longer exists at repo root; docs/workflow-reference.html is unchanged and still referenced correctly from anywhere that links to it.
-Validation: TBD
-Risks or assumptions: None.
+Validation: Full suite unaffected (312 tests pass) — no code touched. Confirmed both copies were byte-identical before deleting the root one.
+Risks or assumptions: Discovered mid-task that *neither* copy was ever actually committed to git, and nothing in the repo linked to it — the original "duplicate" framing undersold the actual state. Resolved with the user: commit the canonical docs/ copy for real (it was a genuine, well-built reference page, just orphaned), update its hardcoded stats (24→27 commands, 203→312 tests, 32→43 tasks shipped) since they were stale enough to be actively misleading, and add a README link describing it as a curated highlights reference (not exhaustive — points to docs/COMMANDS.md for the full command list).
 Notes: Leftover cleanup item first flagged in a much earlier session, still not done as of Roadmap v5.
 
 ### AUTO-045 — Add forge metrics --json export

@@ -80,6 +80,7 @@ See also:
 - `docs/COMMANDS.md` — full command output contracts.
 - `docs/RUN_SUMMARIES.md` — the local run-summary format written by `forge run`.
 - `docs/HEALTH_INVENTORY.md` — the `forge inventory` scope and safety boundaries.
+- `docs/workflow-reference.html` — a visual, curated highlights reference for the core pipeline and daily commands (not exhaustive — see `docs/COMMANDS.md` for every command).
 
 ## Repository policy boundaries
 

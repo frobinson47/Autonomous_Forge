@@ -1,0 +1,658 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Autonomous Forge — Workflow Reference</title>
+<style>
+  :root {
+    --ground: #F7F5F0;
+    --surface: #EDEAE3;
+    --surface-raised: #FFFFFF;
+    --ink: #2A2D35;
+    --ink-secondary: #6B6E7A;
+    --ink-muted: #9A9DAA;
+    --border: #D8D5CE;
+    --border-subtle: #E8E5DE;
+
+    --amber: #D4882A;
+    --amber-bg: #FDF5E8;
+    --blue: #3A7DB5;
+    --blue-bg: #EBF3FA;
+    --green: #4A8E5F;
+    --green-bg: #EDF5EF;
+    --purple: #7A5BB4;
+    --purple-bg: #F3EEF9;
+    --red: #B45050;
+    --red-bg: #FAEDED;
+    --slate: #5A6A7A;
+    --slate-bg: #EEF1F4;
+
+    --pipeline-accent: #C44A6A;
+    --pipeline-bg: #FDF0F4;
+
+    --mono: 'SF Mono', 'Fira Code', 'Cascadia Code', 'JetBrains Mono', Consolas, monospace;
+    --sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+
+    --radius: 6px;
+    --radius-lg: 10px;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --ground: #1C1E26;
+      --surface: #252830;
+      --surface-raised: #2E313A;
+      --ink: #D8DAE0;
+      --ink-secondary: #9A9DAA;
+      --ink-muted: #6B6E7A;
+      --border: #3A3D48;
+      --border-subtle: #32353E;
+
+      --amber: #E8A44A;
+      --amber-bg: #2E2818;
+      --blue: #5A9ED5;
+      --blue-bg: #1A2838;
+      --green: #5AAE6F;
+      --green-bg: #1A2E1E;
+      --purple: #9A7BD4;
+      --purple-bg: #28203A;
+      --red: #D46A6A;
+      --red-bg: #351E1E;
+      --slate: #8A9AAA;
+      --slate-bg: #222830;
+
+      --pipeline-accent: #E05A7A;
+      --pipeline-bg: #35182A;
+    }
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--ground);
+    color: var(--ink);
+    font-family: var(--sans);
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .page {
+    max-width: 960px;
+    margin: 0 auto;
+    padding: 48px 24px 64px;
+  }
+
+  /* ── Header ── */
+  .header {
+    margin-bottom: 48px;
+  }
+  .header-eyebrow {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--ink-muted);
+    margin-bottom: 8px;
+  }
+  .header h1 {
+    font-family: var(--mono);
+    font-size: 28px;
+    font-weight: 700;
+    line-height: 1.2;
+    color: var(--ink);
+    margin-bottom: 8px;
+  }
+  .header h1 span { color: var(--amber); }
+  .header-sub {
+    font-size: 15px;
+    color: var(--ink-secondary);
+    max-width: 600px;
+  }
+  .header-stats {
+    display: flex;
+    gap: 24px;
+    margin-top: 20px;
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--ink-muted);
+  }
+  .header-stats strong {
+    color: var(--ink);
+    font-weight: 600;
+  }
+
+  /* ── Pipeline hero ── */
+  .pipeline-hero {
+    background: var(--pipeline-bg);
+    border: 1.5px solid var(--pipeline-accent);
+    border-radius: var(--radius-lg);
+    padding: 24px 28px;
+    margin-bottom: 48px;
+  }
+  .pipeline-label {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--pipeline-accent);
+    font-weight: 600;
+    margin-bottom: 12px;
+  }
+  .pipeline-flow {
+    display: flex;
+    align-items: center;
+    gap: 0;
+    flex-wrap: wrap;
+    margin-bottom: 16px;
+  }
+  .pipeline-step {
+    background: var(--surface-raised);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 10px 16px;
+    text-align: center;
+    min-width: 120px;
+  }
+  .pipeline-step-cmd {
+    font-family: var(--mono);
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--ink);
+  }
+  .pipeline-step-desc {
+    font-size: 11px;
+    color: var(--ink-muted);
+    margin-top: 2px;
+  }
+  .pipeline-arrow {
+    font-size: 18px;
+    color: var(--pipeline-accent);
+    padding: 0 8px;
+    font-weight: 300;
+    flex-shrink: 0;
+  }
+  .pipeline-gate {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--pipeline-accent);
+    position: relative;
+    top: -18px;
+    margin: 0 -4px;
+  }
+  .pipeline-oneliner {
+    font-family: var(--mono);
+    font-size: 13px;
+    color: var(--ink);
+    background: var(--surface);
+    border-radius: var(--radius);
+    padding: 8px 14px;
+    display: inline-block;
+  }
+  .pipeline-oneliner span { color: var(--pipeline-accent); font-weight: 600; }
+  .pipeline-note {
+    font-size: 12px;
+    color: var(--ink-muted);
+    margin-top: 8px;
+  }
+
+  /* ── Phase sections ── */
+  .phase {
+    margin-bottom: 36px;
+  }
+  .phase-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 14px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--border-subtle);
+  }
+  .phase-tag {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    font-weight: 700;
+    padding: 3px 8px;
+    border-radius: 3px;
+    white-space: nowrap;
+  }
+  .phase-tag.setup { background: var(--blue-bg); color: var(--blue); }
+  .phase-tag.plan { background: var(--green-bg); color: var(--green); }
+  .phase-tag.verify { background: var(--amber-bg); color: var(--amber); }
+  .phase-tag.execute { background: var(--purple-bg); color: var(--purple); }
+  .phase-tag.observe { background: var(--slate-bg); color: var(--slate); }
+  .phase-tag.session { background: var(--red-bg); color: var(--red); }
+
+  .phase-title {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--ink);
+  }
+  .phase-desc {
+    font-size: 12px;
+    color: var(--ink-muted);
+    margin-left: auto;
+  }
+
+  .cmd-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 10px;
+  }
+  .cmd-card {
+    background: var(--surface-raised);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 12px 14px;
+  }
+  .cmd-card-name {
+    font-family: var(--mono);
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--ink);
+    margin-bottom: 2px;
+  }
+  .cmd-card-desc {
+    font-size: 11.5px;
+    color: var(--ink-secondary);
+    line-height: 1.4;
+  }
+  .cmd-card-flags {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--ink-muted);
+    margin-top: 6px;
+  }
+  .cmd-card.wide {
+    grid-column: 1 / -1;
+    border-color: var(--pipeline-accent);
+    border-width: 1.5px;
+  }
+
+  /* ── Daily workflow ── */
+  .daily {
+    background: var(--surface);
+    border-radius: var(--radius-lg);
+    padding: 24px 28px;
+    margin-bottom: 36px;
+  }
+  .daily-label {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--amber);
+    font-weight: 600;
+    margin-bottom: 14px;
+  }
+  .daily-steps {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .daily-step {
+    display: grid;
+    grid-template-columns: 180px 1fr;
+    gap: 12px;
+    align-items: baseline;
+  }
+  .daily-step-cmd {
+    font-family: var(--mono);
+    font-size: 12.5px;
+    font-weight: 600;
+    color: var(--ink);
+    text-align: right;
+  }
+  .daily-step-why {
+    font-size: 12.5px;
+    color: var(--ink-secondary);
+  }
+  .daily-divider {
+    height: 1px;
+    background: var(--border-subtle);
+    margin: 6px 0;
+  }
+
+  /* ── Key files ── */
+  .files-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+  .file-row {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+  }
+  .file-path {
+    font-family: var(--mono);
+    font-size: 11.5px;
+    font-weight: 500;
+    color: var(--ink);
+    white-space: nowrap;
+  }
+  .file-desc {
+    font-size: 11.5px;
+    color: var(--ink-muted);
+  }
+
+  .footer {
+    margin-top: 48px;
+    padding-top: 16px;
+    border-top: 1px solid var(--border-subtle);
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--ink-muted);
+    display: flex;
+    justify-content: space-between;
+  }
+
+  @media (max-width: 640px) {
+    .pipeline-flow { flex-direction: column; align-items: stretch; }
+    .pipeline-arrow { transform: rotate(90deg); text-align: center; padding: 4px 0; }
+    .pipeline-gate { top: 0; }
+    .cmd-grid { grid-template-columns: 1fr; }
+    .daily-step { grid-template-columns: 1fr; gap: 2px; }
+    .daily-step-cmd { text-align: left; }
+    .files-grid { grid-template-columns: 1fr; }
+    .header-stats { flex-wrap: wrap; gap: 12px; }
+    .phase-desc { display: none; }
+  }
+
+  @media print {
+    body { background: white; color: #1a1a1a; }
+    .page { padding: 24px 0; }
+    .cmd-card, .pipeline-hero, .daily { break-inside: avoid; }
+  }
+</style>
+</head>
+<body>
+
+<div class="page">
+
+  <header class="header">
+    <div class="header-eyebrow">autonomous forge</div>
+    <h1>Workflow <span>Reference</span></h1>
+    <p class="header-sub">Local-first CLI for safe autonomous repository improvement loops. Zero runtime dependencies, stdlib only, policy-gated at every step.</p>
+    <div class="header-stats">
+      <span><strong>27</strong> commands</span>
+      <span><strong>312</strong> tests</span>
+      <span><strong>43</strong> tasks shipped</span>
+      <span><strong>0</strong> dependencies</span>
+    </div>
+  </header>
+
+  <section class="pipeline-hero">
+    <div class="pipeline-label">The one-shot pipeline</div>
+    <div class="pipeline-flow">
+      <div class="pipeline-step">
+        <div class="pipeline-step-cmd">run</div>
+        <div class="pipeline-step-desc">select &middot; validate &middot; diff-check</div>
+      </div>
+      <div>
+        <div class="pipeline-gate">pass?</div>
+        <div class="pipeline-arrow">&rarr;</div>
+      </div>
+      <div class="pipeline-step">
+        <div class="pipeline-step-cmd">commit</div>
+        <div class="pipeline-step-desc">pre-flight &middot; git commit</div>
+      </div>
+      <div>
+        <div class="pipeline-gate">pass?</div>
+        <div class="pipeline-arrow">&rarr;</div>
+      </div>
+      <div class="pipeline-step">
+        <div class="pipeline-step-cmd">sync</div>
+        <div class="pipeline-step-desc">plan &rarr; Forgejo issues</div>
+      </div>
+    </div>
+    <div class="pipeline-oneliner"><span>forge pipeline</span> --commit --sync</div>
+    <div class="pipeline-note">Each stage is opt-in. Without flags, behaves like <code>forge run</code> with auto-save. Stops at any gate.</div>
+  </section>
+
+  <section class="daily">
+    <div class="daily-label">Typical day</div>
+    <div class="daily-steps">
+      <div class="daily-step">
+        <div class="daily-step-cmd">forge resume</div>
+        <div class="daily-step-why">Pick up where you left off</div>
+      </div>
+      <div class="daily-step">
+        <div class="daily-step-cmd">forge status</div>
+        <div class="daily-step-why">Branch, dirty files, next task</div>
+      </div>
+      <div class="daily-step">
+        <div class="daily-step-cmd">forge check</div>
+        <div class="daily-step-why">Verify clean slate (lint + drift + diff + tests)</div>
+      </div>
+      <div class="daily-divider"></div>
+      <div class="daily-step">
+        <div class="daily-step-cmd" style="color: var(--ink-muted); font-style: italic;">write code</div>
+        <div class="daily-step-why" style="font-style: italic;">Do the actual work</div>
+      </div>
+      <div class="daily-divider"></div>
+      <div class="daily-step">
+        <div class="daily-step-cmd">forge pipeline --commit --sync</div>
+        <div class="daily-step-why">Validate, commit, push to Forgejo</div>
+      </div>
+      <div class="daily-step">
+        <div class="daily-step-cmd">forge mark AUTO-xxx DONE</div>
+        <div class="daily-step-why">Close the task in the plan file</div>
+      </div>
+      <div class="daily-step">
+        <div class="daily-step-cmd">forge pause</div>
+        <div class="daily-step-why">Capture context for next session</div>
+      </div>
+    </div>
+  </section>
+
+  <section class="phase">
+    <div class="phase-header">
+      <span class="phase-tag setup">setup</span>
+      <span class="phase-title">Bootstrap a repo</span>
+      <span class="phase-desc">One-time scaffolding</span>
+    </div>
+    <div class="cmd-grid">
+      <div class="cmd-card">
+        <div class="cmd-card-name">forge init</div>
+        <div class="cmd-card-desc">Scaffold <code>.ai/</code> and <code>.forge/</code> metadata into any repo</div>
+      </div>
+      <div class="cmd-card">
+        <div class="cmd-card-name">forge inventory</div>
+        <div class="cmd-card-desc">Check file-presence health signals</div>
+      </div>
+      <div class="cmd-card">
+        <div class="cmd-card-name">forge policy</div>
+        <div class="cmd-card-desc">Review safety boundaries (allowed/prohibited paths)</div>
+      </div>
+    </div>
+  </section>
+
+  <section class="phase">
+    <div class="phase-header">
+      <span class="phase-tag plan">plan</span>
+      <span class="phase-title">Manage work</span>
+      <span class="phase-desc">Create, list, filter, select</span>
+    </div>
+    <div class="cmd-grid">
+      <div class="cmd-card">
+        <div class="cmd-card-name">forge plan add</div>
+        <div class="cmd-card-desc">Create a task with auto-incrementing ID</div>
+        <div class="cmd-card-flags">--title --goal --priority</div>
+      </div>
+      <div class="cmd-card">
+        <div class="cmd-card-name">forge tasks</div>
+        <div class="cmd-card-desc">List tasks, filter by status or priority</div>
+        <div class="cmd-card-flags">--status --priority --next</div>
+      </div>
+      <div class="cmd-card">
+        <div class="cmd-card-name">forge mark</div>
+        <div class="cmd-card-desc">Update task status in the plan file</div>
+        <div class="cmd-card-flags">AUTO-xxx TODO|DONE|BLOCKED</div>
+      </div>
+      <div class="cmd-card">
+        <div class="cmd-card-name">forge lint-plan</div>
+        <div class="cmd-card-desc">Validate plan structure and required fields</div>
+      </div>
+    </div>
+  </section>
+
+  <section class="phase">
+    <div class="phase-header">
+      <span class="phase-tag verify">verify</span>
+      <span class="phase-title">Check everything</span>
+      <span class="phase-desc">Safety gates before execution</span>
+    </div>
+    <div class="cmd-grid">
+      <div class="cmd-card wide">
+        <div class="cmd-card-name">forge check</div>
+        <div class="cmd-card-desc">Run all four checks in one shot: lint + drift + diff-check + validate. The single "are we good?" command.</div>
+        <div class="cmd-card-flags">--no-validate --cmd --timeout</div>
+      </div>
+      <div class="cmd-card">
+        <div class="cmd-card-name">forge validate</div>
+        <div class="cmd-card-desc">Run test suite or custom command</div>
+        <div class="cmd-card-flags">--cmd --timeout</div>
+      </div>
+      <div class="cmd-card">
+        <div class="cmd-card-name">forge diff-check</div>
+        <div class="cmd-card-desc">Gate changed files against policy</div>
+        <div class="cmd-card-flags">--staged</div>
+      </div>
+      <div class="cmd-card">
+        <div class="cmd-card-name">forge drift</div>
+        <div class="cmd-card-desc">Detect metadata inconsistencies</div>
+      </div>
+    </div>
+  </section>
+
+  <section class="phase">
+    <div class="phase-header">
+      <span class="phase-tag execute">execute</span>
+      <span class="phase-title">Run the loop</span>
+      <span class="phase-desc">Select &rarr; validate &rarr; commit &rarr; sync</span>
+    </div>
+    <div class="cmd-grid">
+      <div class="cmd-card">
+        <div class="cmd-card-name">forge run</div>
+        <div class="cmd-card-desc">One autonomous cycle: select, validate, diff-check, record outcome</div>
+        <div class="cmd-card-flags">--dry-run --no-validate --no-save</div>
+      </div>
+      <div class="cmd-card">
+        <div class="cmd-card-name">forge commit</div>
+        <div class="cmd-card-desc">Pre-flight checks then git commit</div>
+        <div class="cmd-card-flags">-m --check-only --no-validate</div>
+      </div>
+      <div class="cmd-card">
+        <div class="cmd-card-name">forge sync</div>
+        <div class="cmd-card-desc">Push plan state to Forgejo issues (one-way)</div>
+        <div class="cmd-card-flags">--dry-run --repo</div>
+      </div>
+      <div class="cmd-card">
+        <div class="cmd-card-name">forge pipeline</div>
+        <div class="cmd-card-desc">All three chained, each stage opt-in</div>
+        <div class="cmd-card-flags">--commit --sync --dry-run</div>
+      </div>
+    </div>
+  </section>
+
+  <section class="phase">
+    <div class="phase-header">
+      <span class="phase-tag observe">observe</span>
+      <span class="phase-title">See what's happening</span>
+      <span class="phase-desc">Status, history, data</span>
+    </div>
+    <div class="cmd-grid">
+      <div class="cmd-card">
+        <div class="cmd-card-name">forge status</div>
+        <div class="cmd-card-desc">4-line at-a-glance: branch, tasks, next, policy</div>
+      </div>
+      <div class="cmd-card">
+        <div class="cmd-card-name">forge log</div>
+        <div class="cmd-card-desc">Run history from <code>.forge/runs/</code></div>
+        <div class="cmd-card-flags">--limit --verbose</div>
+      </div>
+      <div class="cmd-card">
+        <div class="cmd-card-name">forge metrics</div>
+        <div class="cmd-card-desc">Pass rate, totals, trends</div>
+      </div>
+      <div class="cmd-card">
+        <div class="cmd-card-name">forge report</div>
+        <div class="cmd-card-desc">Full repo summary with task counts</div>
+      </div>
+      <div class="cmd-card">
+        <div class="cmd-card-name">forge export</div>
+        <div class="cmd-card-desc">JSON output for CI/CD and scripts</div>
+        <div class="cmd-card-flags">--runs --limit</div>
+      </div>
+      <div class="cmd-card">
+        <div class="cmd-card-name">forge context</div>
+        <div class="cmd-card-desc">Project briefing with state + policy + drift</div>
+      </div>
+    </div>
+  </section>
+
+  <section class="phase">
+    <div class="phase-header">
+      <span class="phase-tag session">session</span>
+      <span class="phase-title">Hand off between sessions</span>
+      <span class="phase-desc">Capture and replay context</span>
+    </div>
+    <div class="cmd-grid">
+      <div class="cmd-card">
+        <div class="cmd-card-name">forge pause</div>
+        <div class="cmd-card-desc">Capture git state + mental context to <code>.forge/sessions/</code></div>
+        <div class="cmd-card-flags">--working-on --next-steps</div>
+      </div>
+      <div class="cmd-card">
+        <div class="cmd-card-name">forge resume</div>
+        <div class="cmd-card-desc">Replay last session as a structured briefing</div>
+      </div>
+    </div>
+  </section>
+
+  <section class="phase">
+    <div class="phase-header">
+      <span class="phase-tag" style="background: var(--surface); color: var(--ink-secondary);">files</span>
+      <span class="phase-title">Key files</span>
+      <span class="phase-desc">Plan is the source of truth</span>
+    </div>
+    <div class="files-grid">
+      <div class="file-row">
+        <span class="file-path">.ai/AUTONOMOUS_PLAN.md</span>
+        <span class="file-desc">tasks &amp; roadmap</span>
+      </div>
+      <div class="file-row">
+        <span class="file-path">.ai/AUTONOMOUS_STATE.md</span>
+        <span class="file-desc">current task cursor</span>
+      </div>
+      <div class="file-row">
+        <span class="file-path">.forge/policy.md</span>
+        <span class="file-desc">safety boundaries</span>
+      </div>
+      <div class="file-row">
+        <span class="file-path">.ai/AUTONOMOUS_CHANGELOG.md</span>
+        <span class="file-desc">what was done</span>
+      </div>
+      <div class="file-row">
+        <span class="file-path">.forge/runs/</span>
+        <span class="file-desc">run history (gitignored)</span>
+      </div>
+      <div class="file-row">
+        <span class="file-path">.forge/sessions/</span>
+        <span class="file-desc">session handoffs (gitignored)</span>
+      </div>
+    </div>
+  </section>
+
+  <footer class="footer">
+    <span>autonomous-forge &middot; frank/Autonomous-Forge</span>
+    <span>pip install -e . &middot; zero deps &middot; Python 3.10+</span>
+  </footer>
+
+</div>
+
+</body>
+</html>
