@@ -338,6 +338,7 @@ Expected files or areas: `src/autonomous_forge/log.py`, `src/autonomous_forge/__
 Acceptance criteria: Lists runs newest-first, supports `--limit` and `--verbose`, handles missing runs dir gracefully, CLI wired up.
 Validation: 11 tests pass; full suite (135 tests) passes with zero regressions. Runtime confirmed.
 Risks or assumptions: Parses run summary Markdown files — format changes could break parsing.
+Notes: First command to read `.forge/runs/` output back; also the first task to add `__main__.py` so `python -m autonomous_forge` works alongside the console script.
 
 ### AUTO-025 — Full autonomous pipeline command
 Priority: P0
@@ -350,6 +351,7 @@ Expected files or areas: `src/autonomous_forge/pipeline.py`, `src/autonomous_for
 Acceptance criteria: Stops on block/failure at any stage, skips commit without `--commit`, skips sync without `--sync`, formats concise multi-stage report.
 Validation: 6 tests pass; full suite (141 tests) passes with zero regressions. Runtime confirmed.
 Risks or assumptions: Commit and sync are opt-in — pipeline without flags is equivalent to `forge run` with auto-save.
+Notes: Later grew a `--push` stage (AUTO-033) between commit and sync, and hash-linking to run reports (AUTO-034) — this task established the stage-gating pattern (stop at any gate, each escalation opt-in) that both reused.
 
 ### AUTO-026 — Mark task status from CLI
 Priority: P0
@@ -362,6 +364,7 @@ Expected files or areas: `src/autonomous_forge/mark.py`, `src/autonomous_forge/c
 Acceptance criteria: Updates status in-place, preserves other tasks, rejects invalid statuses, handles missing plan/task.
 Validation: 14 tests pass; full suite 161 tests pass. Runtime confirmed.
 Risks or assumptions: Only mutates the Status line — all other fields untouched.
+Notes: Paired with `forge plan add` (AUTO-029), this closes the full task lifecycle (create, select, execute, mark, sync) from the CLI with no manual Markdown editing required anywhere.
 
 ### AUTO-027 — Quick at-a-glance status
 Priority: P1
@@ -374,6 +377,7 @@ Expected files or areas: `src/autonomous_forge/status.py`, `src/autonomous_forge
 Acceptance criteria: Shows branch, dirty count, task breakdown, next task, last run, policy status. Handles missing plan gracefully.
 Validation: 6 tests pass; full suite 161 tests pass. Runtime confirmed.
 Risks or assumptions: Runs `git` as subprocess for branch/dirty info. No network calls.
+Notes: Complements the more verbose `forge report` — this is the 4-line daily glance, `forge report` is the full dry-run summary.
 
 ### AUTO-028 — Combined verification check
 Priority: P1
@@ -386,6 +390,7 @@ Expected files or areas: `src/autonomous_forge/check.py`, `src/autonomous_forge/
 Acceptance criteria: Runs all four checks, reports each independently, exits 0 only if all pass. Supports `--no-validate` to skip tests.
 Validation: 10 tests pass; full suite 171 tests pass. Runtime confirmed.
 Risks or assumptions: None. Also fixed SKIPPED status not being in _SUPPORTED_STATUSES.
+Notes: The "are we good?" command — later reused as the core of `forge watch`'s polling loop (Roadmap v4) and referenced directly by `forge doctor`'s design discussion (Roadmap v5).
 
 ### AUTO-029 — Add tasks to plan from CLI
 Priority: P0
@@ -398,6 +403,7 @@ Expected files or areas: `src/autonomous_forge/planadd.py`, `src/autonomous_forg
 Acceptance criteria: Auto-increments IDs, inserts before Future Ideas, preserves existing content, accepts priority/scope/files/acceptance/notes.
 Validation: 14 tests pass; full suite 192 tests pass. Runtime confirmed.
 Risks or assumptions: Only appends — no task reordering or section targeting.
+Notes: Closes the creation loop — paired with `forge mark` (AUTO-026), the full task lifecycle is now CLI-driven. Its insertion logic (insert before `## Future Ideas`, auto-increment IDs) was reused directly by `forge sync --import-orphans` (Roadmap v5, AUTO-042).
 
 ### AUTO-030 — Aggregate run history metrics
 Priority: P1
@@ -410,6 +416,7 @@ Expected files or areas: `src/autonomous_forge/metrics.py`, `src/autonomous_forg
 Acceptance criteria: Shows total runs, passed/failed/blocked counts, pass rate percentage, unique tasks, cumulative files/violations/drift.
 Validation: 7 tests pass; full suite 192 tests pass. Runtime confirmed.
 Risks or assumptions: Uses existing log module for run parsing.
+Notes: Reuses `log.py`'s existing run-file parsing rather than duplicating it. Roadmap v6 (AUTO-045) plans a `--json` export alongside the current human-readable report.
 
 ### AUTO-031 — Task filtering
 Priority: P1
@@ -422,6 +429,7 @@ Expected files or areas: `src/autonomous_forge/cli.py`, tests.
 Acceptance criteria: Filter by status, priority, or both. Case-insensitive. Shows "No matching" when empty.
 Validation: 4 tests pass; full suite 203 tests pass. Runtime confirmed.
 Risks or assumptions: None.
+Notes: Purely additive CLI flags on the existing `forge tasks` command — no new module.
 
 ### AUTO-032 — JSON export
 Priority: P1
@@ -434,6 +442,7 @@ Expected files or areas: `src/autonomous_forge/export.py`, `src/autonomous_forge
 Acceptance criteria: Valid JSON output with version, plan, tasks, counts, next_task, policy. Optional --runs flag.
 Validation: 7 tests pass; full suite 203 tests pass. Runtime confirmed.
 Risks or assumptions: JSON schema is versioned for future compatibility.
+Notes: `src/autonomous_forge/export.py` — a separate module from `forge metrics`, exporting broader forge state (plan, tasks, counts, policy) rather than just run-history aggregates.
 
 ### AUTO-033 — Push stage in pipeline
 Priority: P0
@@ -446,6 +455,7 @@ Expected files or areas: `src/autonomous_forge/push.py`, `src/autonomous_forge/p
 Acceptance criteria: `forge pipeline --commit --push` pushes HEAD to the current branch's remote after commit; skips the push call if already up to date; fails loudly (no rebase/merge/force-push) on a rejected/diverged push and stops the pipeline before sync runs.
 Validation: 10 new tests pass (`test_push.py`, `test_pipeline.py`); full suite 216 tests pass.
 Risks or assumptions: Push always targets `origin` and the current branch's own name (no cross-branch push). Divergence must be resolved manually — the tool does not attempt automatic conflict resolution.
+Notes: `push.py`'s `execute_push` was later reused as-is for the standalone `forge push` command (Roadmap v4), independent of task selection or commit state.
 
 ## Roadmap v4
 
@@ -572,14 +582,14 @@ Notes: See DEC-010 in .ai/DECISIONS.md: this is an explicit, human-triggered par
 
 ### AUTO-043 — Fix missing Notes field on AUTO-024 through AUTO-033
 Priority: P3
-Status: TODO
+Status: DONE
 
 Goal: Add a Notes line to each of the 10 task blocks (AUTO-024 through AUTO-033) that forge lint-plan has been flagging as missing the required Notes field since they were created.
-Why it matters: TBD
+Why it matters: forge lint-plan/forge check have shown these 10 diagnostics on every single run across all of Roadmap v4 and v5, training reviewers to skim past lint output instead of trusting it as genuinely green.
 Scope: Edit only the Notes: line of each of the 10 task blocks; no other content changes. A short factual note per task (what it added / any follow-up) is sufficient — matches the style already used on every other DONE task.
 Expected files or areas: .ai/AUTONOMOUS_PLAN.md
 Acceptance criteria: forge lint-plan reports zero diagnostics; all 10 tasks retain their original Priority/Status/Goal/etc. unchanged.
-Validation: TBD
+Validation: `forge lint-plan` now reports "Plan lint: ok" — the first time in this project's history. Full suite unaffected (no code changed, plan-file-only edit).
 Risks or assumptions: None.
 Notes: Pure cleanup, flagged repeatedly by forge check/forge lint-plan across the whole v4 and v5 roadmap without ever being fixed.
 

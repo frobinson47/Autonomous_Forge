@@ -259,3 +259,4 @@
 - Follow-up notes: Start AUTO-001 next.
 - 2026-07-24: AUTO-041 — Auto-append completed tasks to the changelog (DONE)
 - 2026-07-24: AUTO-042 — Import orphan Forgejo issues into the plan as AUTO-xxx stubs (DONE)
+- 2026-07-25: AUTO-043 — Fix missing Notes field on AUTO-024 through AUTO-033 (DONE)
