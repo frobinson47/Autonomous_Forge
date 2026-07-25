@@ -608,15 +608,15 @@ Notes: Leftover cleanup item first flagged in a much earlier session, still not 
 
 ### AUTO-045 — Add forge metrics --json export
 Priority: P2
-Status: TODO
+Status: DONE
 
 Goal: Add a --json flag to forge metrics that prints the same aggregate run-history stats as machine-readable JSON, for external dashboards or scripting.
-Why it matters: TBD
+Why it matters: `forge export` already versions its JSON output for broader forge state, but run-history metrics had no machine-readable path at all — anything scripting against pass rate/drift/violations had to scrape the human-readable text report.
 Scope: Reuse the existing compute_metrics() data; add a JSON serialization path alongside the current human-readable format_metrics(). No new data collected — same fields, different output format.
 Expected files or areas: src/autonomous_forge/metrics.py, src/autonomous_forge/cli.py, tests, docs/COMMANDS.md
 Acceptance criteria: forge metrics --json prints valid JSON with the same fields as the human-readable report (total runs, pass/fail/blocked counts, pass rate, unique tasks, files changed, violations, drift signals); forge metrics without --json is unchanged.
-Validation: TBD
-Risks or assumptions: None.
+Validation: 5 new tests pass (`TestFormatMetricsJson` + 2 CLI tests in `test_metrics.py`); full suite 317 tests pass. Runtime confirmed against this repo — `forge metrics --json` prints valid, parseable JSON matching the text report's values.
+Risks or assumptions: Versioned the same way as `forge export` (a top-level `"version": "1"` field) — bump only on a removed field or changed meaning, not for additive fields.
 Notes: Deferred twice already (Roadmap v5 planning, tabled pending a dashboard decision). Decided in Roadmap v6 planning to build it now regardless of whether a dashboard materializes — useful for scripting either way.
 
 ### AUTO-046 — Document a CI recipe for forge check

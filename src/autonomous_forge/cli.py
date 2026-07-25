@@ -22,7 +22,7 @@ from autonomous_forge.drift import read_drift_report
 from autonomous_forge.init import format_init_result, init_forge
 from autonomous_forge.log import format_run_log, list_runs
 from autonomous_forge.mark import format_mark_result, mark_task_status
-from autonomous_forge.metrics import compute_metrics, format_metrics
+from autonomous_forge.metrics import compute_metrics, format_metrics, format_metrics_json
 from autonomous_forge.planadd import add_task, format_add_result
 from autonomous_forge.status import get_status
 from autonomous_forge.pipeline import execute_pipeline, format_pipeline_result
@@ -612,6 +612,11 @@ def build_parser() -> argparse.ArgumentParser:
         default=".",
         help="repository root",
     )
+    metrics_parser.add_argument(
+        "--json",
+        action="store_true",
+        help="print metrics as JSON instead of the human-readable report",
+    )
 
     export_parser = subparsers.add_parser(
         "export",
@@ -1200,7 +1205,7 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.command == "metrics":
         m = compute_metrics(Path(args.root))
-        print(format_metrics(m))
+        print(format_metrics_json(m) if args.json else format_metrics(m))
         return 0
 
     if args.command == "export":

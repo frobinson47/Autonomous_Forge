@@ -2,11 +2,17 @@
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
 import pytest
 
-from autonomous_forge.metrics import RunMetrics, compute_metrics, format_metrics
+from autonomous_forge.metrics import (
+    RunMetrics,
+    compute_metrics,
+    format_metrics,
+    format_metrics_json,
+)
 
 
 RUN_PASSED = """\
@@ -99,6 +105,36 @@ class TestFormatMetrics:
         assert "Unique tasks: 5" in text
 
 
+class TestFormatMetricsJson:
+    def test_json_empty(self):
+        m = RunMetrics(0, 0, 0, 0, 0, 0, 0, 0, 0, 0.0)
+        data = json.loads(format_metrics_json(m))
+        assert data["total_runs"] == 0
+        assert data["version"] == "1"
+
+    def test_json_with_data(self):
+        m = RunMetrics(10, 8, 1, 1, 0, 5, 30, 2, 3, 88.9)
+        data = json.loads(format_metrics_json(m))
+        assert data == {
+            "version": "1",
+            "total_runs": 10,
+            "passed": 8,
+            "failed": 1,
+            "blocked": 1,
+            "skipped": 0,
+            "unique_tasks": 5,
+            "total_files_changed": 30,
+            "total_violations": 2,
+            "total_drift_signals": 3,
+            "pass_rate": 88.9,
+        }
+
+    def test_json_is_valid_and_parseable(self):
+        m = RunMetrics(3, 2, 1, 0, 0, 2, 5, 0, 0, 66.7)
+        # Should not raise — proves it's well-formed JSON, not just a dict repr.
+        json.loads(format_metrics_json(m))
+
+
 class TestMetricsCLI:
     def test_metrics_cli_no_runs(self, tmp_path, capsys):
         from autonomous_forge.cli import main
@@ -116,3 +152,23 @@ class TestMetricsCLI:
         captured = capsys.readouterr()
         assert code == 0
         assert "Total runs: 1" in captured.out
+
+    def test_metrics_cli_json_flag(self, tmp_path, capsys):
+        _setup(tmp_path, [("run-2026-07-09T10-00-00.md", RUN_PASSED)])
+        from autonomous_forge.cli import main
+
+        code = main(["metrics", "--root", str(tmp_path), "--json"])
+        captured = capsys.readouterr()
+        assert code == 0
+        data = json.loads(captured.out)
+        assert data["total_runs"] == 1
+        assert data["passed"] == 1
+
+    def test_metrics_cli_json_flag_no_runs(self, tmp_path, capsys):
+        from autonomous_forge.cli import main
+
+        code = main(["metrics", "--root", str(tmp_path), "--json"])
+        captured = capsys.readouterr()
+        assert code == 0
+        data = json.loads(captured.out)
+        assert data["total_runs"] == 0

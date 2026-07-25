@@ -261,3 +261,4 @@
 - 2026-07-24: AUTO-042 — Import orphan Forgejo issues into the plan as AUTO-xxx stubs (DONE)
 - 2026-07-25: AUTO-043 — Fix missing Notes field on AUTO-024 through AUTO-033 (DONE)
 - 2026-07-25: AUTO-044 — Remove duplicate workflow-reference.html (DONE)
+- 2026-07-25: AUTO-045 — Add forge metrics --json export (DONE)

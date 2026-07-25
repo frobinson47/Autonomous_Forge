@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -59,6 +60,30 @@ def compute_metrics(root: Path = Path("."), limit: int = 1000) -> RunMetrics:
         total_drift_signals=drift,
         pass_rate=round(rate, 1),
     )
+
+
+def format_metrics_json(m: RunMetrics) -> str:
+    """Format metrics as a versioned JSON string for programmatic consumption.
+
+    Same fields and values as `format_metrics` — a different output format
+    of the same data, not a different computation. See `export.py`'s
+    `version` convention: bump this if a field is ever removed or a
+    meaning changes, not for additive fields.
+    """
+    data = {
+        "version": "1",
+        "total_runs": m.total_runs,
+        "passed": m.passed,
+        "failed": m.failed,
+        "blocked": m.blocked,
+        "skipped": m.skipped,
+        "unique_tasks": m.unique_tasks,
+        "total_files_changed": m.total_files_changed,
+        "total_violations": m.total_violations,
+        "total_drift_signals": m.total_drift_signals,
+        "pass_rate": m.pass_rate,
+    }
+    return json.dumps(data, indent=2)
 
 
 def format_metrics(m: RunMetrics) -> str:

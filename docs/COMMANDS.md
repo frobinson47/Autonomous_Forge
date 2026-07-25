@@ -868,6 +868,7 @@ Purpose: show aggregate stats from run history.
 Inputs:
 
 - `--root`: repository root, defaulting to `.`.
+- `--json`: print the same stats as a versioned JSON object instead of the human-readable report.
 
 Expected successful output:
 
@@ -888,8 +889,26 @@ If no runs exist:
 No run history found.
 ```
 
+`--json` output (same fields regardless of whether any runs exist):
+
+```json
+{
+  "version": "1",
+  "total_runs": 10,
+  "passed": 8,
+  "failed": 1,
+  "blocked": 1,
+  "skipped": 0,
+  "unique_tasks": 5,
+  "total_files_changed": 30,
+  "total_violations": 2,
+  "total_drift_signals": 3,
+  "pass_rate": 88.9
+}
+```
+
 Exit codes:
 
 - `0` always.
 
-Safety limits: reads run history files only; does not write files, run external commands, or call networks.
+Safety limits: reads run history files only; does not write files, run external commands, or call networks. `--json` is a different output format of the same computed data — no new fields, no additional file reads.
