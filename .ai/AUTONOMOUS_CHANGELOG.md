@@ -267,3 +267,4 @@
 - 2026-07-25: AUTO-048 — Make policy fail-closed on missing/malformed policy (DONE)
 - 2026-07-25: AUTO-049 — Enforce the allowlist - not-allowed violations block by default (DONE)
 - 2026-07-25: AUTO-050 — Define structured approval semantics for policy's Human approval required section (DONE)
+- 2026-07-25: AUTO-051 — Replace shell=True in forge validate with safer execution (DONE)

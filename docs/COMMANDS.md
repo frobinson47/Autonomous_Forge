@@ -391,6 +391,7 @@ Inputs:
 - `--no-save`: do not persist the run outcome to `.forge/runs/`.
 - `--no-policy-required`: allow a missing or malformed `.forge/policy.md` instead of blocking (see DEC-012 — blocking is the default).
 - `--advisory-paths`: report files outside `Allowed paths` instead of blocking (see DEC-012 — blocking is the default).
+- `--allow-shell-command`: allow the validation command to run through the shell (pipes, redirects, chaining); rejected by default (see AUTO-051).
 - `--timestamp`: optional ISO-8601 timestamp for deterministic output.
 
 Expected successful output:
@@ -510,6 +511,7 @@ Inputs:
 - `--check-only`: run pre-flight checks only, do not commit.
 - `--no-policy-required`: allow a missing or malformed `.forge/policy.md` instead of blocking (see DEC-012 — blocking is the default).
 - `--advisory-paths`: report files outside `Allowed paths` instead of blocking (see DEC-012 — blocking is the default).
+- `--allow-shell-command`: allow the validation command to run through the shell (pipes, redirects, chaining); rejected by default (see AUTO-051).
 
 Expected successful output:
 
@@ -618,6 +620,7 @@ Inputs:
 - `--dry-run`: skip validation and sync API calls.
 - `--no-policy-required`: allow a missing or malformed `.forge/policy.md` instead of blocking at the run stage (see DEC-012 — blocking is the default).
 - `--advisory-paths`: report files outside `Allowed paths` instead of blocking (see DEC-012 — blocking is the default).
+- `--allow-shell-command`: allow the validation command to run through the shell (pipes, redirects, chaining); rejected by default (see AUTO-051).
 - `--timestamp`: optional ISO-8601 timestamp for deterministic output.
 
 Note: each flag gates only its own stage — `--sync` does **not** imply `--commit` or `--push`; pass all the flags you need explicitly.
@@ -999,3 +1002,34 @@ Exit codes:
 - `0` always.
 
 Safety limits: reads run history files only; does not write files, run external commands, or call networks. `--json` is a different output format of the same computed data — no new fields, no additional file reads.
+
+## `forge validate`
+
+Purpose: run the validation command standalone and report results — the same check `forge run`/`forge commit`/`forge pipeline` run internally, without task selection, diff-checking, or committing.
+
+Inputs:
+
+- `--root`: repository root, defaulting to `.`.
+- `--cmd`: validation command (defaults to the policy's `Validation expectations` or `python -m pytest`).
+- `--policy`: policy Markdown path (defaults to `.forge/policy.md`).
+- `--timeout`: timeout in seconds (default: 300).
+- `--allow-shell-command`: allow the command to run through the shell instead of as a plain argv list (see AUTO-051 and DEC-012's fail-closed philosophy).
+
+Expected successful output:
+
+```text
+Validation report
+Command: python -m pytest
+Result: PASSED
+Exit code: 0
+Timestamp: <ISO-8601 timestamp>
+Output:
+  ...
+```
+
+Exit codes:
+
+- `0` when the command exits zero.
+- `1` when the command exits non-zero, times out, is not found, or requires shell interpretation without `--allow-shell-command`.
+
+Safety limits: **runs an external command** — the one thing in this tool that always executes arbitrary code, by design (it's the validation step). As of AUTO-051, a command containing pipes, redirects, chaining (`&&`/`||`/`;`), or variable/backtick expansion is rejected by default and requires `--allow-shell-command` to run via the shell; a command without those constructs is tokenized with `shlex` and run as a plain argv list with no shell interpretation at all — this is a heuristic scanner (quote-aware, not a full shell grammar parser), not a security sandbox, and does not restrict what the command itself can do once it runs.

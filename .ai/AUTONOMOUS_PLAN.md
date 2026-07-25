@@ -688,16 +688,16 @@ Notes: The biggest open design question in Roadmap v7 - do not silently pick a m
 
 ### AUTO-051 — Replace shell=True in forge validate with safer execution
 Priority: P1
-Status: TODO
+Status: DONE
 
 Goal: validate.py runs the validation command via subprocess.run(..., shell=True); replace with array-based execution where possible, or require an explicit opt-in flag for shell-interpreted commands.
-Why it matters: TBD
+Why it matters: shell=True on a command sourced from file content (.forge/policy.md's Validation expectations prose) means an unreviewed or malicious policy edit could inject shell syntax; unconditional shell=True made this the default posture even for the common case that never needed it.
 Scope: Split validation commands into two paths: simple space-separated commands run as an argv list (no shell), commands needing real shell features (pipes, &&, env expansion) require an explicit --allow-shell-command flag. The command can come from a CLI flag or from policy Markdown prose (.forge/policy.md's Validation expectations section) - the policy-sourced path is the more concerning one since it's file content, not a direct CLI argument.
 Expected files or areas: src/autonomous_forge/validate.py, src/autonomous_forge/cli.py, tests, docs/COMMANDS.md
 Acceptance criteria: A default validation command (e.g. python -m pytest) runs without shell=True; a command needing shell features fails clearly without --allow-shell-command and succeeds with it; existing default behavior for the common case is unaffected.
-Validation: TBD
-Risks or assumptions: None.
-Notes: Independently verified: validate.py's subprocess.run call does pass shell=True today. Lower urgency for a personal/trusted repo, but real for shared repos or unreviewed policy edits.
+Validation: `python -m pytest` — 379 tests pass (12 new: test_validate.py, including a quote-aware `_needs_shell` unit-test class). `forge lint-plan` — ok.
+Risks or assumptions: `_needs_shell()` is a simple quote-aware character scanner, not a full shell grammar parser — it does not handle backslash-escaped quotes. Fixed one real bug found while testing: a naive (non-quote-aware) first draft misclassified `python -c "import time; time.sleep(1)"` as needing shell, because it saw the semicolon inside the quoted Python one-liner; the scanner now tracks single/double-quote state and ignores metacharacters inside quotes.
+Notes: Independently verified: validate.py's subprocess.run call does pass shell=True today. Lower urgency for a personal/trusted repo, but real for shared repos or unreviewed policy edits. Also added a `forge validate` docs/COMMANDS.md section — the command existed but was previously undocumented.
 
 ### AUTO-052 — Make .forge/.lock acquisition atomic
 Priority: P1

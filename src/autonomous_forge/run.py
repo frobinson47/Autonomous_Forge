@@ -60,6 +60,7 @@ def execute_run(
     use_lock: bool = True,
     require_policy: bool = True,
     advisory_paths: bool = False,
+    allow_shell_command: bool = False,
 ) -> RunOutcome:
     """Execute one autonomous cycle: select, validate, diff-check, record.
 
@@ -73,7 +74,7 @@ def execute_run(
         return _execute_run_body(
             root, plan_path, state_path, changelog_path, policy_path,
             validate, validate_command, validate_timeout, ts, dry_run,
-            require_policy, advisory_paths,
+            require_policy, advisory_paths, allow_shell_command,
         )
 
     try:
@@ -97,7 +98,7 @@ def execute_run(
         return _execute_run_body(
             root, plan_path, state_path, changelog_path, policy_path,
             validate, validate_command, validate_timeout, ts, dry_run,
-            require_policy, advisory_paths,
+            require_policy, advisory_paths, allow_shell_command,
         )
     finally:
         lock.release()
@@ -116,6 +117,7 @@ def _execute_run_body(
     dry_run: bool,
     require_policy: bool = True,
     advisory_paths: bool = False,
+    allow_shell_command: bool = False,
 ) -> RunOutcome:
     """Select, validate, diff-check, and record one run cycle (no locking)."""
     plan_p = plan_path or (root / ".ai/AUTONOMOUS_PLAN.md")
@@ -273,6 +275,7 @@ def _execute_run_body(
             policy_path=policy_p,
             timeout_seconds=validate_timeout,
             timestamp=ts,
+            allow_shell_command=allow_shell_command,
         )
         validation_passed = val_result.passed
         validation_command = val_result.command

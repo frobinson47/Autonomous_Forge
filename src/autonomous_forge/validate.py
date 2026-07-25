@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+import shlex
 import subprocess
 from dataclasses import dataclass
 from datetime import datetime, timezone
@@ -12,6 +13,28 @@ from autonomous_forge.policy import PolicyParseError, parse_repository_policy
 
 
 _DEFAULT_COMMAND = "python -m pytest"
+_SHELL_METACHARACTERS = set("|&;<>`$\n")
+
+
+def _needs_shell(cmd: str) -> bool:
+    """Return True if cmd uses pipes, redirects, chaining, or expansion.
+
+    Quote-aware: a metacharacter inside a quoted argument (e.g. the ``;`` in
+    ``python -c "import time; time.sleep(1)"``) is ordinary argument text,
+    not shell syntax, so it does not require shell interpretation. This is a
+    simple scanner, not a full shell grammar parser — it does not handle
+    backslash-escaped quotes.
+    """
+    in_single = False
+    in_double = False
+    for ch in cmd:
+        if ch == "'" and not in_double:
+            in_single = not in_single
+        elif ch == '"' and not in_single:
+            in_double = not in_double
+        elif not in_single and not in_double and ch in _SHELL_METACHARACTERS:
+            return True
+    return False
 
 
 @dataclass(frozen=True)
@@ -48,8 +71,15 @@ def run_validation(
     policy_path: Path | None = None,
     timeout_seconds: int = 300,
     timestamp: str | None = None,
+    allow_shell_command: bool = False,
 ) -> ValidationResult:
-    """Run a validation command and return structured results."""
+    """Run a validation command and return structured results.
+
+    Commands using pipes, redirects, chaining (``&&``/``||``/``;``), or
+    variable/backtick expansion require ``allow_shell_command=True`` and run
+    via the shell; everything else is tokenized with `shlex` and run as an
+    argv list with no shell interpretation.
+    """
     pol_path = policy_path or (root / ".forge/policy.md")
     policy_text = pol_path.read_text(encoding="utf-8") if pol_path.exists() else None
     cmd = command or _extract_validation_command(policy_text)
@@ -60,10 +90,39 @@ def run_validation(
         env["PYTHONPATH"] = str(root / "src")
         cmd = cmd.replace("PYTHONPATH=src ", "", 1)
 
+    needs_shell = _needs_shell(cmd)
+    if needs_shell and not allow_shell_command:
+        return ValidationResult(
+            command=cmd,
+            exit_code=-1,
+            stdout="",
+            stderr=(
+                "Command requires shell interpretation (pipes, redirects, chaining, "
+                "or expansion) but --allow-shell-command was not passed. "
+                f"Command: {cmd!r}"
+            ),
+            passed=False,
+            timestamp=ts,
+        )
+
+    to_run: str | list[str] = cmd
+    if not needs_shell:
+        try:
+            to_run = shlex.split(cmd)
+        except ValueError as exc:
+            return ValidationResult(
+                command=cmd,
+                exit_code=-1,
+                stdout="",
+                stderr=f"Could not parse command: {exc}",
+                passed=False,
+                timestamp=ts,
+            )
+
     try:
         result = subprocess.run(
-            cmd,
-            shell=True,
+            to_run,
+            shell=needs_shell,
             cwd=str(root),
             capture_output=True,
             text=True,

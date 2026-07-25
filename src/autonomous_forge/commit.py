@@ -62,6 +62,7 @@ def run_pre_flight(
     staged_only: bool = True,
     require_policy: bool = True,
     advisory_paths: bool = False,
+    allow_shell_command: bool = False,
 ) -> CommitPreFlight:
     """Run pre-commit safety checks: diff-check, validation, task detection."""
     plan_p = plan_path or (root / ".ai/AUTONOMOUS_PLAN.md")
@@ -170,6 +171,7 @@ def run_pre_flight(
             root,
             command=validate_command,
             policy_path=policy_p,
+            allow_shell_command=allow_shell_command,
         )
         validation_passed = val_result.passed
         output_lines = val_result.stdout.strip().splitlines()
@@ -214,6 +216,7 @@ def execute_commit(
     timestamp: str | None = None,
     require_policy: bool = True,
     advisory_paths: bool = False,
+    allow_shell_command: bool = False,
 ) -> CommitResult:
     """Run pre-flight checks and commit if safe.
 
@@ -226,7 +229,7 @@ def execute_commit(
             root, plan_path=plan_path, policy_path=policy_path,
             validate=validate, validate_command=validate_command,
             staged_only=staged_only, require_policy=require_policy,
-            advisory_paths=advisory_paths,
+            advisory_paths=advisory_paths, allow_shell_command=allow_shell_command,
         )
 
     if not pre_flight.safe:

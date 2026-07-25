@@ -358,6 +358,11 @@ def build_parser() -> argparse.ArgumentParser:
         help="report files outside Allowed paths instead of blocking (default: blocks)",
     )
     run_parser.add_argument(
+        "--allow-shell-command",
+        action="store_true",
+        help="allow the validation command to run through the shell (pipes, redirects, chaining); default rejects such commands",
+    )
+    run_parser.add_argument(
         "--timestamp",
         default=None,
         help="optional ISO-8601 timestamp for deterministic output",
@@ -447,6 +452,11 @@ def build_parser() -> argparse.ArgumentParser:
         "--advisory-paths",
         action="store_true",
         help="report files outside Allowed paths instead of blocking (default: blocks)",
+    )
+    commit_parser.add_argument(
+        "--allow-shell-command",
+        action="store_true",
+        help="allow the validation command to run through the shell (pipes, redirects, chaining); default rejects such commands",
     )
 
     push_parser = subparsers.add_parser(
@@ -545,6 +555,11 @@ def build_parser() -> argparse.ArgumentParser:
         "--advisory-paths",
         action="store_true",
         help="report files outside Allowed paths instead of blocking (default: blocks)",
+    )
+    pipeline_parser.add_argument(
+        "--allow-shell-command",
+        action="store_true",
+        help="allow the validation command to run through the shell (pipes, redirects, chaining); default rejects such commands",
     )
     pipeline_parser.add_argument(
         "--timestamp",
@@ -860,6 +875,11 @@ def build_parser() -> argparse.ArgumentParser:
         default=300,
         help="timeout in seconds (default: 300)",
     )
+    validate_parser.add_argument(
+        "--allow-shell-command",
+        action="store_true",
+        help="allow the validation command to run through the shell (pipes, redirects, chaining); default rejects such commands",
+    )
     return parser
 
 
@@ -1145,6 +1165,7 @@ def main(argv: list[str] | None = None) -> int:
                 timestamp=args.timestamp,
                 require_policy=not args.no_policy_required,
                 advisory_paths=args.advisory_paths,
+                allow_shell_command=args.allow_shell_command,
             )
         except FileNotFoundError as exc:
             print(f"File not found: {exc}")
@@ -1213,6 +1234,7 @@ def main(argv: list[str] | None = None) -> int:
                 timestamp=args.timestamp,
                 require_policy=not args.no_policy_required,
                 advisory_paths=args.advisory_paths,
+                allow_shell_command=args.allow_shell_command,
             )
         except FileNotFoundError as exc:
             print(f"File not found: {exc}")
@@ -1242,6 +1264,7 @@ def main(argv: list[str] | None = None) -> int:
                 validate_command=args.commit_cmd,
                 require_policy=not args.no_policy_required,
                 advisory_paths=args.advisory_paths,
+                allow_shell_command=args.allow_shell_command,
             )
             print(format_pre_flight(pf))
             return 0 if pf.safe else 1
@@ -1252,6 +1275,7 @@ def main(argv: list[str] | None = None) -> int:
             validate_command=args.commit_cmd,
             require_policy=not args.no_policy_required,
             advisory_paths=args.advisory_paths,
+            allow_shell_command=args.allow_shell_command,
         )
         print(format_commit_result(result))
         return 0 if result.committed else 1
@@ -1374,6 +1398,7 @@ def main(argv: list[str] | None = None) -> int:
         result = run_validation(
             root, command=args.validate_cmd,
             policy_path=policy_path, timeout_seconds=args.timeout,
+            allow_shell_command=args.allow_shell_command,
         )
         print(format_validation_result(result))
         return 0 if result.passed else 1
