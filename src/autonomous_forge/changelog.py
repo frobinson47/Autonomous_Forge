@@ -20,17 +20,27 @@ CHANGELOG_RELATIVE_PATH = Path(".ai") / "AUTONOMOUS_CHANGELOG.md"
 
 
 def _read_head_text(root: Path, relpath: str) -> str | None:
-    """Read a file's content as of HEAD, or None if unavailable."""
+    """Read a file's content as of HEAD, or None if unavailable.
+
+    Decodes explicitly as UTF-8 rather than relying on `text=True`'s
+    locale-default decoding: on Windows that default is often cp1252,
+    which silently mangles non-ASCII bytes (e.g. em-dashes) instead of
+    raising — every task heading using " — " then fails to match and the
+    file appears to have zero tasks. Every other subprocess git call in
+    this project only reads paths/hashes/branch names (pure ASCII), so
+    this is the first place file *content* is piped through subprocess
+    text mode, and the first place this class of bug can surface.
+    """
     try:
         result = subprocess.run(
             ["git", "show", f"HEAD:{relpath}"],
-            capture_output=True, text=True, cwd=root, timeout=10,
+            capture_output=True, cwd=root, timeout=10,
         )
     except (subprocess.SubprocessError, FileNotFoundError):
         return None
     if result.returncode != 0:
         return None
-    return result.stdout
+    return result.stdout.decode("utf-8")
 
 
 def find_newly_done_tasks(

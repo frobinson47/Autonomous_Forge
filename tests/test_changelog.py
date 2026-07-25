@@ -69,7 +69,7 @@ class TestFindNewlyDoneTasks:
     def test_detects_task_newly_done_since_head(self, tmp_path: Path):
         _setup(tmp_path, PLAN_ONE_DONE)
         with patch("autonomous_forge.changelog.subprocess.run") as mock_run:
-            mock_run.return_value = MagicMock(returncode=0, stdout=PLAN_BOTH_TODO)
+            mock_run.return_value = MagicMock(returncode=0, stdout=PLAN_BOTH_TODO.encode("utf-8"))
             newly_done = find_newly_done_tasks(tmp_path)
 
         assert [t.task_id for t in newly_done] == ["AUTO-001"]
@@ -77,7 +77,7 @@ class TestFindNewlyDoneTasks:
     def test_no_change_returns_empty(self, tmp_path: Path):
         _setup(tmp_path, PLAN_ONE_DONE)
         with patch("autonomous_forge.changelog.subprocess.run") as mock_run:
-            mock_run.return_value = MagicMock(returncode=0, stdout=PLAN_ONE_DONE)
+            mock_run.return_value = MagicMock(returncode=0, stdout=PLAN_ONE_DONE.encode("utf-8"))
             newly_done = find_newly_done_tasks(tmp_path)
 
         assert newly_done == ()
@@ -85,7 +85,7 @@ class TestFindNewlyDoneTasks:
     def test_multiple_newly_done_tasks(self, tmp_path: Path):
         _setup(tmp_path, PLAN_BOTH_DONE)
         with patch("autonomous_forge.changelog.subprocess.run") as mock_run:
-            mock_run.return_value = MagicMock(returncode=0, stdout=PLAN_BOTH_TODO)
+            mock_run.return_value = MagicMock(returncode=0, stdout=PLAN_BOTH_TODO.encode("utf-8"))
             newly_done = find_newly_done_tasks(tmp_path)
 
         assert {t.task_id for t in newly_done} == {"AUTO-001", "AUTO-002"}
@@ -106,7 +106,7 @@ class TestFindNewlyDoneTasks:
     def test_already_done_at_head_is_not_newly_done(self, tmp_path: Path):
         _setup(tmp_path, PLAN_ONE_DONE)
         with patch("autonomous_forge.changelog.subprocess.run") as mock_run:
-            mock_run.return_value = MagicMock(returncode=0, stdout=PLAN_ONE_DONE)
+            mock_run.return_value = MagicMock(returncode=0, stdout=PLAN_ONE_DONE.encode("utf-8"))
             newly_done = find_newly_done_tasks(tmp_path)
 
         assert newly_done == ()
