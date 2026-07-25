@@ -645,6 +645,138 @@ Validation: 12 new tests pass (`test_revert.py`, real-git integration including 
 Risks or assumptions: Commit lookup matches on the run-history `Task:` field's prefix, same convention as elsewhere in this codebase (e.g. `format_run_outcome`'s "Task: <id> — <title>" line) — a task with no recorded commit (e.g. `--no-save` was used, or history was pruned) requires `--commit` explicitly. A conflicting revert always aborts automatically rather than leaving a half-finished state for the human to resolve — intentionally conservative, matching the project's stated non-goal of automatic conflict resolution (see AUTO-033's push-conflict handling for the same precedent).
 Notes: Closes a real gap: nothing currently undoes a completed task cleanly short of manual git surgery plus a manual forge mark. Originally scoped for Roadmap v5, deferred to v6 to keep v5 to its four core reliability tasks. Completes Roadmap v6 (AUTO-043 through AUTO-047, all DONE).
 
+## Roadmap v7
+
+### AUTO-048 — Make policy fail-closed on missing/malformed policy
+Priority: P0
+Status: TODO
+
+Goal: Missing or malformed .forge/policy.md should block commit, pipeline --commit, mark, plan add, and import-orphans by default, instead of silently skipping diff-check as it does today.
+Why it matters: TBD
+Scope: commit.py currently does 'if policy_text: check_diff_against_policy(...)' — when policy_text is None/malformed, no check runs and the commit can proceed. Change the default to block in that case, with a clear message. Add an explicit, prominently named override flag (e.g. --no-policy-required) for repos that intentionally have no policy yet (matches forge init's own bootstrap window).
+Expected files or areas: src/autonomous_forge/commit.py, src/autonomous_forge/run.py, src/autonomous_forge/cli.py, tests, docs/COMMANDS.md, .forge/policy.md
+Acceptance criteria: A repo with no .forge/policy.md fails forge commit/forge pipeline --commit by default with a clear message; the override flag restores today's behavior explicitly; a malformed policy also blocks by default.
+Validation: TBD
+Risks or assumptions: None.
+Notes: See DEC-012. Independently verified: commit.py's diff-check is entirely skipped (not just relaxed) when policy_text is falsy — this is a real fail-open gap, not a documentation quibble.
+
+### AUTO-049 — Enforce the allowlist - not-allowed violations block by default
+Priority: P0
+Status: TODO
+
+Goal: Files outside .forge/policy.md's Allowed paths should block forge run/forge commit by default, not just get reported - currently only rule == 'prohibited' violations block; 'not-allowed' violations are collected but never stop anything.
+Why it matters: TBD
+Scope: run.py and commit.py both filter to only the 'prohibited' rule and only block on that list. Change the default blocking set to include 'not-allowed' too. Add an explicit opt-out (e.g. --advisory-paths or a policy-level flag) for repos that want the old warn-only allowlist behavior.
+Expected files or areas: src/autonomous_forge/run.py, src/autonomous_forge/commit.py, src/autonomous_forge/cli.py, tests, docs/COMMANDS.md
+Acceptance criteria: A changed file outside Allowed paths blocks forge run/forge commit by default with a clear message distinguishing it from a prohibited-path block; the opt-out restores today's advisory-only behavior explicitly.
+Validation: TBD
+Risks or assumptions: None.
+Notes: See DEC-012. This exact gap was hit directly this session - .forge/config.toml and .gitignore showed not-allowed warnings on every commit (AUTO-039, AUTO-040) until the allowlist was manually widened (DEC-011), because nothing actually enforced the boundary.
+
+### AUTO-050 — Define structured approval semantics for policy's Human approval required section
+Priority: P1
+Status: TODO
+
+Goal: Replace the prose-only 'Human approval required' policy section with a structured mechanism that actually gates matching actions, instead of being surfaced only in context/reporting with no enforcement.
+Why it matters: TBD
+Scope: Design question, not just implementation - needs a decision on mechanism (an approved-task-ID list, a recorded approval note referenced by forge commit, or a required interactive confirmation scoped to the matching category) before building. Should integrate with the fail-closed changes in this same roadmap rather than being a third, inconsistent enforcement path.
+Expected files or areas: src/autonomous_forge/policy.py, src/autonomous_forge/commit.py, src/autonomous_forge/cli.py, tests, docs/COMMANDS.md, docs/POLICY.md
+Acceptance criteria: A policy-flagged approval-required action (e.g. adding network access) is detected against the actual diff and blocks without some form of recorded approval; the exact approval mechanism is decided and documented before implementation begins.
+Validation: TBD
+Risks or assumptions: None.
+Notes: The biggest open design question in Roadmap v7 - do not silently pick a mechanism; confirm with the user first, same as DEC-010's Forgejo-import design discussion.
+
+### AUTO-051 — Replace shell=True in forge validate with safer execution
+Priority: P1
+Status: TODO
+
+Goal: validate.py runs the validation command via subprocess.run(..., shell=True); replace with array-based execution where possible, or require an explicit opt-in flag for shell-interpreted commands.
+Why it matters: TBD
+Scope: Split validation commands into two paths: simple space-separated commands run as an argv list (no shell), commands needing real shell features (pipes, &&, env expansion) require an explicit --allow-shell-command flag. The command can come from a CLI flag or from policy Markdown prose (.forge/policy.md's Validation expectations section) - the policy-sourced path is the more concerning one since it's file content, not a direct CLI argument.
+Expected files or areas: src/autonomous_forge/validate.py, src/autonomous_forge/cli.py, tests, docs/COMMANDS.md
+Acceptance criteria: A default validation command (e.g. python -m pytest) runs without shell=True; a command needing shell features fails clearly without --allow-shell-command and succeeds with it; existing default behavior for the common case is unaffected.
+Validation: TBD
+Risks or assumptions: None.
+Notes: Independently verified: validate.py's subprocess.run call does pass shell=True today. Lower urgency for a personal/trusted repo, but real for shared repos or unreviewed policy edits.
+
+### AUTO-052 — Make .forge/.lock acquisition atomic
+Priority: P1
+Status: TODO
+
+Goal: Replace the check-then-write lock acquisition in lock.py (path.exists() then write_text()) with an atomic exclusive-create primitive, closing the TOCTOU race where two processes can both observe no lock and both create one.
+Why it matters: TBD
+Scope: Use O_CREAT | O_EXCL (or the platform-appropriate atomic equivalent) to acquire the lock file, so a second concurrent acquire attempt fails atomically instead of racing. Keep the existing stale-lock detection and recovery (dead PID clears automatically) - only the acquisition step itself needs to become atomic.
+Expected files or areas: src/autonomous_forge/lock.py, tests
+Acceptance criteria: A tight-loop concurrent-acquire test (two near-simultaneous acquire attempts) never succeeds twice; existing stale-lock and release behavior from AUTO-040 is unaffected.
+Validation: TBD
+Risks or assumptions: None.
+Notes: Independently verified: lock.py's acquire_lock does 'if path.exists(): ...' then 'path.write_text(...)' with no atomicity between the check and the write - a real TOCTOU gap, not just a theoretical one.
+
+### AUTO-053 — Require forge lint-plan to pass before mutable pipeline stages
+Priority: P2
+Status: TODO
+
+Goal: A malformed plan should never be used to select, commit against, or sync tasks - currently forge run/forge commit/forge pipeline proceed on a plan with lint failures, since normal execution never requires forge lint-plan to pass first.
+Why it matters: TBD
+Scope: Run the existing lint_plan_structure check as a pre-flight gate inside execute_run/execute_commit (or pipeline's own entry point) before task selection, with a clear block message and the same override-flag pattern as the policy fail-closed task.
+Expected files or areas: src/autonomous_forge/run.py, src/autonomous_forge/commit.py, src/autonomous_forge/pipeline.py, src/autonomous_forge/cli.py, tests, docs/COMMANDS.md
+Acceptance criteria: A plan with a lint diagnostic (e.g. missing required field) blocks forge run/forge pipeline by default with the lint detail included; a clean plan is unaffected; the override flag restores today's behavior.
+Validation: TBD
+Risks or assumptions: None.
+Notes: Complements the policy fail-closed tasks - same fail-closed philosophy applied to plan structure instead of file policy.
+
+### AUTO-054 — Split cli.py and sync.py into smaller modules
+Priority: P3
+Status: TODO
+
+Goal: cli.py (~1300 lines) and sync.py (~700 lines) have grown into monoliths mixing dispatch/orchestration with business logic; split them into smaller, clearer modules before more commands are added.
+Why it matters: TBD
+Scope: cli.py: keep argument parsing thin, move each command's dispatch handler into its own function or module rather than one long if/elif chain in main(). sync.py: separate the Forgejo HTTP transport (ForgejoClient) from issue-matching/label/milestone reconciliation logic and from the orphan-import logic, which are currently all in one file.
+Expected files or areas: src/autonomous_forge/cli.py, src/autonomous_forge/sync.py, tests
+Acceptance criteria: No behavior change - same commands, same output, same exit codes. cli.py's main() dispatch chain and sync.py's responsibilities are demonstrably split into smaller, independently testable units. Full test suite passes unchanged.
+Validation: TBD
+Risks or assumptions: None.
+Notes: Structural refactor only - explicitly no behavior changes, to keep this reviewable as pure internal reorganization separate from the safety-semantics changes elsewhere in this roadmap.
+
+### AUTO-055 — Add real CI enforcement to this repo (not just documented)
+Priority: P2
+Status: TODO
+
+Goal: docs/CI.md documents a CI recipe but this repo doesn't run it on itself. Add an actual Forgejo Actions workflow here, plus basic dev-quality tooling (linter, type checker, coverage) that pyproject.toml currently has none of.
+Why it matters: TBD
+Scope: Add .forgejo/workflows/forge-check.yml following docs/CI.md's documented recipe. Add Ruff (lint) and a type checker (mypy or pyright) as dev-only tooling in pyproject.toml's optional-dependencies (not runtime deps - keep the zero-runtime-dependency guarantee intact). Wire both into the CI workflow alongside forge check and pytest.
+Expected files or areas: .forgejo/workflows/forge-check.yml, pyproject.toml, docs/CI.md, README.md
+Acceptance criteria: A pushed commit triggers the Forgejo Actions workflow and runs forge check plus the test suite; pyproject.toml declares dev extras for lint/type-check tooling; docs/CI.md is updated to note this repo now dogfoods its own documented recipe.
+Validation: TBD
+Risks or assumptions: None.
+Notes: Requires confirming Forgejo Actions is actually enabled on forgejo.familytechlab.com before implementation - verify with the user/infra first, this may need action outside the repo itself.
+
+### AUTO-056 — Handle the AUTO-999 task ID ceiling
+Priority: P3
+Status: TODO
+
+Goal: Task heading regex is fixed to exactly 3 digits, hard-capping IDs at AUTO-999. Currently at AUTO-047 with plenty of headroom, but the ceiling should be handled deliberately rather than discovered as a production failure.
+Why it matters: TBD
+Scope: Either widen the regex to allow 3+ digit IDs going forward (zero-padded to at least 3, no upper bound) or explicitly document and test a migration path for when the ceiling is approached. Prefer widening the regex - simpler, backward compatible with all existing 3-digit IDs, no migration needed.
+Expected files or areas: src/autonomous_forge/plan.py, src/autonomous_forge/planadd.py, tests
+Acceptance criteria: forge plan add correctly generates AUTO-1000 after AUTO-999 exists (tested with a synthetic high-numbered fixture, not by actually creating 999 real tasks); all existing 3-digit task IDs continue to parse and sort correctly.
+Validation: TBD
+Risks or assumptions: None.
+Notes: Low urgency at 47/999 tasks used, but cheap to fix now versus rediscovering it as a production bug at scale.
+
+### AUTO-057 — Fix README's stale roadmap/test-count stats and add a drift check for them
+Priority: P1
+Status: TODO
+
+Goal: README currently says Roadmap v1-v4 complete (37/37 tasks, 253 tests) - actual state is v6 complete (47/47 tasks, 329 tests). Fix it now, and add a check that catches this class of staleness automatically going forward.
+Why it matters: TBD
+Scope: Update README.md's status line to current, accurate numbers. Then extend forge drift (or forge check) to flag when README's stated task/test counts diverge from the actual plan file's DONE count and the last recorded test count in AUTONOMOUS_STATE.md, so this can't silently drift again.
+Expected files or areas: README.md, src/autonomous_forge/drift.py, tests, docs/COMMANDS.md
+Acceptance criteria: README's status line matches current reality; forge drift reports a signal when README's stated counts no longer match the plan file's DONE count or the state file's last test count.
+Validation: TBD
+Risks or assumptions: None.
+Notes: Flagged by the assessment as especially damaging given the project's whole purpose is preventing exactly this kind of metadata drift. Quick fix for the immediate staleness; the drift-check extension prevents recurrence.
+
 ## Future Ideas
 
 - (empty — all previously listed ideas were promoted into Roadmap v4, v5, or v6)
