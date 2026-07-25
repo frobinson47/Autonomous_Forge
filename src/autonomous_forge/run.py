@@ -14,7 +14,7 @@ from autonomous_forge.plan import (
     parse_plan_tasks,
     select_eligible_task,
 )
-from autonomous_forge.policy import PolicyParseError, parse_repository_policy
+from autonomous_forge.policy import PolicyParseError, parse_repository_policy, validate_policy_text
 from autonomous_forge.validate import run_validation
 
 
@@ -57,6 +57,7 @@ def execute_run(
     timestamp: str | None = None,
     dry_run: bool = False,
     use_lock: bool = True,
+    require_policy: bool = True,
 ) -> RunOutcome:
     """Execute one autonomous cycle: select, validate, diff-check, record.
 
@@ -70,6 +71,7 @@ def execute_run(
         return _execute_run_body(
             root, plan_path, state_path, changelog_path, policy_path,
             validate, validate_command, validate_timeout, ts, dry_run,
+            require_policy,
         )
 
     try:
@@ -93,6 +95,7 @@ def execute_run(
         return _execute_run_body(
             root, plan_path, state_path, changelog_path, policy_path,
             validate, validate_command, validate_timeout, ts, dry_run,
+            require_policy,
         )
     finally:
         lock.release()
@@ -109,6 +112,7 @@ def _execute_run_body(
     validate_timeout: int,
     ts: str,
     dry_run: bool,
+    require_policy: bool = True,
 ) -> RunOutcome:
     """Select, validate, diff-check, and record one run cycle (no locking)."""
     plan_p = plan_path or (root / ".ai/AUTONOMOUS_PLAN.md")
@@ -172,6 +176,27 @@ def _execute_run_body(
             )
 
     changed_files = get_changed_files(root)
+
+    if require_policy:
+        policy_problem = validate_policy_text(policy_text)
+        if policy_problem:
+            return RunOutcome(
+                timestamp=ts,
+                selected_task=selected_task,
+                validation_passed=None,
+                validation_command="",
+                validation_output="",
+                diff_violations=0,
+                diff_details=(),
+                drift_signals=drift_count,
+                changed_files=tuple(changed_files),
+                policy_status=policy_status,
+                blocked=True,
+                block_reason=(
+                    f"Policy required but {policy_problem}: {policy_p}. "
+                    "Pass require_policy=False (CLI: --no-policy-required) to override."
+                ),
+            )
 
     diff_violations_list = []
     if policy_text and changed_files:

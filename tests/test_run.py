@@ -193,6 +193,40 @@ class TestExecuteRun:
         )
         assert outcome.policy_status == "present and readable"
 
+    @patch("autonomous_forge.run.get_changed_files", return_value=["src/foo.py"])
+    def test_missing_policy_blocks_by_default(self, mock_git, tmp_path: Path):
+        _setup_metadata(tmp_path, MINIMAL_PLAN)
+        outcome = execute_run(
+            root=tmp_path,
+            timestamp="2026-01-01T00:00:00+00:00",
+            dry_run=True,
+        )
+        assert outcome.blocked
+        assert "missing" in outcome.block_reason
+        assert "--no-policy-required" in outcome.block_reason
+
+    @patch("autonomous_forge.run.get_changed_files", return_value=["src/foo.py"])
+    def test_missing_policy_override_allows_run(self, mock_git, tmp_path: Path):
+        _setup_metadata(tmp_path, MINIMAL_PLAN)
+        outcome = execute_run(
+            root=tmp_path,
+            timestamp="2026-01-01T00:00:00+00:00",
+            dry_run=True,
+            require_policy=False,
+        )
+        assert not outcome.blocked
+
+    @patch("autonomous_forge.run.get_changed_files", return_value=["src/foo.py"])
+    def test_malformed_policy_blocks_by_default(self, mock_git, tmp_path: Path):
+        _setup_metadata(tmp_path, MINIMAL_PLAN, "## Allowed paths\n- `src/**`\n")
+        outcome = execute_run(
+            root=tmp_path,
+            timestamp="2026-01-01T00:00:00+00:00",
+            dry_run=True,
+        )
+        assert outcome.blocked
+        assert "malformed" in outcome.block_reason
+
 
 class TestFormatRunOutcome:
     def test_idle_format(self):

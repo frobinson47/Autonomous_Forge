@@ -116,6 +116,29 @@ class TestPreFlight:
         assert pf.safe
         assert pf.task_id == ""
 
+    @patch("autonomous_forge.commit.get_changed_files", return_value=["src/foo.py"])
+    def test_missing_policy_blocks_by_default(self, mock_git, tmp_path):
+        (tmp_path / ".ai").mkdir()
+        (tmp_path / ".ai/AUTONOMOUS_PLAN.md").write_text(PLAN_WITH_TODO, encoding="utf-8")
+        pf = run_pre_flight(root=tmp_path, validate=False)
+        assert not pf.safe
+        assert "missing" in pf.block_reason
+        assert "--no-policy-required" in pf.block_reason
+
+    @patch("autonomous_forge.commit.get_changed_files", return_value=["src/foo.py"])
+    def test_missing_policy_override_allows_commit(self, mock_git, tmp_path):
+        (tmp_path / ".ai").mkdir()
+        (tmp_path / ".ai/AUTONOMOUS_PLAN.md").write_text(PLAN_WITH_TODO, encoding="utf-8")
+        pf = run_pre_flight(root=tmp_path, validate=False, require_policy=False)
+        assert pf.safe
+
+    @patch("autonomous_forge.commit.get_changed_files", return_value=["src/foo.py"])
+    def test_malformed_policy_blocks_by_default(self, mock_git, tmp_path):
+        _setup(tmp_path, policy="## Allowed paths\n- `src/**`\n")
+        pf = run_pre_flight(root=tmp_path, validate=False)
+        assert not pf.safe
+        assert "malformed" in pf.block_reason
+
 
 class TestExecuteCommit:
     @patch("autonomous_forge.commit.get_changed_files", return_value=[])
@@ -229,6 +252,39 @@ class TestCommitCLI:
         captured = capsys.readouterr()
         assert code == 1
         assert "BLOCKED" in captured.out
+
+    @patch("autonomous_forge.commit.get_changed_files", return_value=["src/foo.py"])
+    def test_check_only_blocked_by_missing_policy(self, mock_git, tmp_path, capsys):
+        (tmp_path / ".ai").mkdir()
+        (tmp_path / ".ai/AUTONOMOUS_PLAN.md").write_text(PLAN_WITH_TODO, encoding="utf-8")
+        from autonomous_forge.cli import main
+
+        code = main([
+            "commit", "--check-only", "--no-validate",
+            "--root", str(tmp_path),
+            "--plan", str(tmp_path / ".ai/AUTONOMOUS_PLAN.md"),
+            "--policy", str(tmp_path / ".forge/policy.md"),
+        ])
+        captured = capsys.readouterr()
+        assert code == 1
+        assert "BLOCKED" in captured.out
+        assert "missing" in captured.out
+
+    @patch("autonomous_forge.commit.get_changed_files", return_value=["src/foo.py"])
+    def test_check_only_no_policy_required_override(self, mock_git, tmp_path, capsys):
+        (tmp_path / ".ai").mkdir()
+        (tmp_path / ".ai/AUTONOMOUS_PLAN.md").write_text(PLAN_WITH_TODO, encoding="utf-8")
+        from autonomous_forge.cli import main
+
+        code = main([
+            "commit", "--check-only", "--no-validate", "--no-policy-required",
+            "--root", str(tmp_path),
+            "--plan", str(tmp_path / ".ai/AUTONOMOUS_PLAN.md"),
+            "--policy", str(tmp_path / ".forge/policy.md"),
+        ])
+        captured = capsys.readouterr()
+        assert code == 0
+        assert "SAFE" in captured.out
 
 
 def _git(args: list[str], cwd: Path) -> None:

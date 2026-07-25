@@ -37,6 +37,7 @@ def execute_pipeline(
     commit_message: str | None = None,
     dry_run: bool = False,
     timestamp: str | None = None,
+    require_policy: bool = True,
 ) -> PipelineResult:
     """Execute the full forge pipeline: run -> commit -> push -> sync.
 
@@ -76,6 +77,7 @@ def execute_pipeline(
         return _execute_pipeline_body(
             root, plan_path, policy_path, validate_command,
             commit, push, sync, commit_message, dry_run, ts,
+            require_policy,
         )
     finally:
         lock.release()
@@ -92,6 +94,7 @@ def _execute_pipeline_body(
     commit_message: str | None,
     dry_run: bool,
     timestamp: str,
+    require_policy: bool = True,
 ) -> PipelineResult:
     """Run each pipeline stage in sequence (no locking — caller holds it)."""
     run_outcome = execute_run(
@@ -102,6 +105,7 @@ def _execute_pipeline_body(
         dry_run=dry_run,
         timestamp=timestamp,
         use_lock=False,
+        require_policy=require_policy,
     )
     run_report_path = save_run_outcome(run_outcome, root)
 
@@ -153,6 +157,7 @@ def _execute_pipeline_body(
         validate=False,  # already validated in the run stage
         staged_only=True,
         timestamp=timestamp,
+        require_policy=require_policy,
     )
 
     if not commit_result.committed:

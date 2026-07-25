@@ -68,6 +68,17 @@ def parse_repository_policy(policy_text: str) -> RepositoryPolicy:
     )
 
 
+def validate_policy_text(policy_text: str | None) -> str | None:
+    """Return None if policy_text is present and well-formed, else a problem description."""
+    if policy_text is None:
+        return "missing"
+    try:
+        parse_repository_policy(policy_text)
+    except PolicyParseError as exc:
+        return f"malformed ({exc})"
+    return None
+
+
 def _clean_bullet(text: str) -> str:
     text = text.strip()
     if len(text) >= 2 and text[0] == "`" and text[-1] == "`":

@@ -347,6 +347,11 @@ def build_parser() -> argparse.ArgumentParser:
         help="do not persist the run outcome to .forge/runs/",
     )
     run_parser.add_argument(
+        "--no-policy-required",
+        action="store_true",
+        help="allow a missing or malformed policy file instead of blocking (default: blocks)",
+    )
+    run_parser.add_argument(
         "--timestamp",
         default=None,
         help="optional ISO-8601 timestamp for deterministic output",
@@ -426,6 +431,11 @@ def build_parser() -> argparse.ArgumentParser:
         "--check-only",
         action="store_true",
         help="run pre-flight checks only, do not commit",
+    )
+    commit_parser.add_argument(
+        "--no-policy-required",
+        action="store_true",
+        help="allow a missing or malformed policy file instead of blocking (default: blocks)",
     )
 
     push_parser = subparsers.add_parser(
@@ -514,6 +524,11 @@ def build_parser() -> argparse.ArgumentParser:
         "--dry-run",
         action="store_true",
         help="skip validation execution",
+    )
+    pipeline_parser.add_argument(
+        "--no-policy-required",
+        action="store_true",
+        help="allow a missing or malformed policy file instead of blocking (default: blocks)",
     )
     pipeline_parser.add_argument(
         "--timestamp",
@@ -1089,6 +1104,7 @@ def main(argv: list[str] | None = None) -> int:
                 validate_command=args.run_cmd,
                 dry_run=args.dry_run,
                 timestamp=args.timestamp,
+                require_policy=not args.no_policy_required,
             )
         except FileNotFoundError as exc:
             print(f"File not found: {exc}")
@@ -1155,6 +1171,7 @@ def main(argv: list[str] | None = None) -> int:
                 commit_message=args.pipeline_message,
                 dry_run=args.dry_run,
                 timestamp=args.timestamp,
+                require_policy=not args.no_policy_required,
             )
         except FileNotFoundError as exc:
             print(f"File not found: {exc}")
@@ -1182,6 +1199,7 @@ def main(argv: list[str] | None = None) -> int:
                 root, plan_path=plan_path, policy_path=policy_path,
                 validate=not args.no_validate,
                 validate_command=args.commit_cmd,
+                require_policy=not args.no_policy_required,
             )
             print(format_pre_flight(pf))
             return 0 if pf.safe else 1
@@ -1190,6 +1208,7 @@ def main(argv: list[str] | None = None) -> int:
             plan_path=plan_path, policy_path=policy_path,
             validate=not args.no_validate,
             validate_command=args.commit_cmd,
+            require_policy=not args.no_policy_required,
         )
         print(format_commit_result(result))
         return 0 if result.committed else 1

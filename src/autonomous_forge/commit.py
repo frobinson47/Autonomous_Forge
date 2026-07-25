@@ -9,6 +9,7 @@ from pathlib import Path
 from autonomous_forge.changelog import append_changelog_entries, find_newly_done_tasks
 from autonomous_forge.diffcheck import check_diff_against_policy, get_changed_files
 from autonomous_forge.plan import parse_plan_tasks, select_eligible_task
+from autonomous_forge.policy import validate_policy_text
 from autonomous_forge.validate import run_validation
 
 
@@ -58,6 +59,7 @@ def run_pre_flight(
     validate: bool = True,
     validate_command: str | None = None,
     staged_only: bool = True,
+    require_policy: bool = True,
 ) -> CommitPreFlight:
     """Run pre-commit safety checks: diff-check, validation, task detection."""
     plan_p = plan_path or (root / ".ai/AUTONOMOUS_PLAN.md")
@@ -86,6 +88,23 @@ def run_pre_flight(
             task_title=task_title,
             block_reason="No changed files to commit.",
         )
+
+    if require_policy:
+        policy_problem = validate_policy_text(policy_text)
+        if policy_problem:
+            return CommitPreFlight(
+                safe=False,
+                changed_files=tuple(changed),
+                violations=(),
+                validation_passed=None,
+                validation_output="",
+                task_id=task_id,
+                task_title=task_title,
+                block_reason=(
+                    f"Policy required but {policy_problem}: {policy_p}. "
+                    "Pass require_policy=False (CLI: --no-policy-required) to override."
+                ),
+            )
 
     violations_list: list[str] = []
     if policy_text:
@@ -158,6 +177,7 @@ def execute_commit(
     validate_command: str | None = None,
     staged_only: bool = True,
     timestamp: str | None = None,
+    require_policy: bool = True,
 ) -> CommitResult:
     """Run pre-flight checks and commit if safe.
 
@@ -169,7 +189,7 @@ def execute_commit(
         pre_flight = run_pre_flight(
             root, plan_path=plan_path, policy_path=policy_path,
             validate=validate, validate_command=validate_command,
-            staged_only=staged_only,
+            staged_only=staged_only, require_policy=require_policy,
         )
 
     if not pre_flight.safe:

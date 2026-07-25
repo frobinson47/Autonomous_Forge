@@ -649,16 +649,16 @@ Notes: Closes a real gap: nothing currently undoes a completed task cleanly shor
 
 ### AUTO-048 — Make policy fail-closed on missing/malformed policy
 Priority: P0
-Status: TODO
+Status: DONE
 
 Goal: Missing or malformed .forge/policy.md should block commit, pipeline --commit, mark, plan add, and import-orphans by default, instead of silently skipping diff-check as it does today.
-Why it matters: TBD
+Why it matters: A tool whose safety narrative depends on a policy file being enforced must not silently downgrade to "no enforcement" the moment that file goes missing or breaks — that gap made the allowlist/prohibited-paths guarantee unreliable exactly when it mattered most.
 Scope: commit.py currently does 'if policy_text: check_diff_against_policy(...)' — when policy_text is None/malformed, no check runs and the commit can proceed. Change the default to block in that case, with a clear message. Add an explicit, prominently named override flag (e.g. --no-policy-required) for repos that intentionally have no policy yet (matches forge init's own bootstrap window).
 Expected files or areas: src/autonomous_forge/commit.py, src/autonomous_forge/run.py, src/autonomous_forge/cli.py, tests, docs/COMMANDS.md, .forge/policy.md
 Acceptance criteria: A repo with no .forge/policy.md fails forge commit/forge pipeline --commit by default with a clear message; the override flag restores today's behavior explicitly; a malformed policy also blocks by default.
-Validation: TBD
-Risks or assumptions: None.
-Notes: See DEC-012. Independently verified: commit.py's diff-check is entirely skipped (not just relaxed) when policy_text is falsy — this is a real fail-open gap, not a documentation quibble.
+Validation: `python -m pytest` — 343 tests pass (13 new: test_policy.py x3, test_commit.py x4, test_run.py x3, test_pipeline.py x2, plus one CLI override case). `forge lint-plan` — ok.
+Risks or assumptions: Narrowed scope during implementation — `mark`, `plan add`, and `import-orphans` never performed diff-checking against arbitrary changed files (they only ever wrote to `.ai/AUTONOMOUS_PLAN.md`, an always-allowed path), so there was no existing fail-open gap there to close. Added `require_policy` (default True) with a `--no-policy-required` override only to `run`/`commit`/`pipeline`, the commands that actually perform diff-checking today. Extending policy gating to plan-mutation commands would be new functionality, not a fix to the documented gap — left for a separate decision if wanted.
+Notes: See DEC-012. Independently verified: commit.py's diff-check is entirely skipped (not just relaxed) when policy_text is falsy — this is a real fail-open gap, not a documentation quibble. New `autonomous_forge.policy.validate_policy_text()` helper centralizes the missing/malformed check; block messages point users at `--no-policy-required`. docs/POLICY.md's "Conservative defaults" section rewritten from aspirational language to describe actual enforcement.
 
 ### AUTO-049 — Enforce the allowlist - not-allowed violations block by default
 Priority: P0

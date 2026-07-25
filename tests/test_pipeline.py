@@ -107,6 +107,36 @@ class TestExecutePipeline:
         execute_pipeline(root=tmp_path, dry_run=True, timestamp="2026-01-01T00:00:00+00:00")
         assert not (tmp_path / ".forge" / ".lock").exists()
 
+    @patch("autonomous_forge.run.get_changed_files", return_value=["src/foo.py"])
+    def test_missing_policy_blocks_pipeline_by_default(self, mock_git, tmp_path):
+        (tmp_path / ".ai").mkdir()
+        (tmp_path / ".ai/AUTONOMOUS_PLAN.md").write_text(PLAN_TODO, encoding="utf-8")
+        (tmp_path / ".ai/AUTONOMOUS_STATE.md").write_text("- Current task: none\n", encoding="utf-8")
+        (tmp_path / ".ai/AUTONOMOUS_CHANGELOG.md").write_text("# Changelog\n", encoding="utf-8")
+        result = execute_pipeline(
+            root=tmp_path,
+            commit=True,
+            dry_run=True,
+            timestamp="2026-01-01T00:00:00+00:00",
+        )
+        assert result.stage_reached == "run"
+        assert result.run_outcome.blocked
+        assert "missing" in result.run_outcome.block_reason
+
+    @patch("autonomous_forge.run.get_changed_files", return_value=["src/foo.py"])
+    def test_missing_policy_override_allows_pipeline_run_stage(self, mock_git, tmp_path):
+        (tmp_path / ".ai").mkdir()
+        (tmp_path / ".ai/AUTONOMOUS_PLAN.md").write_text(PLAN_TODO, encoding="utf-8")
+        (tmp_path / ".ai/AUTONOMOUS_STATE.md").write_text("- Current task: none\n", encoding="utf-8")
+        (tmp_path / ".ai/AUTONOMOUS_CHANGELOG.md").write_text("# Changelog\n", encoding="utf-8")
+        result = execute_pipeline(
+            root=tmp_path,
+            dry_run=True,
+            timestamp="2026-01-01T00:00:00+00:00",
+            require_policy=False,
+        )
+        assert not result.run_outcome.blocked
+
     @patch("autonomous_forge.run.get_changed_files", return_value=[".env"])
     def test_blocked_by_prohibited(self, mock_git, tmp_path):
         _setup(tmp_path)

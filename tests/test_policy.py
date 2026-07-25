@@ -3,6 +3,7 @@ import pytest
 from autonomous_forge.policy import (
     PolicyParseError,
     parse_repository_policy,
+    validate_policy_text,
 )
 
 
@@ -70,3 +71,17 @@ src/**
 - Run tests.
 """
         )
+
+
+def test_validate_policy_text_none_is_missing():
+    assert validate_policy_text(None) == "missing"
+
+
+def test_validate_policy_text_valid_is_none():
+    assert validate_policy_text(VALID_POLICY) is None
+
+
+def test_validate_policy_text_malformed_is_reported():
+    problem = validate_policy_text("## Allowed paths\n- `src/**`\n")
+    assert problem is not None
+    assert problem.startswith("malformed (")

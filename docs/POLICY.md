@@ -50,7 +50,7 @@ A policy file should include these headings:
 
 ## Conservative defaults
 
-When a policy file is missing, malformed, or ambiguous, Autonomous Forge should treat the repository as documentation-only and avoid implementation work. Future parser behavior should prefer false negatives over unsafe edits.
+`forge run`, `forge commit`, and `forge pipeline` block by default when `.forge/policy.md` is missing or fails to parse (see DEC-012) — a repo with no readable policy cannot safely be checked against `Allowed paths`/`Prohibited paths`, so mutating commands refuse to proceed rather than silently skipping the check. Pass `--no-policy-required` to explicitly opt out (e.g. during `forge init`'s bootstrap window, before a policy file exists yet).
 
 ## Example policy
 
