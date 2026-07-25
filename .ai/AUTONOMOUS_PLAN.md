@@ -621,15 +621,15 @@ Notes: Deferred twice already (Roadmap v5 planning, tabled pending a dashboard d
 
 ### AUTO-046 — Document a CI recipe for forge check
 Priority: P2
-Status: TODO
+Status: DONE
 
 Goal: Document a CI pipeline recipe (Forgejo Actions and/or GitHub Actions) that runs forge check on every PR, so drift/lint/policy violations are caught before merge, not only locally via forge watch.
-Why it matters: TBD
+Why it matters: forge watch only catches regressions if someone remembers to run it locally between sessions. A CI gate catches them on every push/PR automatically, with no reliance on memory.
 Scope: Documentation only — a worked example workflow YAML plus a docs/CI.md explaining setup. Do not add an actual .forge/workflows file to this repo unless explicitly requested; keep it a documented recipe others can adopt.
 Expected files or areas: docs/CI.md, README.md
 Acceptance criteria: docs/CI.md includes a complete, copy-pasteable workflow YAML that installs the package and runs forge check with a non-zero exit failing the job; README links to it.
-Validation: TBD
-Risks or assumptions: None.
+Validation: Documentation-only change; full suite unaffected (317 tests pass, no code touched). Verified at runtime that `forge check` correctly self-resolves its validation command from `.forge/policy.md`'s Validation expectations section without any external PYTHONPATH set — confirming the recipe's claim that no `--cmd` override is normally needed.
+Risks or assumptions: The workflow YAML targets `ubuntu-latest` and Python 3.12 as a reasonable default; adopters should adjust to their own runner/version needs. Not tested against a live Forgejo Actions or GitHub Actions runner — the YAML follows documented, standard syntax for both, but wasn't executed end-to-end on a real CI runner as part of this task.
 Notes: Deferred twice already (Roadmap v5 planning). Decided in Roadmap v6 planning to document it now regardless of dashboard status, since it's independently useful.
 
 ### AUTO-047 — Add forge revert to undo a completed task's commit

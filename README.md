@@ -81,6 +81,7 @@ See also:
 - `docs/RUN_SUMMARIES.md` — the local run-summary format written by `forge run`.
 - `docs/HEALTH_INVENTORY.md` — the `forge inventory` scope and safety boundaries.
 - `docs/workflow-reference.html` — a visual, curated highlights reference for the core pipeline and daily commands (not exhaustive — see `docs/COMMANDS.md` for every command).
+- `docs/CI.md` — a copy-pasteable Forgejo/GitHub Actions recipe that runs `forge check` on every push/PR.
 
 ## Repository policy boundaries
 

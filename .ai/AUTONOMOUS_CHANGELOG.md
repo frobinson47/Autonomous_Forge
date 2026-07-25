@@ -262,3 +262,4 @@
 - 2026-07-25: AUTO-043 — Fix missing Notes field on AUTO-024 through AUTO-033 (DONE)
 - 2026-07-25: AUTO-044 — Remove duplicate workflow-reference.html (DONE)
 - 2026-07-25: AUTO-045 — Add forge metrics --json export (DONE)
+- 2026-07-25: AUTO-046 — Document a CI recipe for forge check (DONE)
