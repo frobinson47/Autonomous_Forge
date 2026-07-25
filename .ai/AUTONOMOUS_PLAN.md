@@ -568,9 +568,76 @@ Validation: 12 new tests pass (`TestExecuteImportOrphans`/`TestFormatImportResul
 Risks or assumptions: Idempotency is detected via a Notes-field text match (`Forgejo issue #<N>`) rather than a structured field — if a human hand-edits that Notes text, re-running --import-orphans could re-import the same issue. Acceptable given this is explicit and human-reviewed, not autonomous.
 Notes: See DEC-010 in .ai/DECISIONS.md: this is an explicit, human-triggered partial reversal of AUTO-035's read-only-only stance — the human still reviews the plan diff before committing, preserving the plan as source of truth. Completes Roadmap v5 (AUTO-038 through AUTO-042, all DONE).
 
+## Roadmap v6
+
+### AUTO-043 — Fix missing Notes field on AUTO-024 through AUTO-033
+Priority: P3
+Status: TODO
+
+Goal: Add a Notes line to each of the 10 task blocks (AUTO-024 through AUTO-033) that forge lint-plan has been flagging as missing the required Notes field since they were created.
+Why it matters: TBD
+Scope: Edit only the Notes: line of each of the 10 task blocks; no other content changes. A short factual note per task (what it added / any follow-up) is sufficient — matches the style already used on every other DONE task.
+Expected files or areas: .ai/AUTONOMOUS_PLAN.md
+Acceptance criteria: forge lint-plan reports zero diagnostics; all 10 tasks retain their original Priority/Status/Goal/etc. unchanged.
+Validation: TBD
+Risks or assumptions: None.
+Notes: Pure cleanup, flagged repeatedly by forge check/forge lint-plan across the whole v4 and v5 roadmap without ever being fixed.
+
+### AUTO-044 — Remove duplicate workflow-reference.html
+Priority: P3
+Status: TODO
+
+Goal: Delete the duplicate workflow-reference.html at the repo root; the canonical copy is docs/workflow-reference.html.
+Why it matters: TBD
+Scope: Confirm docs/workflow-reference.html is the canonical, up-to-date copy, then delete the root-level duplicate. No content changes to the canonical file.
+Expected files or areas: workflow-reference.html (delete)
+Acceptance criteria: workflow-reference.html no longer exists at repo root; docs/workflow-reference.html is unchanged and still referenced correctly from anywhere that links to it.
+Validation: TBD
+Risks or assumptions: None.
+Notes: Leftover cleanup item first flagged in a much earlier session, still not done as of Roadmap v5.
+
+### AUTO-045 — Add forge metrics --json export
+Priority: P2
+Status: TODO
+
+Goal: Add a --json flag to forge metrics that prints the same aggregate run-history stats as machine-readable JSON, for external dashboards or scripting.
+Why it matters: TBD
+Scope: Reuse the existing compute_metrics() data; add a JSON serialization path alongside the current human-readable format_metrics(). No new data collected — same fields, different output format.
+Expected files or areas: src/autonomous_forge/metrics.py, src/autonomous_forge/cli.py, tests, docs/COMMANDS.md
+Acceptance criteria: forge metrics --json prints valid JSON with the same fields as the human-readable report (total runs, pass/fail/blocked counts, pass rate, unique tasks, files changed, violations, drift signals); forge metrics without --json is unchanged.
+Validation: TBD
+Risks or assumptions: None.
+Notes: Deferred twice already (Roadmap v5 planning, tabled pending a dashboard decision). Decided in Roadmap v6 planning to build it now regardless of whether a dashboard materializes — useful for scripting either way.
+
+### AUTO-046 — Document a CI recipe for forge check
+Priority: P2
+Status: TODO
+
+Goal: Document a CI pipeline recipe (Forgejo Actions and/or GitHub Actions) that runs forge check on every PR, so drift/lint/policy violations are caught before merge, not only locally via forge watch.
+Why it matters: TBD
+Scope: Documentation only — a worked example workflow YAML plus a docs/CI.md explaining setup. Do not add an actual .forge/workflows file to this repo unless explicitly requested; keep it a documented recipe others can adopt.
+Expected files or areas: docs/CI.md, README.md
+Acceptance criteria: docs/CI.md includes a complete, copy-pasteable workflow YAML that installs the package and runs forge check with a non-zero exit failing the job; README links to it.
+Validation: TBD
+Risks or assumptions: None.
+Notes: Deferred twice already (Roadmap v5 planning). Decided in Roadmap v6 planning to document it now regardless of dashboard status, since it's independently useful.
+
+### AUTO-047 — Add forge revert to undo a completed task's commit
+Priority: P2
+Status: TODO
+
+Goal: Add forge revert <AUTO-###> that cleanly undoes a task's commit (via git revert) and flips its plan status back to TODO, for when a DONE task turns out to be wrong.
+Why it matters: TBD
+Scope: Look up the task's commit hash (from forge log/run history or a --commit override), run git revert on it, and call the existing mark logic to flip Status back to TODO. Does not touch Forgejo directly — a subsequent forge sync will reopen the issue naturally since the plan is the source of truth.
+Expected files or areas: src/autonomous_forge/revert.py, src/autonomous_forge/cli.py, tests, docs/COMMANDS.md
+Acceptance criteria: forge revert AUTO-### runs git revert on the task's recorded commit, flips the task's Status back to TODO, and reports the new revert commit hash; fails clearly if no commit hash can be found for the task or if git revert conflicts.
+Validation: TBD
+Risks or assumptions: None.
+Notes: Closes a real gap: nothing currently undoes a completed task cleanly short of manual git surgery plus a manual forge mark. Originally scoped for Roadmap v5, deferred to v6 to keep v5 to its four core reliability tasks.
+
 ## Future Ideas
 
-- (empty — all previously listed ideas were promoted into Roadmap v4)
+- (empty — all previously listed ideas were promoted into Roadmap v4, v5, or v6)
 
 ## Do Not Change Without Explicit Human Approval
 
