@@ -81,6 +81,20 @@ class TestAddTask:
         assert r1.task_id == "AUTO-003"
         assert r2.task_id == "AUTO-004"
 
+    def test_not_confused_by_auto_id_mentioned_in_prose(self, tmp_path):
+        # A task whose own Goal/Notes text mentions a much higher AUTO-###
+        # (e.g. discussing "AUTO-999") must not make the next real ID jump
+        # to 1000 — only actual task headings count, not prose mentions.
+        plan_path = _setup(tmp_path)
+        add_task(
+            "Discuss the AUTO-999 ceiling",
+            goal="This task discusses AUTO-999 and even AUTO-1000 as hypothetical future IDs.",
+            notes="See AUTO-999 for background.",
+            plan_path=plan_path,
+        )
+        result = add_task("Next real task", goal="Do the next thing", plan_path=plan_path)
+        assert result.task_id == "AUTO-004"
+
     def test_inserts_before_future_ideas(self, tmp_path):
         plan_path = _setup(tmp_path)
         add_task("Task X", goal="Do X", plan_path=plan_path)

@@ -2,13 +2,11 @@
 
 from __future__ import annotations
 
-import re
 from dataclasses import dataclass
 from pathlib import Path
 
 from autonomous_forge.plan import (
     _PRIORITY_ORDER,
-    _TASK_HEADING_RE,
     parse_plan_tasks,
 )
 
@@ -25,8 +23,15 @@ class AddResult:
 
 
 def _next_task_id(plan_text: str) -> str:
-    """Determine the next AUTO-xxx ID from existing tasks."""
-    ids = [int(m.group(1)) for m in re.finditer(r"AUTO-(\d{3})", plan_text)]
+    """Determine the next AUTO-xxx ID from existing task headings.
+
+    Scans actual parsed task headings only (via `parse_plan_tasks`), not a
+    blanket "AUTO-###" text match — a bare regex over the whole file body
+    can be tricked by an "AUTO-###" substring inside a task's own prose
+    (e.g. a task discussing "AUTO-999" in its Goal text), producing a
+    wildly wrong next ID.
+    """
+    ids = [int(t.task_id.split("-", 1)[1]) for t in parse_plan_tasks(plan_text)]
     next_num = max(ids) + 1 if ids else 1
     return f"AUTO-{next_num:03d}"
 
