@@ -9,6 +9,8 @@ The workflow YAML below works for either **Forgejo Actions** or **GitHub Actions
 
 **`runs-on:` must match a label your runner actually registered with.** `ubuntu-latest` is a GitHub-hosted-runner label; a self-hosted Forgejo runner (`act_runner`/`forgejo-runner`) only claims jobs whose `runs-on:` matches one of its own configured labels (commonly `docker` or `self-hosted` — check the runner's `runner.labels` config, or the label shown when it was registered). A workflow with a `runs-on:` value no runner advertises just sits queued forever with zero visible error. This repo's own workflow uses `runs-on: docker` for exactly this reason.
 
+**`actions/setup-python@v5` can fail on self-hosted runners** with `Version 3.12 was not found in the local cache` / `was not found for this operating system` — it expects either a pre-warmed tool cache or a working path to GitHub's `python-versions` release manifest, neither of which a bare self-hosted runner has by default. Simplest fix: skip `setup-python` and run the job in a container image that already has the right Python (`container: image: python:3.12`), as this repo's workflow does below. That image has neither `git` nor `node`, though, and `actions/checkout@v4` is a Node.js action — install both before the checkout step.
+
 ```yaml
 name: forge check
 
@@ -33,9 +35,20 @@ jobs:
         run: forge check
 ```
 
-The minimal version above is enough on its own. This repo's actual workflow (`.forgejo/workflows/forge-check.yml`) adds two more steps ahead of `forge check`, gated by a `dev` extra declared in `pyproject.toml`:
+The minimal version above works as a starting point on a GitHub-hosted-style runner. This repo's actual workflow (`.forgejo/workflows/forge-check.yml`) looks different because of the two self-hosted-runner gotchas above, plus two more steps ahead of `forge check` gated by a `dev` extra declared in `pyproject.toml`:
 
 ```yaml
+jobs:
+  check:
+    runs-on: docker
+    container:
+      image: python:3.12
+    steps:
+      - name: Install git and node
+        run: apt-get update && apt-get install -y --no-install-recommends git nodejs
+
+      - uses: actions/checkout@v4
+
       - name: Install
         run: python -m pip install -e ".[dev]"
 
