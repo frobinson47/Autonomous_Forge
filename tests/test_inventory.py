@@ -1,5 +1,8 @@
 from autonomous_forge.cli import main
-from autonomous_forge.inventory import build_repository_inventory, collect_inventory_signals
+from autonomous_forge.inventory import (
+    build_repository_inventory,
+    collect_inventory_signals,
+)
 
 
 def test_collect_inventory_signals_reports_present_and_missing_paths(tmp_path):

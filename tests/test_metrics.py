@@ -5,15 +5,12 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-import pytest
-
 from autonomous_forge.metrics import (
     RunMetrics,
     compute_metrics,
     format_metrics,
     format_metrics_json,
 )
-
 
 RUN_PASSED = """\
 # Run Summary

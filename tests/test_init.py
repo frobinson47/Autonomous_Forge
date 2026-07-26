@@ -1,5 +1,5 @@
 from autonomous_forge.cli import main
-from autonomous_forge.init import init_forge, format_init_result
+from autonomous_forge.init import format_init_result, init_forge
 
 
 def test_init_creates_all_metadata_files(tmp_path):

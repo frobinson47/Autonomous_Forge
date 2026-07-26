@@ -8,6 +8,7 @@
 - `README.md`
 - `.ai/**`
 - `.forge/**`
+- `.forgejo/workflows/**`
 - `.gitignore`
 - `pyproject.toml`
 

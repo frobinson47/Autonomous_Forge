@@ -11,7 +11,11 @@ import subprocess
 from dataclasses import dataclass
 from pathlib import Path
 
-from autonomous_forge.forgejo_client import ForgejoClient, _detect_forgejo_repo, _load_token
+from autonomous_forge.forgejo_client import (
+    ForgejoClient,
+    _detect_forgejo_repo,
+    _load_token,
+)
 
 
 @dataclass(frozen=True)

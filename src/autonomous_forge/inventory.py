@@ -5,7 +5,6 @@ from __future__ import annotations
 from dataclasses import dataclass
 from pathlib import Path
 
-
 _INVENTORY_PATHS = (
     ".ai/AUTONOMOUS_PLAN.md",
     ".ai/AUTONOMOUS_STATE.md",

@@ -5,10 +5,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-import pytest
-
 from autonomous_forge.export import export_state
-
 
 PLAN = """\
 # Roadmap

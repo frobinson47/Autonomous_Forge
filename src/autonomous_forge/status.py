@@ -70,7 +70,7 @@ def _git_dirty_count(root: Path) -> int:
         )
         if result.returncode != 0:
             return -1
-        return len([l for l in result.stdout.splitlines() if l.strip()])
+        return len([line for line in result.stdout.splitlines() if line.strip()])
     except (FileNotFoundError, subprocess.TimeoutExpired):
         return -1
 

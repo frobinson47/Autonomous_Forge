@@ -5,15 +5,12 @@ from __future__ import annotations
 import subprocess
 from pathlib import Path
 
-import pytest
-
 from autonomous_forge.revert import (
     RevertResult,
     _find_commit_for_task,
     execute_revert,
     format_revert_result,
 )
-
 
 PLAN_DONE = """\
 # Roadmap

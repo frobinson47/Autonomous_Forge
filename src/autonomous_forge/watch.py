@@ -8,7 +8,6 @@ from typing import Callable
 
 from autonomous_forge.check import execute_check, format_check_result
 
-
 DEFAULT_INTERVAL_SECONDS = 300
 
 

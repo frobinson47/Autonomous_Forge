@@ -11,7 +11,6 @@ from pathlib import Path
 
 from autonomous_forge.policy import PolicyParseError, parse_repository_policy
 
-
 _DEFAULT_COMMAND = "python -m pytest"
 _SHELL_METACHARACTERS = set("|&;<>`$\n")
 

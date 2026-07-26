@@ -5,7 +5,6 @@ from autonomous_forge.session import (
     GitSnapshot,
     RootSession,
     SessionContext,
-    build_session_snapshot,
     deserialize_session,
     format_multi_resume_briefing,
     format_resume_briefing,

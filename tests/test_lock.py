@@ -64,7 +64,7 @@ class TestAcquireLock:
             encoding="utf-8",
         )
         with patch("autonomous_forge.lock._pid_alive", return_value=False):
-            lock = acquire_lock(tmp_path, timestamp="2026-07-24T00:05:00")
+            acquire_lock(tmp_path, timestamp="2026-07-24T00:05:00")
 
         data = json.loads((lock_dir / ".lock").read_text(encoding="utf-8"))
         assert data["pid"] == os.getpid()
@@ -75,7 +75,7 @@ class TestAcquireLock:
         lock_dir.mkdir()
         (lock_dir / ".lock").write_text("not json at all {{{", encoding="utf-8")
 
-        lock = acquire_lock(tmp_path, timestamp="2026-07-24T00:05:00")
+        acquire_lock(tmp_path, timestamp="2026-07-24T00:05:00")
         data = json.loads((lock_dir / ".lock").read_text(encoding="utf-8"))
         assert data["pid"] == os.getpid()
 
@@ -132,6 +132,12 @@ class TestAcquireLock:
 
         successes = [r for r in results if r[0] == "ok"]
         blocked = [r for r in results if r[0] == "blocked"]
+        # Release before asserting: an unreleased lock file can otherwise
+        # race pytest's tmp_path teardown on Windows (PermissionError from
+        # a still-open handle), an environmental flake unrelated to the
+        # acquisition logic under test.
+        for _, lock in successes:
+            lock.release()
         assert len(successes) == 1
         assert len(blocked) == 1
 

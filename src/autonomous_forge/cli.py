@@ -8,37 +8,46 @@ from typing import Callable
 
 from autonomous_forge.approvals import format_approval_confirmation, record_approval
 from autonomous_forge.check import execute_check, format_check_result
-from autonomous_forge.config import apply_config_defaults, load_config
-from autonomous_forge.watch import run_watch
 from autonomous_forge.commit import (
     execute_commit,
     format_commit_result,
     format_pre_flight,
     run_pre_flight,
 )
+from autonomous_forge.config import apply_config_defaults, load_config
 from autonomous_forge.context import build_project_context
 from autonomous_forge.diffcheck import read_diff_report
 from autonomous_forge.doctor import format_doctor_report, run_doctor
-from autonomous_forge.export import export_state
 from autonomous_forge.drift import read_drift_report
+from autonomous_forge.export import export_state
 from autonomous_forge.init import format_init_result, init_forge
+from autonomous_forge.inventory import build_repository_inventory
 from autonomous_forge.log import format_run_log, list_runs
 from autonomous_forge.mark import format_mark_result, mark_task_status
-from autonomous_forge.metrics import compute_metrics, format_metrics, format_metrics_json
-from autonomous_forge.planadd import add_task, format_add_result
-from autonomous_forge.status import get_status
-from autonomous_forge.pipeline import execute_pipeline, format_pipeline_result
-from autonomous_forge.push import execute_push, format_push_result
-from autonomous_forge.inventory import build_repository_inventory
-from autonomous_forge.run import execute_run, format_run_outcome, save_run_outcome
-from autonomous_forge.sync import execute_sync, format_sync_result
-from autonomous_forge.sync_orphans import (
-    execute_import_orphans,
-    execute_orphan_report,
-    format_import_result,
-    format_orphan_report,
+from autonomous_forge.metrics import (
+    compute_metrics,
+    format_metrics,
+    format_metrics_json,
 )
-from autonomous_forge.validate import format_validation_result, run_validation
+from autonomous_forge.pipeline import execute_pipeline, format_pipeline_result
+from autonomous_forge.plan import (
+    PlanParseError,
+    PlanSelectionError,
+    lint_plan_structure,
+    parse_plan_tasks,
+    select_eligible_task,
+)
+from autonomous_forge.planadd import add_task, format_add_result
+from autonomous_forge.policy import (
+    PolicyParseError,
+    RepositoryPolicy,
+    parse_repository_policy,
+)
+from autonomous_forge.push import execute_push, format_push_result
+from autonomous_forge.report import read_repository_report
+from autonomous_forge.revert import execute_revert, format_revert_result
+from autonomous_forge.run import execute_run, format_run_outcome, save_run_outcome
+from autonomous_forge.run_summary import read_run_summary_preview
 from autonomous_forge.session import (
     build_session_snapshot,
     capture_git_snapshot,
@@ -48,17 +57,16 @@ from autonomous_forge.session import (
     load_sessions_for_roots,
     save_session,
 )
-from autonomous_forge.plan import (
-    PlanParseError,
-    PlanSelectionError,
-    lint_plan_structure,
-    parse_plan_tasks,
-    select_eligible_task,
+from autonomous_forge.status import get_status
+from autonomous_forge.sync import execute_sync, format_sync_result
+from autonomous_forge.sync_orphans import (
+    execute_import_orphans,
+    execute_orphan_report,
+    format_import_result,
+    format_orphan_report,
 )
-from autonomous_forge.policy import PolicyParseError, RepositoryPolicy, parse_repository_policy
-from autonomous_forge.report import read_repository_report
-from autonomous_forge.revert import execute_revert, format_revert_result
-from autonomous_forge.run_summary import read_run_summary_preview
+from autonomous_forge.validate import format_validation_result, run_validation
+from autonomous_forge.watch import run_watch
 
 
 def build_parser() -> argparse.ArgumentParser:

@@ -5,6 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 from unittest.mock import patch
 
+from autonomous_forge.plan import PlanTask
 from autonomous_forge.sync import (
     SyncAction,
     SyncResult,
@@ -16,8 +17,6 @@ from autonomous_forge.sync import (
     execute_sync,
     format_sync_result,
 )
-from autonomous_forge.plan import PlanTask
-
 
 SYNC_PLAN = """\
 # Roadmap

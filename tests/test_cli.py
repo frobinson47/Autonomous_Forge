@@ -1,6 +1,5 @@
 from autonomous_forge.cli import main
 
-
 VALID_POLICY = """## Allowed paths
 - `src/**`
 

@@ -11,7 +11,6 @@ import argparse
 from dataclasses import dataclass
 from pathlib import Path
 
-
 CONFIG_RELATIVE_PATH = Path(".forge") / "config.toml"
 
 DEFAULT_CONFIG_TEMPLATE = """\

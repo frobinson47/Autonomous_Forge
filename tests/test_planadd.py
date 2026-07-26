@@ -8,7 +8,6 @@ import pytest
 
 from autonomous_forge.planadd import AddResult, add_task, format_add_result
 
-
 PLAN = """\
 # Roadmap
 

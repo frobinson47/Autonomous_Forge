@@ -3,14 +3,18 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import datetime, timezone
 from pathlib import Path
 
-from datetime import datetime, timezone
-
-from autonomous_forge.commit import CommitResult, execute_commit, run_pre_flight
+from autonomous_forge.commit import CommitResult, execute_commit
 from autonomous_forge.lock import LockHeldError, acquire_lock
 from autonomous_forge.push import PushResult, execute_push
-from autonomous_forge.run import RunOutcome, execute_run, record_commit_hash, save_run_outcome
+from autonomous_forge.run import (
+    RunOutcome,
+    execute_run,
+    record_commit_hash,
+    save_run_outcome,
+)
 from autonomous_forge.sync import SyncResult, execute_sync
 
 

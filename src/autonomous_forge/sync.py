@@ -6,7 +6,11 @@ import re
 from dataclasses import dataclass
 from pathlib import Path
 
-from autonomous_forge.forgejo_client import ForgejoClient, _detect_forgejo_repo, _load_token
+from autonomous_forge.forgejo_client import (
+    ForgejoClient,
+    _detect_forgejo_repo,
+    _load_token,
+)
 from autonomous_forge.plan import PlanTask, parse_plan_tasks
 
 
@@ -218,16 +222,16 @@ def execute_sync(
         except RuntimeError as exc:
             return SyncResult(actions=(), repo=repo, errors=(str(exc),))
 
-        actions = []
+        dry_run_actions: list[SyncAction] = []
         for task in tasks:
             issue = _find_issue_for_task(task.task_id, existing_issues)
-            actions.append(SyncAction(
+            dry_run_actions.append(SyncAction(
                 task_id=task.task_id,
                 action="would-create" if issue is None else "would-sync",
                 issue_number=issue["number"] if issue else None,
                 detail=f"{task.title} [{task.priority}/{task.status}]",
             ))
-        return SyncResult(actions=tuple(actions), repo=repo)
+        return SyncResult(actions=tuple(dry_run_actions), repo=repo)
     errors: list[str] = []
     actions: list[SyncAction] = []
 
@@ -270,7 +274,7 @@ def execute_sync(
 
                 if task.status == "DONE":
                     client.update_issue(issue_num, state="closed")
-                    client.add_comment(issue_num, f"Closed by `forge sync` — task status is DONE.")
+                    client.add_comment(issue_num, "Closed by `forge sync` — task status is DONE.")
 
                 actions.append(SyncAction(
                     task_id=task.task_id,
@@ -291,7 +295,7 @@ def execute_sync(
                     client.update_issue(issue_num, state="closed")
                     client.add_comment(
                         issue_num,
-                        f"Closed by `forge sync` — task status changed to DONE.",
+                        "Closed by `forge sync` — task status changed to DONE.",
                     )
                     needs_update = True
                     updates.append("closed")
@@ -299,7 +303,7 @@ def execute_sync(
                     client.update_issue(issue_num, state="open")
                     client.add_comment(
                         issue_num,
-                        f"Reopened by `forge sync` — task status changed back to TODO.",
+                        "Reopened by `forge sync` — task status changed back to TODO.",
                     )
                     needs_update = True
                     updates.append("reopened")

@@ -1,7 +1,6 @@
 from autonomous_forge.cli import main
 from autonomous_forge.drift import build_drift_report, collect_drift_signals
 
-
 PLAN_TWO_TASKS = """\
 ### AUTO-001 — First task
 Priority: P1

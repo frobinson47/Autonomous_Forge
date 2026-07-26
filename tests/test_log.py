@@ -4,8 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from autonomous_forge.log import RunEntry, format_run_log, list_runs, _parse_run_file
-
+from autonomous_forge.log import RunEntry, _parse_run_file, format_run_log, list_runs
 
 RUN_FILE = """\
 # Forge Run Summary

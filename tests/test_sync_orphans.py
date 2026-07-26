@@ -18,7 +18,6 @@ from autonomous_forge.sync_orphans import (
     format_orphan_report,
 )
 
-
 SYNC_PLAN = """\
 # Roadmap
 

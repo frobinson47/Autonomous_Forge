@@ -14,10 +14,11 @@ It keeps a durable, human-readable roadmap (`.ai/AUTONOMOUS_PLAN.md`) as the sin
 - **Run history and metrics.** Every `forge run` is recorded to `.forge/runs/`; `forge log` and `forge metrics` surface pass rate, drift signals, and violations over time.
 - **A read-only watch loop.** `forge watch` re-runs lint + drift + diff-check + validation on a timer, catching regressions between sessions without a cron/daemon setup.
 - **One-way Forgejo issue sync.** `forge sync` mirrors plan tasks to issues/labels/milestones (plan is always the source of truth); `forge sync --report-orphans` flags issues with no matching plan task, read-only.
+- **CI, dogfooded.** `.forgejo/workflows/forge-check.yml` runs Ruff, mypy, and `forge check` (lint + drift + diff-check + the test suite) on every push and PR — see `docs/CI.md` to adopt the same recipe elsewhere.
 
 ## Current status
 
-Autonomous Forge is pre-1.0 but functional end-to-end: Roadmap v1–v6 are complete and v7 is in progress (56/57 tasks done), with the full pipeline, fail-closed policy enforcement, drift detection, session handoff, run metrics, and Forgejo sync all implemented and tested (400 tests passing). See `.ai/AUTONOMOUS_PLAN.md` and `.ai/AUTONOMOUS_STATE.md` for the current roadmap and state.
+Autonomous Forge is pre-1.0 but functional end-to-end: Roadmap v1–v7 are complete (57/57 tasks done), with the full pipeline, fail-closed policy enforcement, drift detection, session handoff, run metrics, dogfooded CI, and Forgejo sync all implemented and tested (401 tests passing). See `.ai/AUTONOMOUS_PLAN.md` and `.ai/AUTONOMOUS_STATE.md` for the current roadmap and state.
 
 `forge drift`/`forge check` flag it automatically if these counts ever drift out of sync with the plan file or `.ai/AUTONOMOUS_STATE.md` again (see AUTO-057) — the `(N/M tasks done)` and `(N tests passing)` phrasing above is load-bearing, not just prose.
 
@@ -26,6 +27,15 @@ Autonomous Forge is pre-1.0 but functional end-to-end: Roadmap v1–v6 are compl
 ```bash
 python -m pip install -e .
 forge --help
+```
+
+Add `.[dev]` instead of `.` to also install the tooling used in CI (pytest, Ruff, mypy):
+
+```bash
+python -m pip install -e ".[dev]"
+python -m pytest
+ruff check .
+mypy
 ```
 
 For full setup, contribution workflow, and safety expectations, see `CONTRIBUTING.md`.

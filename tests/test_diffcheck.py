@@ -1,7 +1,6 @@
 from autonomous_forge.cli import main
 from autonomous_forge.diffcheck import build_diff_report, check_diff_against_policy
 
-
 POLICY_VALID = """\
 # Policy
 

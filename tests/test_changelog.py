@@ -8,7 +8,6 @@ from unittest.mock import MagicMock, patch
 from autonomous_forge.changelog import append_changelog_entries, find_newly_done_tasks
 from autonomous_forge.plan import PlanTask
 
-
 PLAN_ONE_DONE = """\
 # Roadmap
 

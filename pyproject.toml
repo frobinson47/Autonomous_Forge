@@ -22,8 +22,32 @@ classifiers = [
 ]
 dependencies = []
 
+[project.optional-dependencies]
+dev = [
+    "pytest",
+    "pytest-asyncio",
+    "pytest-cov",
+    "ruff",
+    "mypy",
+]
+
 [project.scripts]
 forge = "autonomous_forge.cli:_entry_point"
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.ruff.lint]
+# Deliberately conservative: pyflakes + core pycodestyle error classes +
+# import sorting. Ruff's plugin rule sets (bandit, pylint, flake8-simplify,
+# etc.) are not enabled here — adopting them is a separate decision with its
+# own cleanup pass, not something to fold into CI enforcement silently.
+select = ["E4", "E7", "E9", "F", "I"]
+
+[tool.mypy]
+python_version = "3.10"
+files = ["src/autonomous_forge"]

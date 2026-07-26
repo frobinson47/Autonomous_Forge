@@ -6,10 +6,13 @@ import re
 from dataclasses import dataclass
 from pathlib import Path
 
-from autonomous_forge.forgejo_client import ForgejoClient, _detect_forgejo_repo, _load_token
+from autonomous_forge.forgejo_client import (
+    ForgejoClient,
+    _detect_forgejo_repo,
+    _load_token,
+)
 from autonomous_forge.plan import PlanTask, parse_plan_tasks
 from autonomous_forge.planadd import add_task
-
 
 _ANY_AUTO_ID_RE = re.compile(r"AUTO-\d+")
 

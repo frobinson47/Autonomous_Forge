@@ -16,7 +16,11 @@ from autonomous_forge.plan import (
     parse_plan_tasks,
     select_eligible_task,
 )
-from autonomous_forge.policy import PolicyParseError, parse_repository_policy, validate_policy_text
+from autonomous_forge.policy import (
+    PolicyParseError,
+    parse_repository_policy,
+    validate_policy_text,
+)
 from autonomous_forge.validate import run_validation
 
 

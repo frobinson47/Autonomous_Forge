@@ -9,7 +9,11 @@ from pathlib import Path
 from autonomous_forge.approvals import has_approval
 from autonomous_forge.changelog import append_changelog_entries, find_newly_done_tasks
 from autonomous_forge.diffcheck import check_diff_against_policy, get_changed_files
-from autonomous_forge.plan import lint_plan_structure, parse_plan_tasks, select_eligible_task
+from autonomous_forge.plan import (
+    lint_plan_structure,
+    parse_plan_tasks,
+    select_eligible_task,
+)
 from autonomous_forge.policy import validate_policy_text
 from autonomous_forge.validate import run_validation
 

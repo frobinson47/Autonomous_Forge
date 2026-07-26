@@ -6,7 +6,7 @@ import json
 from dataclasses import dataclass
 from pathlib import Path
 
-from autonomous_forge.log import RunEntry, list_runs
+from autonomous_forge.log import list_runs
 
 
 @dataclass(frozen=True)

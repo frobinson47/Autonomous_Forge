@@ -5,8 +5,6 @@ from __future__ import annotations
 from pathlib import Path
 from unittest.mock import patch
 
-import pytest
-
 from autonomous_forge.commit import CommitPreFlight, CommitResult
 from autonomous_forge.pipeline import (
     PipelineResult,
@@ -14,7 +12,6 @@ from autonomous_forge.pipeline import (
     format_pipeline_result,
 )
 from autonomous_forge.push import PushResult
-
 
 _LINT_CLEAN_TAIL = """\
 Why it matters: Test fixture.
@@ -250,7 +247,7 @@ class TestExecutePipeline:
     def test_commit_records_hash_on_run_report(self, mock_commit, mock_git, tmp_path):
         _setup(tmp_path)
         mock_commit.return_value = self._fake_commit_result()
-        result = execute_pipeline(
+        execute_pipeline(
             root=tmp_path,
             commit=True,
             dry_run=True,
@@ -310,8 +307,8 @@ class TestExecutePipeline:
 
 class TestFormatPipelineResult:
     def test_format_run_only(self):
-        from autonomous_forge.run import RunOutcome
         from autonomous_forge.plan import PlanTask
+        from autonomous_forge.run import RunOutcome
 
         task = PlanTask("AUTO-001", "Build widget", "P1", "TODO", 1)
         ro = RunOutcome(

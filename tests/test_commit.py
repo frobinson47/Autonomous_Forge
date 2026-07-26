@@ -6,8 +6,6 @@ import subprocess
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
-import pytest
-
 from autonomous_forge.commit import (
     CommitPreFlight,
     CommitResult,
@@ -16,7 +14,6 @@ from autonomous_forge.commit import (
     format_pre_flight,
     run_pre_flight,
 )
-
 
 _LINT_CLEAN_TAIL = """\
 Why it matters: Test fixture.

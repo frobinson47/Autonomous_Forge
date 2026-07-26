@@ -5,8 +5,6 @@ from __future__ import annotations
 from pathlib import Path
 from unittest.mock import patch
 
-import pytest
-
 from autonomous_forge.run import (
     RunOutcome,
     execute_run,
@@ -14,7 +12,6 @@ from autonomous_forge.run import (
     record_commit_hash,
     save_run_outcome,
 )
-
 
 _LINT_CLEAN_TAIL = """\
 Why it matters: Test fixture.
@@ -106,7 +103,6 @@ class TestExecuteRun:
 
     def test_blocked_when_lock_already_held(self, tmp_path: Path):
         import json
-        import os
 
         _setup_metadata(tmp_path, MINIMAL_PLAN, MINIMAL_POLICY)
         lock_dir = tmp_path / ".forge"

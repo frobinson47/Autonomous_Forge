@@ -5,10 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 from unittest.mock import patch
 
-import pytest
-
 from autonomous_forge.check import CheckResult, execute_check, format_check_result
-
 
 PLAN = """\
 # Roadmap

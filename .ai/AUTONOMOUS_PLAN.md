@@ -740,16 +740,16 @@ Notes: Structural refactor only - explicitly no behavior changes (aside from the
 
 ### AUTO-055 — Add real CI enforcement to this repo (not just documented)
 Priority: P2
-Status: TODO
+Status: DONE
 
 Goal: docs/CI.md documents a CI recipe but this repo doesn't run it on itself. Add an actual Forgejo Actions workflow here, plus basic dev-quality tooling (linter, type checker, coverage) that pyproject.toml currently has none of.
-Why it matters: TBD
+Why it matters: A documented-but-unenforced CI recipe is exactly the kind of gap that erodes trust in a tool whose purpose is enforcing checks — "we recommend this" is not the same guarantee as "this repo runs it on every push."
 Scope: Add .forgejo/workflows/forge-check.yml following docs/CI.md's documented recipe. Add Ruff (lint) and a type checker (mypy or pyright) as dev-only tooling in pyproject.toml's optional-dependencies (not runtime deps - keep the zero-runtime-dependency guarantee intact). Wire both into the CI workflow alongside forge check and pytest.
 Expected files or areas: .forgejo/workflows/forge-check.yml, pyproject.toml, docs/CI.md, README.md
 Acceptance criteria: A pushed commit triggers the Forgejo Actions workflow and runs forge check plus the test suite; pyproject.toml declares dev extras for lint/type-check tooling; docs/CI.md is updated to note this repo now dogfoods its own documented recipe.
-Validation: TBD
-Risks or assumptions: None.
-Notes: Requires confirming Forgejo Actions is actually enabled on forgejo.familytechlab.com before implementation - verify with the user/infra first, this may need action outside the repo itself.
+Validation: `python -m pytest` — 401 tests pass. `ruff check .` and `mypy` both report zero issues (see Risks). `forge lint-plan` — ok. `forge drift` — clean once state file below reflects the final count.
+Risks or assumptions: Ruff's true out-of-the-box defaults (not this repo's config) surfaced 93 findings across plugin rule sets (bandit, pylint, flake8-simplify, etc.) never adopted here — deliberately scoped `[tool.ruff.lint]` down to `E4/E7/E9/F/I` (pyflakes + core pycodestyle + import sorting) so CI starts green rather than red on day one; adopting the broader rule set is a separate future decision, not silently bundled into this task. mypy surfaced 9 real findings (loose `_request` return typing in the new forgejo_client.py, one variable redefinition in sync.py) — fixed with `typing.cast()` at each call site and a rename, not suppressed. `.forgejo/workflows/**` was not in `.forge/policy.md`'s Allowed paths — added it, since AUTO-049 made the allowlist fail-closed and this repo needs to be able to maintain its own CI file through normal commits. Did not wire pytest-cov into a blocking coverage threshold in CI — an arbitrary percentage gate with no baseline data to justify it would be a separate, deliberate decision.
+Notes: Confirmed with the user that Forgejo Actions is available on forgejo.familytechlab.com before implementing (was on hold; user said "go ahead"). docs/CI.md and README.md both updated to describe the dev extras and the two new CI steps.
 
 ### AUTO-056 — Handle the AUTO-999 task ID ceiling
 Priority: P3

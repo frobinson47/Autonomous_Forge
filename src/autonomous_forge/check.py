@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from pathlib import Path
 
 from autonomous_forge.diffcheck import check_diff_against_policy, get_changed_files
@@ -10,7 +10,6 @@ from autonomous_forge.drift import collect_drift_signals
 from autonomous_forge.plan import (
     PlanParseError,
     lint_plan_structure,
-    parse_plan_tasks,
 )
 from autonomous_forge.validate import run_validation
 

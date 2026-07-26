@@ -1,7 +1,6 @@
 from autonomous_forge.cli import main
 from autonomous_forge.context import build_project_context
 
-
 PLAN_WITH_TODO = """\
 ### AUTO-001 — First task
 Priority: P1

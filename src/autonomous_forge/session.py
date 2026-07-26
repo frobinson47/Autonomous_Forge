@@ -3,10 +3,9 @@
 from __future__ import annotations
 
 import subprocess
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
-
 
 _SESSIONS_DIR = ".forge/sessions"
 

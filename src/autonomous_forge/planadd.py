@@ -96,7 +96,7 @@ def add_task(
 
     lines = text.splitlines(keepends=True)
     insert_at = _find_insert_position(
-        [l.rstrip("\n\r") for l in lines]
+        [line.rstrip("\n\r") for line in lines]
     )
 
     # Ensure blank line before the new block

@@ -6,7 +6,6 @@ from autonomous_forge.policy import (
     validate_policy_text,
 )
 
-
 VALID_POLICY = """# Autonomous Forge Policy
 
 ## Allowed paths

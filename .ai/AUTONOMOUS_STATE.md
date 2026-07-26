@@ -1,12 +1,12 @@
 # Autonomous State
 
 - Current roadmap version: v7
-- Current task ID: AUTO-057 — Fix README's stale roadmap/test-count stats and add a drift check for them
+- Current task ID: AUTO-055 — Add real CI enforcement to this repo (not just documented)
 - Current task status: DONE
 - Current branch: main
 - Last run timestamp: 2026-07-26T00:00:00+00:00
-- Last successful commit hash: 8d6b959
-- Latest run summary: README.md's status line rewritten to a stable, parseable format (`(N/M tasks done)`, `(N tests passing)`) with corrected current numbers (56/57 tasks, 400 tests) — was stuck at "v1-v4, 37/37 tasks, 253 tests" from several roadmaps ago. Added two new drift signal categories, `readme-plan`/`readme-state` (both `warn` severity), comparing README's stated counts against the plan file's actual DONE/total and the state file's last recorded test count — surfaced by both `forge drift` and `forge check`, never blocking. Roadmap v7 now complete except AUTO-055 (CI enforcement), on hold pending the user confirming Forgejo Actions is enabled on forgejo.familytechlab.com. 400 total tests pass (6 new).
-- Validation commands and results: `python -m pytest` — 400 tests pass. `forge lint-plan` — ok. `forge drift` reports no drift against this repo's own files.
-- Current blockers: AUTO-055 blocked pending user confirmation of Forgejo Actions availability — the only remaining open task in Roadmap v7.
-- Recommended next task: AUTO-055 once Forgejo Actions is confirmed enabled — otherwise, plan Roadmap v8 or take direction from the user.
+- Last successful commit hash: 96aacda
+- Latest run summary: Added `.forgejo/workflows/forge-check.yml` (runs Ruff, mypy, then `forge check` on every push/PR). Added a `dev` extra to pyproject.toml (`pytest`, `pytest-asyncio`, `pytest-cov`, `ruff`, `mypy`) plus scoped `[tool.ruff.lint]` (conservative `E4/E7/E9/F/I` selection, not ruff's broader out-of-the-box defaults) and `[tool.mypy]` config. Fixed the 9 real findings mypy surfaced (loose JSON-API return typing in forgejo_client.py via `cast()`, one variable redefinition in sync.py) and cleaned up ~65 ruff findings (mostly import sorting, a couple of unused variables/ambiguous names) so CI starts green. Added `.forgejo/workflows/**` to `.forge/policy.md`'s Allowed paths (was missing, would've been blocked by AUTO-049's fail-closed allowlist). **Roadmap v7 is now fully complete (57/57 tasks).** 401 total tests pass (1 new — a hardening fix to AUTO-052's concurrency test that flaked once under Windows tmp-dir cleanup timing).
+- Validation commands and results: `python -m pytest` — 401 tests pass (401/401, run 5x with no flakes after the hardening fix). `ruff check .` — clean. `mypy` — clean. `forge lint-plan` — ok. `forge drift` — clean.
+- Current blockers: None.
+- Recommended next task: Roadmap v7 is complete — plan Roadmap v8, or take direction from the user on what's next.

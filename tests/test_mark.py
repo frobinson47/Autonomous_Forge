@@ -4,10 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import pytest
-
 from autonomous_forge.mark import MarkResult, format_mark_result, mark_task_status
-
 
 PLAN = """\
 # Roadmap

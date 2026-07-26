@@ -9,6 +9,7 @@ import subprocess
 import urllib.error
 import urllib.request
 from pathlib import Path
+from typing import cast
 
 
 def _detect_forgejo_repo(root: Path) -> str | None:
@@ -101,25 +102,31 @@ class ForgejoClient:
             data["labels"] = labels
         if milestone:
             data["milestone"] = milestone
-        return self._request("POST", "/issues", data)
+        # _request's return type is intentionally loose (mirrors arbitrary
+        # JSON) — these casts assert the documented shape of each specific
+        # Forgejo endpoint, which the API contract guarantees but the
+        # generic _request signature can't express.
+        return cast(dict, self._request("POST", "/issues", data))
 
     def update_issue(self, number: int, **kwargs) -> dict:
-        return self._request("PATCH", f"/issues/{number}", kwargs)
+        return cast(dict, self._request("PATCH", f"/issues/{number}", kwargs))
 
     def add_comment(self, number: int, body: str) -> dict:
-        return self._request("POST", f"/issues/{number}/comments", {"body": body})
+        return cast(dict, self._request("POST", f"/issues/{number}/comments", {"body": body}))
 
     def list_labels(self) -> list[dict]:
-        return self._request("GET", "/labels?limit=50") or []
+        return cast(list, self._request("GET", "/labels?limit=50")) or []
 
     def create_label(self, name: str, color: str) -> dict:
-        return self._request("POST", "/labels", {"name": name, "color": color})
+        return cast(dict, self._request("POST", "/labels", {"name": name, "color": color}))
 
     def list_milestones(self, state: str = "all") -> list[dict]:
-        return self._request("GET", f"/milestones?state={state}&limit=50") or []
+        return cast(list, self._request("GET", f"/milestones?state={state}&limit=50")) or []
 
     def create_milestone(self, title: str) -> dict:
-        return self._request("POST", "/milestones", {"title": title})
+        return cast(dict, self._request("POST", "/milestones", {"title": title}))
 
     def replace_labels(self, issue_number: int, label_ids: list[int]) -> list[dict]:
-        return self._request("PUT", f"/issues/{issue_number}/labels", {"labels": label_ids})
+        return cast(
+            list, self._request("PUT", f"/issues/{issue_number}/labels", {"labels": label_ids})
+        )

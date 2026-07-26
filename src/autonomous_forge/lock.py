@@ -16,7 +16,6 @@ import time
 from dataclasses import dataclass
 from pathlib import Path
 
-
 LOCK_RELATIVE_PATH = Path(".forge") / ".lock"
 
 

@@ -17,7 +17,6 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 
-
 APPROVALS_RELATIVE_PATH = Path(".forge") / "approvals.md"
 _APPROVAL_HEADING_RE = re.compile(r"^## (AUTO-\d{3,}) — (.+)$")
 _HEADER = "# Human Approvals\n"

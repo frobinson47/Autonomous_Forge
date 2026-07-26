@@ -8,7 +8,6 @@ from pathlib import Path
 from autonomous_forge.plan import PlanTask, parse_plan_tasks, select_eligible_task
 from autonomous_forge.policy import PolicyParseError, parse_repository_policy
 
-
 DEFAULT_VALIDATION_PLAN = "PYTHONPATH=src python -m pytest"
 DEFAULT_NOTES = "Read-only preview only; no run-summary file was written."
 

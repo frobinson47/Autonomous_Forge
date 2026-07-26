@@ -8,7 +8,6 @@ from autonomous_forge.plan import (
     select_eligible_task,
 )
 
-
 VALID_PLAN = """# Roadmap
 
 ### AUTO-001 — First task
