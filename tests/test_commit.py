@@ -18,7 +18,17 @@ from autonomous_forge.commit import (
 )
 
 
-PLAN_WITH_TODO = """\
+_LINT_CLEAN_TAIL = """\
+Why it matters: Test fixture.
+Scope: Test fixture.
+Expected files or areas: tests.
+Acceptance criteria: Passes.
+Validation: N/A.
+Risks or assumptions: None.
+Notes: Test fixture.
+"""
+
+PLAN_WITH_TODO = f"""\
 # Roadmap
 
 ### AUTO-001 — Build widget
@@ -26,9 +36,9 @@ Priority: P1
 Status: TODO
 
 Goal: Build a widget.
-"""
+{_LINT_CLEAN_TAIL}"""
 
-PLAN_ALL_DONE = """\
+PLAN_ALL_DONE = f"""\
 # Roadmap
 
 ### AUTO-001 — Build widget
@@ -36,9 +46,9 @@ Priority: P1
 Status: DONE
 
 Goal: Build a widget.
-"""
+{_LINT_CLEAN_TAIL}"""
 
-PLAN_WITH_APPROVAL = """\
+PLAN_WITH_APPROVAL = f"""\
 # Roadmap
 
 ### AUTO-001 — Add network call
@@ -47,7 +57,7 @@ Status: TODO
 Approval needed: Adding network access.
 
 Goal: Build a widget that calls a network API.
-"""
+{_LINT_CLEAN_TAIL}"""
 
 POLICY = """\
 # Repository Policy
@@ -141,6 +151,22 @@ class TestPreFlight:
         (tmp_path / ".ai").mkdir()
         (tmp_path / ".ai/AUTONOMOUS_PLAN.md").write_text(PLAN_WITH_TODO, encoding="utf-8")
         pf = run_pre_flight(root=tmp_path, validate=False, require_policy=False)
+        assert pf.safe
+
+    @patch("autonomous_forge.commit.get_changed_files", return_value=["src/foo.py"])
+    def test_lint_diagnostic_blocks_commit_by_default(self, mock_git, tmp_path):
+        bad_plan = "### AUTO-001 — Build widget\nPriority: P1\nStatus: TODO\nGoal: Test.\n"
+        _setup(tmp_path, plan=bad_plan)
+        pf = run_pre_flight(root=tmp_path, validate=False)
+        assert not pf.safe
+        assert "forge lint-plan failed" in pf.block_reason
+        assert "--no-lint-required" in pf.block_reason
+
+    @patch("autonomous_forge.commit.get_changed_files", return_value=["src/foo.py"])
+    def test_no_lint_required_override_allows_commit(self, mock_git, tmp_path):
+        bad_plan = "### AUTO-001 — Build widget\nPriority: P1\nStatus: TODO\nGoal: Test.\n"
+        _setup(tmp_path, plan=bad_plan)
+        pf = run_pre_flight(root=tmp_path, validate=False, require_lint_pass=False)
         assert pf.safe
 
     @patch("autonomous_forge.commit.get_changed_files", return_value=["src/foo.py"])
@@ -353,6 +379,39 @@ class TestCommitCLI:
 
         code = main([
             "commit", "--check-only", "--no-validate",
+            "--root", str(tmp_path),
+            "--plan", str(tmp_path / ".ai/AUTONOMOUS_PLAN.md"),
+            "--policy", str(tmp_path / ".forge/policy.md"),
+        ])
+        captured = capsys.readouterr()
+        assert code == 0
+        assert "SAFE" in captured.out
+
+    @patch("autonomous_forge.commit.get_changed_files", return_value=["src/foo.py"])
+    def test_check_only_blocked_by_lint_diagnostic(self, mock_git, tmp_path, capsys):
+        bad_plan = "### AUTO-001 — Build widget\nPriority: P1\nStatus: TODO\nGoal: Test.\n"
+        _setup(tmp_path, plan=bad_plan)
+        from autonomous_forge.cli import main
+
+        code = main([
+            "commit", "--check-only", "--no-validate",
+            "--root", str(tmp_path),
+            "--plan", str(tmp_path / ".ai/AUTONOMOUS_PLAN.md"),
+            "--policy", str(tmp_path / ".forge/policy.md"),
+        ])
+        captured = capsys.readouterr()
+        assert code == 1
+        assert "BLOCKED" in captured.out
+        assert "forge lint-plan failed" in captured.out
+
+    @patch("autonomous_forge.commit.get_changed_files", return_value=["src/foo.py"])
+    def test_check_only_no_lint_required_override(self, mock_git, tmp_path, capsys):
+        bad_plan = "### AUTO-001 — Build widget\nPriority: P1\nStatus: TODO\nGoal: Test.\n"
+        _setup(tmp_path, plan=bad_plan)
+        from autonomous_forge.cli import main
+
+        code = main([
+            "commit", "--check-only", "--no-validate", "--no-lint-required",
             "--root", str(tmp_path),
             "--plan", str(tmp_path / ".ai/AUTONOMOUS_PLAN.md"),
             "--policy", str(tmp_path / ".forge/policy.md"),

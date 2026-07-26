@@ -16,7 +16,17 @@ from autonomous_forge.pipeline import (
 from autonomous_forge.push import PushResult
 
 
-PLAN_TODO = """\
+_LINT_CLEAN_TAIL = """\
+Why it matters: Test fixture.
+Scope: Test fixture.
+Expected files or areas: tests.
+Acceptance criteria: Passes.
+Validation: N/A.
+Risks or assumptions: None.
+Notes: Test fixture.
+"""
+
+PLAN_TODO = f"""\
 # Roadmap
 
 ## Roadmap v1
@@ -26,9 +36,9 @@ Priority: P1
 Status: TODO
 
 Goal: Build a widget.
-"""
+{_LINT_CLEAN_TAIL}"""
 
-PLAN_DONE = """\
+PLAN_DONE = f"""\
 # Roadmap
 
 ## Roadmap v1
@@ -38,7 +48,7 @@ Priority: P1
 Status: DONE
 
 Goal: Build a widget.
-"""
+{_LINT_CLEAN_TAIL}"""
 
 POLICY = """\
 # Repository Policy
@@ -134,6 +144,32 @@ class TestExecutePipeline:
             dry_run=True,
             timestamp="2026-01-01T00:00:00+00:00",
             require_policy=False,
+        )
+        assert not result.run_outcome.blocked
+
+    @patch("autonomous_forge.run.get_changed_files", return_value=[])
+    def test_lint_diagnostic_blocks_pipeline_by_default(self, mock_git, tmp_path):
+        bad_plan = "### AUTO-001 — Build widget\nPriority: P1\nStatus: TODO\nGoal: Test.\n"
+        _setup(tmp_path, plan=bad_plan)
+        result = execute_pipeline(
+            root=tmp_path,
+            commit=True,
+            dry_run=True,
+            timestamp="2026-01-01T00:00:00+00:00",
+        )
+        assert result.stage_reached == "run"
+        assert result.run_outcome.blocked
+        assert "forge lint-plan failed" in result.run_outcome.block_reason
+
+    @patch("autonomous_forge.run.get_changed_files", return_value=[])
+    def test_no_lint_required_override_allows_pipeline_run_stage(self, mock_git, tmp_path):
+        bad_plan = "### AUTO-001 — Build widget\nPriority: P1\nStatus: TODO\nGoal: Test.\n"
+        _setup(tmp_path, plan=bad_plan)
+        result = execute_pipeline(
+            root=tmp_path,
+            dry_run=True,
+            timestamp="2026-01-01T00:00:00+00:00",
+            require_lint_pass=False,
         )
         assert not result.run_outcome.blocked
 

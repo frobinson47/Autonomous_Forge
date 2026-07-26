@@ -392,6 +392,7 @@ Inputs:
 - `--no-policy-required`: allow a missing or malformed `.forge/policy.md` instead of blocking (see DEC-012 — blocking is the default).
 - `--advisory-paths`: report files outside `Allowed paths` instead of blocking (see DEC-012 — blocking is the default).
 - `--allow-shell-command`: allow the validation command to run through the shell (pipes, redirects, chaining); rejected by default (see AUTO-051).
+- `--no-lint-required`: allow a plan with `forge lint-plan` diagnostics instead of blocking (see AUTO-053 — blocking is the default).
 - `--timestamp`: optional ISO-8601 timestamp for deterministic output.
 
 Expected successful output:
@@ -512,6 +513,7 @@ Inputs:
 - `--no-policy-required`: allow a missing or malformed `.forge/policy.md` instead of blocking (see DEC-012 — blocking is the default).
 - `--advisory-paths`: report files outside `Allowed paths` instead of blocking (see DEC-012 — blocking is the default).
 - `--allow-shell-command`: allow the validation command to run through the shell (pipes, redirects, chaining); rejected by default (see AUTO-051).
+- `--no-lint-required`: allow a plan with `forge lint-plan` diagnostics instead of blocking (see AUTO-053 — blocking is the default).
 
 Expected successful output:
 
@@ -621,6 +623,7 @@ Inputs:
 - `--no-policy-required`: allow a missing or malformed `.forge/policy.md` instead of blocking at the run stage (see DEC-012 — blocking is the default).
 - `--advisory-paths`: report files outside `Allowed paths` instead of blocking (see DEC-012 — blocking is the default).
 - `--allow-shell-command`: allow the validation command to run through the shell (pipes, redirects, chaining); rejected by default (see AUTO-051).
+- `--no-lint-required`: allow a plan with `forge lint-plan` diagnostics instead of blocking (see AUTO-053 — blocking is the default).
 - `--timestamp`: optional ISO-8601 timestamp for deterministic output.
 
 Note: each flag gates only its own stage — `--sync` does **not** imply `--commit` or `--push`; pass all the flags you need explicitly.

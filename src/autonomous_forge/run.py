@@ -12,6 +12,7 @@ from autonomous_forge.drift import collect_drift_signals
 from autonomous_forge.lock import LockHeldError, acquire_lock
 from autonomous_forge.plan import (
     PlanTask,
+    lint_plan_structure,
     parse_plan_tasks,
     select_eligible_task,
 )
@@ -61,6 +62,7 @@ def execute_run(
     require_policy: bool = True,
     advisory_paths: bool = False,
     allow_shell_command: bool = False,
+    require_lint_pass: bool = True,
 ) -> RunOutcome:
     """Execute one autonomous cycle: select, validate, diff-check, record.
 
@@ -74,7 +76,7 @@ def execute_run(
         return _execute_run_body(
             root, plan_path, state_path, changelog_path, policy_path,
             validate, validate_command, validate_timeout, ts, dry_run,
-            require_policy, advisory_paths, allow_shell_command,
+            require_policy, advisory_paths, allow_shell_command, require_lint_pass,
         )
 
     try:
@@ -98,7 +100,7 @@ def execute_run(
         return _execute_run_body(
             root, plan_path, state_path, changelog_path, policy_path,
             validate, validate_command, validate_timeout, ts, dry_run,
-            require_policy, advisory_paths, allow_shell_command,
+            require_policy, advisory_paths, allow_shell_command, require_lint_pass,
         )
     finally:
         lock.release()
@@ -118,6 +120,7 @@ def _execute_run_body(
     require_policy: bool = True,
     advisory_paths: bool = False,
     allow_shell_command: bool = False,
+    require_lint_pass: bool = True,
 ) -> RunOutcome:
     """Select, validate, diff-check, and record one run cycle (no locking)."""
     plan_p = plan_path or (root / ".ai/AUTONOMOUS_PLAN.md")
@@ -126,6 +129,29 @@ def _execute_run_body(
     policy_p = policy_path or (root / ".forge/policy.md")
 
     plan_text = plan_p.read_text(encoding="utf-8")
+
+    if require_lint_pass:
+        lint_diagnostics = lint_plan_structure(plan_text)
+        if lint_diagnostics:
+            first = lint_diagnostics[0]
+            more = f" (+{len(lint_diagnostics) - 1} more)" if len(lint_diagnostics) > 1 else ""
+            return RunOutcome(
+                timestamp=ts,
+                selected_task=None,
+                validation_passed=None,
+                validation_command="",
+                validation_output="",
+                diff_violations=0,
+                diff_details=(),
+                drift_signals=0,
+                changed_files=(),
+                policy_status="unknown",
+                blocked=True,
+                block_reason=(
+                    f"forge lint-plan failed: line {first.line_number}: {first.message}{more} "
+                    "Pass require_lint_pass=False (CLI: --no-lint-required) to override."
+                ),
+            )
     state_text = _safe_read(state_p)
     changelog_text = _safe_read(changelog_p)
     policy_text = _safe_read(policy_p)

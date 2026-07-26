@@ -40,6 +40,7 @@ def execute_pipeline(
     require_policy: bool = True,
     advisory_paths: bool = False,
     allow_shell_command: bool = False,
+    require_lint_pass: bool = True,
 ) -> PipelineResult:
     """Execute the full forge pipeline: run -> commit -> push -> sync.
 
@@ -79,7 +80,7 @@ def execute_pipeline(
         return _execute_pipeline_body(
             root, plan_path, policy_path, validate_command,
             commit, push, sync, commit_message, dry_run, ts,
-            require_policy, advisory_paths, allow_shell_command,
+            require_policy, advisory_paths, allow_shell_command, require_lint_pass,
         )
     finally:
         lock.release()
@@ -99,6 +100,7 @@ def _execute_pipeline_body(
     require_policy: bool = True,
     advisory_paths: bool = False,
     allow_shell_command: bool = False,
+    require_lint_pass: bool = True,
 ) -> PipelineResult:
     """Run each pipeline stage in sequence (no locking — caller holds it)."""
     run_outcome = execute_run(
@@ -112,6 +114,7 @@ def _execute_pipeline_body(
         require_policy=require_policy,
         advisory_paths=advisory_paths,
         allow_shell_command=allow_shell_command,
+        require_lint_pass=require_lint_pass,
     )
     run_report_path = save_run_outcome(run_outcome, root)
 
@@ -165,6 +168,7 @@ def _execute_pipeline_body(
         timestamp=timestamp,
         require_policy=require_policy,
         advisory_paths=advisory_paths,
+        require_lint_pass=require_lint_pass,
     )
 
     if not commit_result.committed:

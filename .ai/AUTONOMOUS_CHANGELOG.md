@@ -269,3 +269,4 @@
 - 2026-07-25: AUTO-050 — Define structured approval semantics for policy's Human approval required section (DONE)
 - 2026-07-25: AUTO-051 — Replace shell=True in forge validate with safer execution (DONE)
 - 2026-07-25: AUTO-052 — Make .forge/.lock acquisition atomic (DONE)
+- 2026-07-25: AUTO-053 — Require forge lint-plan to pass before mutable pipeline stages (DONE)

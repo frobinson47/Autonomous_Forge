@@ -9,7 +9,7 @@ from pathlib import Path
 from autonomous_forge.approvals import has_approval
 from autonomous_forge.changelog import append_changelog_entries, find_newly_done_tasks
 from autonomous_forge.diffcheck import check_diff_against_policy, get_changed_files
-from autonomous_forge.plan import parse_plan_tasks, select_eligible_task
+from autonomous_forge.plan import lint_plan_structure, parse_plan_tasks, select_eligible_task
 from autonomous_forge.policy import validate_policy_text
 from autonomous_forge.validate import run_validation
 
@@ -63,6 +63,7 @@ def run_pre_flight(
     require_policy: bool = True,
     advisory_paths: bool = False,
     allow_shell_command: bool = False,
+    require_lint_pass: bool = True,
 ) -> CommitPreFlight:
     """Run pre-commit safety checks: diff-check, validation, task detection."""
     plan_p = plan_path or (root / ".ai/AUTONOMOUS_PLAN.md")
@@ -74,6 +75,26 @@ def run_pre_flight(
     approval_needed = ""
     if plan_p.exists():
         plan_text = plan_p.read_text(encoding="utf-8")
+
+        if require_lint_pass:
+            lint_diagnostics = lint_plan_structure(plan_text)
+            if lint_diagnostics:
+                first = lint_diagnostics[0]
+                more = f" (+{len(lint_diagnostics) - 1} more)" if len(lint_diagnostics) > 1 else ""
+                return CommitPreFlight(
+                    safe=False,
+                    changed_files=(),
+                    violations=(),
+                    validation_passed=None,
+                    validation_output="",
+                    task_id="",
+                    task_title="",
+                    block_reason=(
+                        f"forge lint-plan failed: line {first.line_number}: {first.message}{more} "
+                        "Pass require_lint_pass=False (CLI: --no-lint-required) to override."
+                    ),
+                )
+
         tasks = parse_plan_tasks(plan_text)
         selected = select_eligible_task(tasks)
         if selected:
@@ -217,6 +238,7 @@ def execute_commit(
     require_policy: bool = True,
     advisory_paths: bool = False,
     allow_shell_command: bool = False,
+    require_lint_pass: bool = True,
 ) -> CommitResult:
     """Run pre-flight checks and commit if safe.
 
@@ -230,6 +252,7 @@ def execute_commit(
             validate=validate, validate_command=validate_command,
             staged_only=staged_only, require_policy=require_policy,
             advisory_paths=advisory_paths, allow_shell_command=allow_shell_command,
+            require_lint_pass=require_lint_pass,
         )
 
     if not pre_flight.safe:

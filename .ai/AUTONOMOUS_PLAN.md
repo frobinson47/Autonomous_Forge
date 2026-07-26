@@ -714,16 +714,16 @@ Notes: Independently verified: lock.py's acquire_lock does 'if path.exists(): ..
 
 ### AUTO-053 — Require forge lint-plan to pass before mutable pipeline stages
 Priority: P2
-Status: TODO
+Status: DONE
 
 Goal: A malformed plan should never be used to select, commit against, or sync tasks - currently forge run/forge commit/forge pipeline proceed on a plan with lint failures, since normal execution never requires forge lint-plan to pass first.
-Why it matters: TBD
+Why it matters: Selecting or committing against a structurally malformed plan (duplicate IDs, unsupported priority/status, missing required fields) can silently pick the wrong task or corrupt plan state further — the same fail-closed logic already applied to file policy in DEC-012/013 applies equally to plan structure.
 Scope: Run the existing lint_plan_structure check as a pre-flight gate inside execute_run/execute_commit (or pipeline's own entry point) before task selection, with a clear block message and the same override-flag pattern as the policy fail-closed task.
 Expected files or areas: src/autonomous_forge/run.py, src/autonomous_forge/commit.py, src/autonomous_forge/pipeline.py, src/autonomous_forge/cli.py, tests, docs/COMMANDS.md
 Acceptance criteria: A plan with a lint diagnostic (e.g. missing required field) blocks forge run/forge pipeline by default with the lint detail included; a clean plan is unaffected; the override flag restores today's behavior.
-Validation: TBD
-Risks or assumptions: None.
-Notes: Complements the policy fail-closed tasks - same fail-closed philosophy applied to plan structure instead of file policy.
+Validation: `python -m pytest` — 388 tests pass (8 new: test_run.py x2, test_commit.py x4, test_pipeline.py x2). `forge lint-plan` — ok. Confirmed `forge run --dry-run` still works correctly against this repo's real plan.
+Risks or assumptions: This gate broke 26 previously-passing tests across test_run.py/test_pipeline.py/test_commit.py whose shared plan fixtures (MINIMAL_PLAN, PLAN_TODO, PLAN_WITH_TODO, etc.) only ever set Priority/Status/Goal — never the full 10-field set lint_plan_structure requires. Fixed by adding a shared _LINT_CLEAN_TAIL fixture block (Why it matters/Scope/Expected files or areas/Acceptance criteria/Validation/Risks or assumptions/Notes) to all 8 named plan fixtures across those three files, rather than special-casing require_lint_pass=False per test — those fixtures represent "a valid plan" for tests not about lint itself, and should now actually be valid under the new default.
+Notes: Complements the policy fail-closed tasks - same fail-closed philosophy applied to plan structure instead of file policy. New CLI flag: --no-lint-required, mirroring --no-policy-required's naming pattern.
 
 ### AUTO-054 — Split cli.py and sync.py into smaller modules
 Priority: P3

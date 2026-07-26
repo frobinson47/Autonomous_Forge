@@ -363,6 +363,11 @@ def build_parser() -> argparse.ArgumentParser:
         help="allow the validation command to run through the shell (pipes, redirects, chaining); default rejects such commands",
     )
     run_parser.add_argument(
+        "--no-lint-required",
+        action="store_true",
+        help="allow a plan with forge lint-plan diagnostics instead of blocking (default: blocks)",
+    )
+    run_parser.add_argument(
         "--timestamp",
         default=None,
         help="optional ISO-8601 timestamp for deterministic output",
@@ -457,6 +462,11 @@ def build_parser() -> argparse.ArgumentParser:
         "--allow-shell-command",
         action="store_true",
         help="allow the validation command to run through the shell (pipes, redirects, chaining); default rejects such commands",
+    )
+    commit_parser.add_argument(
+        "--no-lint-required",
+        action="store_true",
+        help="allow a plan with forge lint-plan diagnostics instead of blocking (default: blocks)",
     )
 
     push_parser = subparsers.add_parser(
@@ -560,6 +570,11 @@ def build_parser() -> argparse.ArgumentParser:
         "--allow-shell-command",
         action="store_true",
         help="allow the validation command to run through the shell (pipes, redirects, chaining); default rejects such commands",
+    )
+    pipeline_parser.add_argument(
+        "--no-lint-required",
+        action="store_true",
+        help="allow a plan with forge lint-plan diagnostics instead of blocking (default: blocks)",
     )
     pipeline_parser.add_argument(
         "--timestamp",
@@ -1166,6 +1181,7 @@ def main(argv: list[str] | None = None) -> int:
                 require_policy=not args.no_policy_required,
                 advisory_paths=args.advisory_paths,
                 allow_shell_command=args.allow_shell_command,
+                require_lint_pass=not args.no_lint_required,
             )
         except FileNotFoundError as exc:
             print(f"File not found: {exc}")
@@ -1235,6 +1251,7 @@ def main(argv: list[str] | None = None) -> int:
                 require_policy=not args.no_policy_required,
                 advisory_paths=args.advisory_paths,
                 allow_shell_command=args.allow_shell_command,
+                require_lint_pass=not args.no_lint_required,
             )
         except FileNotFoundError as exc:
             print(f"File not found: {exc}")
@@ -1265,6 +1282,7 @@ def main(argv: list[str] | None = None) -> int:
                 require_policy=not args.no_policy_required,
                 advisory_paths=args.advisory_paths,
                 allow_shell_command=args.allow_shell_command,
+                require_lint_pass=not args.no_lint_required,
             )
             print(format_pre_flight(pf))
             return 0 if pf.safe else 1
@@ -1276,6 +1294,7 @@ def main(argv: list[str] | None = None) -> int:
             require_policy=not args.no_policy_required,
             advisory_paths=args.advisory_paths,
             allow_shell_command=args.allow_shell_command,
+            require_lint_pass=not args.no_lint_required,
         )
         print(format_commit_result(result))
         return 0 if result.committed else 1

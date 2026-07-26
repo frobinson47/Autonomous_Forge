@@ -16,7 +16,17 @@ from autonomous_forge.run import (
 )
 
 
-MINIMAL_PLAN = """\
+_LINT_CLEAN_TAIL = """\
+Why it matters: Test fixture.
+Scope: Test fixture.
+Expected files or areas: tests.
+Acceptance criteria: Passes.
+Validation: N/A.
+Risks or assumptions: None.
+Notes: Test fixture.
+"""
+
+MINIMAL_PLAN = f"""\
 # Roadmap
 
 ### AUTO-001 — Do something
@@ -24,9 +34,9 @@ Priority: P1
 Status: TODO
 
 Goal: Test task.
-"""
+{_LINT_CLEAN_TAIL}"""
 
-DONE_PLAN = """\
+DONE_PLAN = f"""\
 # Roadmap
 
 ### AUTO-001 — Do something
@@ -34,9 +44,9 @@ Priority: P1
 Status: DONE
 
 Goal: Test task.
-"""
+{_LINT_CLEAN_TAIL}"""
 
-PLAN_WITH_APPROVAL = """\
+PLAN_WITH_APPROVAL = f"""\
 # Roadmap
 
 ### AUTO-001 — Add network call
@@ -45,7 +55,7 @@ Status: TODO
 Approval needed: Adding network access.
 
 Goal: Test task that needs approval.
-"""
+{_LINT_CLEAN_TAIL}"""
 
 MINIMAL_POLICY = """\
 # Repository Policy
@@ -224,6 +234,31 @@ class TestExecuteRun:
             timestamp="2026-01-01T00:00:00+00:00",
             dry_run=True,
             require_policy=False,
+        )
+        assert not outcome.blocked
+
+    @patch("autonomous_forge.run.get_changed_files", return_value=[])
+    def test_lint_diagnostic_blocks_run_by_default(self, mock_git, tmp_path: Path):
+        bad_plan = "### AUTO-001 — Do something\nPriority: P1\nStatus: TODO\nGoal: Test.\n"
+        _setup_metadata(tmp_path, bad_plan, MINIMAL_POLICY)
+        outcome = execute_run(
+            root=tmp_path,
+            timestamp="2026-01-01T00:00:00+00:00",
+            dry_run=True,
+        )
+        assert outcome.blocked
+        assert "forge lint-plan failed" in outcome.block_reason
+        assert "--no-lint-required" in outcome.block_reason
+
+    @patch("autonomous_forge.run.get_changed_files", return_value=[])
+    def test_no_lint_required_override_allows_run(self, mock_git, tmp_path: Path):
+        bad_plan = "### AUTO-001 — Do something\nPriority: P1\nStatus: TODO\nGoal: Test.\n"
+        _setup_metadata(tmp_path, bad_plan, MINIMAL_POLICY)
+        outcome = execute_run(
+            root=tmp_path,
+            timestamp="2026-01-01T00:00:00+00:00",
+            dry_run=True,
+            require_lint_pass=False,
         )
         assert not outcome.blocked
 
