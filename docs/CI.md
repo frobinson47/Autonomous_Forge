@@ -7,6 +7,8 @@ The workflow YAML below works for either **Forgejo Actions** or **GitHub Actions
 - Forgejo Actions: `.forgejo/workflows/forge-check.yml`
 - GitHub Actions: `.github/workflows/forge-check.yml`
 
+**`runs-on:` must match a label your runner actually registered with.** `ubuntu-latest` is a GitHub-hosted-runner label; a self-hosted Forgejo runner (`act_runner`/`forgejo-runner`) only claims jobs whose `runs-on:` matches one of its own configured labels (commonly `docker` or `self-hosted` — check the runner's `runner.labels` config, or the label shown when it was registered). A workflow with a `runs-on:` value no runner advertises just sits queued forever with zero visible error. This repo's own workflow uses `runs-on: docker` for exactly this reason.
+
 ```yaml
 name: forge check
 
