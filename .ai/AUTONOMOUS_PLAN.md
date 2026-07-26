@@ -701,16 +701,16 @@ Notes: Independently verified: validate.py's subprocess.run call does pass shell
 
 ### AUTO-052 — Make .forge/.lock acquisition atomic
 Priority: P1
-Status: TODO
+Status: DONE
 
 Goal: Replace the check-then-write lock acquisition in lock.py (path.exists() then write_text()) with an atomic exclusive-create primitive, closing the TOCTOU race where two processes can both observe no lock and both create one.
-Why it matters: TBD
+Why it matters: The entire point of the lock is preventing two concurrent forge run/pipeline invocations from double-committing; a check-then-write race meant the guarantee could silently fail under real concurrency, exactly the scenario it exists to prevent.
 Scope: Use O_CREAT | O_EXCL (or the platform-appropriate atomic equivalent) to acquire the lock file, so a second concurrent acquire attempt fails atomically instead of racing. Keep the existing stale-lock detection and recovery (dead PID clears automatically) - only the acquisition step itself needs to become atomic.
 Expected files or areas: src/autonomous_forge/lock.py, tests
 Acceptance criteria: A tight-loop concurrent-acquire test (two near-simultaneous acquire attempts) never succeeds twice; existing stale-lock and release behavior from AUTO-040 is unaffected.
-Validation: TBD
-Risks or assumptions: None.
-Notes: Independently verified: lock.py's acquire_lock does 'if path.exists(): ...' then 'path.write_text(...)' with no atomicity between the check and the write - a real TOCTOU gap, not just a theoretical one.
+Validation: `python -m pytest` — 380 tests pass (1 new: a thread-based concurrent-acquire test using distinct faked pids per thread, since two threads share the same real os.getpid()). Ran the new concurrency test 5x standalone with no flakes. `forge lint-plan` — ok.
+Risks or assumptions: The bounded retry loop (3 attempts) assumes at most a handful of processes ever race for this lock in practice (a personal/small-team tool) — if all attempts are exhausted by real contention it raises LockHeldError using whatever pid is currently recorded, which is the same outcome a caller would want (back off and retry later).
+Notes: Independently verified: lock.py's acquire_lock does 'if path.exists(): ...' then 'path.write_text(...)' with no atomicity between the check and the write - a real TOCTOU gap, not just a theoretical one. Fixed with os.open(path, O_CREAT | O_EXCL | O_WRONLY), which is atomic at the OS level on both POSIX and Windows.
 
 ### AUTO-053 — Require forge lint-plan to pass before mutable pipeline stages
 Priority: P2

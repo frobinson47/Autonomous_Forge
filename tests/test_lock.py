@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import os
+import threading
 from pathlib import Path
 from unittest.mock import patch
 
@@ -89,6 +90,50 @@ class TestAcquireLock:
         )
         lock = acquire_lock(tmp_path, timestamp="2026-07-24T00:05:00")
         assert isinstance(lock, ForgeLock)
+
+    def test_concurrent_acquire_never_succeeds_twice(self, tmp_path: Path):
+        # Simulates two distinct processes racing to acquire at the same
+        # instant by giving each thread a distinct fake pid and forcing
+        # _pid_alive to report "alive" for both — the real os.getpid() is
+        # identical for both threads (same process), so without the
+        # O_CREAT|O_EXCL atomicity this would let both threads win.
+        results: list[tuple[str, object]] = []
+        results_lock = threading.Lock()
+        barrier = threading.Barrier(2)
+        fake_pids: dict[int, int] = {}
+        counter = [10000]
+
+        def fake_getpid() -> int:
+            tid = threading.get_ident()
+            with results_lock:
+                if tid not in fake_pids:
+                    counter[0] += 1
+                    fake_pids[tid] = counter[0]
+            return fake_pids[tid]
+
+        def attempt() -> None:
+            barrier.wait()
+            try:
+                lock = acquire_lock(tmp_path, timestamp="2026-07-25T00:00:00")
+                with results_lock:
+                    results.append(("ok", lock))
+            except LockHeldError as exc:
+                with results_lock:
+                    results.append(("blocked", exc))
+
+        with patch("autonomous_forge.lock.os.getpid", side_effect=fake_getpid), \
+             patch("autonomous_forge.lock._pid_alive", return_value=True):
+            t1 = threading.Thread(target=attempt)
+            t2 = threading.Thread(target=attempt)
+            t1.start()
+            t2.start()
+            t1.join()
+            t2.join()
+
+        successes = [r for r in results if r[0] == "ok"]
+        blocked = [r for r in results if r[0] == "blocked"]
+        assert len(successes) == 1
+        assert len(blocked) == 1
 
 
 class TestPidAlive:

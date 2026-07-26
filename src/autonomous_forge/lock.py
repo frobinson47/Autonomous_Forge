@@ -80,36 +80,54 @@ class ForgeLock:
         self.release()
 
 
+def _read_lock(path: Path) -> tuple[int | None, str]:
+    """Read a lock file's recorded pid and timestamp, or (None, "unknown") if unreadable."""
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+        return int(data["pid"]), str(data.get("acquired_at", "unknown"))
+    except (OSError, ValueError, KeyError, TypeError, json.JSONDecodeError):
+        return None, "unknown"
+
+
+_MAX_ACQUIRE_ATTEMPTS = 3
+
+
 def acquire_lock(root: Path = Path("."), timestamp: str | None = None) -> ForgeLock:
     """Acquire the forge run/pipeline lock for ``root``.
 
     A stale lock (recorded PID no longer alive, or the lock file is
     unreadable/malformed) is cleared automatically before acquiring.
     Raises LockHeldError if a live lock is already held by another process.
+
+    Acquisition itself is atomic (``O_CREAT | O_EXCL``): the check for an
+    existing lock and the creation of a new one are a single OS-level
+    operation, so two processes racing to acquire at the same instant can
+    never both succeed — one always gets ``FileExistsError`` and re-checks
+    the (now real) winner's liveness instead.
     """
     path = root / LOCK_RELATIVE_PATH
-
-    if path.exists():
-        existing_pid: int | None = None
-        acquired_at = "unknown"
-        try:
-            data = json.loads(path.read_text(encoding="utf-8"))
-            existing_pid = int(data["pid"])
-            acquired_at = str(data.get("acquired_at", "unknown"))
-        except (OSError, ValueError, KeyError, TypeError, json.JSONDecodeError):
-            existing_pid = None
-
-        if existing_pid is not None and existing_pid != os.getpid() and _pid_alive(existing_pid):
-            raise LockHeldError(existing_pid, acquired_at)
-
-        try:
-            path.unlink()
-        except FileNotFoundError:
-            pass
-
     path.parent.mkdir(parents=True, exist_ok=True)
     now = timestamp or time.strftime("%Y-%m-%dT%H:%M:%S")
-    path.write_text(
-        json.dumps({"pid": os.getpid(), "acquired_at": now}), encoding="utf-8"
-    )
-    return ForgeLock(root=root, path=path)
+    payload = json.dumps({"pid": os.getpid(), "acquired_at": now}).encode("utf-8")
+
+    for _ in range(_MAX_ACQUIRE_ATTEMPTS):
+        try:
+            fd = os.open(path, os.O_CREAT | os.O_EXCL | os.O_WRONLY)
+        except FileExistsError:
+            existing_pid, acquired_at = _read_lock(path)
+            if existing_pid is not None and existing_pid != os.getpid() and _pid_alive(existing_pid):
+                raise LockHeldError(existing_pid, acquired_at)
+            try:
+                path.unlink()
+            except FileNotFoundError:
+                pass
+            continue
+
+        with os.fdopen(fd, "wb") as f:
+            f.write(payload)
+        return ForgeLock(root=root, path=path)
+
+    existing_pid, acquired_at = _read_lock(path)
+    if existing_pid is not None:
+        raise LockHeldError(existing_pid, acquired_at)
+    raise LockHeldError(-1, "unknown")
