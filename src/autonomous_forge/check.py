@@ -109,6 +109,8 @@ def execute_check(
         )
         val_ok = result.passed
         val_output = result.stdout or ""
+        if result.stderr:
+            val_output = f"{val_output}\n{result.stderr}" if val_output else result.stderr
 
     all_passed = lint_ok and drift_ok and diff_ok and (val_ok is not False)
 
@@ -145,6 +147,11 @@ def format_check_result(result: CheckResult) -> str:
         lines.append("Validation: skipped")
     else:
         lines.append(f"Validation: {'PASS' if result.validation_ok else 'FAIL'}")
+        if not result.validation_ok and result.validation_output.strip():
+            output_lines = result.validation_output.strip().splitlines()
+            tail = output_lines[-30:] if len(output_lines) > 30 else output_lines
+            for line in tail:
+                lines.append(f"  {line}")
 
     lines.append(f"Result: {'ALL PASSED' if result.all_passed else 'ISSUES FOUND'}")
     return "\n".join(lines)

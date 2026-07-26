@@ -126,6 +126,20 @@ class TestExecuteCheck:
         assert result.all_passed is False
 
     @patch("autonomous_forge.check.get_changed_files", return_value=[])
+    @patch("autonomous_forge.check.run_validation")
+    def test_validation_fail_includes_stderr_in_output(self, mock_val, mock_git, tmp_path):
+        _setup(tmp_path)
+        from autonomous_forge.validate import ValidationResult
+        mock_val.return_value = ValidationResult(
+            passed=False, command="pytest", stdout="1 failed",
+            stderr="Traceback (most recent call last):\nAssertionError",
+            exit_code=1, timestamp="2026-01-01T00:00:00+00:00",
+        )
+        result = execute_check(root=tmp_path, validate=True)
+        assert "1 failed" in result.validation_output
+        assert "AssertionError" in result.validation_output
+
+    @patch("autonomous_forge.check.get_changed_files", return_value=[])
     def test_stale_readme_surfaces_as_warning_not_failure(self, mock_git, tmp_path):
         _setup(tmp_path)
         (tmp_path / "README.md").write_text(
@@ -167,6 +181,33 @@ class TestFormatCheckResult:
         assert "ISSUES FOUND" in text
         assert "Lint: FAIL" in text
         assert ".env" in text
+
+    def test_format_validation_failure_includes_output_tail(self):
+        r = CheckResult(
+            lint_ok=True, lint_diagnostics=(),
+            drift_ok=True, drift_signals=(),
+            diff_ok=True, diff_violations=(),
+            validation_ok=False,
+            validation_output="collecting...\nFAILED tests/test_foo.py::test_bar\nAssertionError: boom",
+            all_passed=False,
+        )
+        text = format_check_result(r)
+        assert "Validation: FAIL" in text
+        assert "FAILED tests/test_foo.py::test_bar" in text
+        assert "AssertionError: boom" in text
+
+    def test_format_validation_pass_omits_output(self):
+        r = CheckResult(
+            lint_ok=True, lint_diagnostics=(),
+            drift_ok=True, drift_signals=(),
+            diff_ok=True, diff_violations=(),
+            validation_ok=True,
+            validation_output="5 passed",
+            all_passed=True,
+        )
+        text = format_check_result(r)
+        assert "Validation: PASS" in text
+        assert "5 passed" not in text
 
 
 class TestCheckCLI:
