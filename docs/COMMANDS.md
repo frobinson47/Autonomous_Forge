@@ -271,6 +271,7 @@ Inputs:
 - `--changelog`: changelog Markdown path, defaulting to `.ai/AUTONOMOUS_CHANGELOG.md`.
 - `--policy`: policy Markdown path, defaulting to `.forge/policy.md`.
 - `--root`: repository root for policy path existence checks, defaulting to `.`.
+- README.md is read automatically from `--root` (no dedicated flag) if present, at `<root>/README.md`.
 
 Expected successful output:
 
@@ -283,14 +284,16 @@ Result: no drift detected|<N> signal(s) detected
 Notes: Drift detection does not enforce corrections, change files, or run external commands.
 ```
 
-Signal categories: `state-plan`, `stale-state`, `changelog-plan`, `policy-repo`. Severity levels: `error`, `warn`, `info`.
+Signal categories: `state-plan`, `stale-state`, `changelog-plan`, `policy-repo`, `readme-plan`, `readme-state`. Severity levels: `error`, `warn`, `info`.
+
+`readme-plan`/`readme-state` (AUTO-057): if README.md's status line states its counts as `(N/M tasks done)` and `(N tests passing)`, drift compares them against the plan file's actual DONE/total task counts and the test count last recorded in `AUTONOMOUS_STATE.md`'s "Validation commands and results" line. If README doesn't use that exact phrasing, this check silently does nothing — it never guesses at a different format. Also surfaced (non-fatal, `warn` severity) by `forge check`.
 
 Exit codes:
 
 - `0` when the drift report is built, including when signals are detected.
 - `2` when the plan file is missing or malformed.
 
-Safety limits: reports drift signals only; it does not correct metadata, change files, run external commands, or enforce policy decisions. Missing optional files (state, changelog, policy) are handled gracefully — their checks are skipped.
+Safety limits: reports drift signals only; it does not correct metadata, change files, run external commands, or enforce policy decisions. Missing optional files (state, changelog, policy, README) are handled gracefully — their checks are skipped.
 
 ## `forge pause`
 

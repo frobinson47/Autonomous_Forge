@@ -1,12 +1,12 @@
 # Autonomous State
 
 - Current roadmap version: v7
-- Current task ID: AUTO-056 — Handle the AUTO-999 task ID ceiling
+- Current task ID: AUTO-057 — Fix README's stale roadmap/test-count stats and add a drift check for them
 - Current task status: DONE
 - Current branch: main
 - Last run timestamp: 2026-07-26T00:00:00+00:00
-- Last successful commit hash: 60684fe
-- Latest run summary: Widened the fixed-3-digit `AUTO-\d{3}` regex to `AUTO-\d{3,}` in five places (plan.py's task-heading regex, approvals.py's approval-heading regex, and three regexes in drift.py) — previously a task heading like `### AUTO-1000 — Title` would silently fail to parse at all (not error loudly) once the plan crossed 999 tasks. `planadd.py`'s ID-generation format already worked correctly beyond 999 with no change needed. AUTO-055 (CI enforcement) is on hold pending the user confirming Forgejo Actions is enabled on forgejo.familytechlab.com — worked AUTO-056 and will do AUTO-057 next while waiting. 394 total tests pass (6 new).
-- Validation commands and results: `python -m pytest` — 394 tests pass. `forge lint-plan` — ok.
-- Current blockers: AUTO-055 blocked pending user confirmation of Forgejo Actions availability.
-- Recommended next task: AUTO-057 — Fix README's stale roadmap/test-count stats and add a drift check for them.
+- Last successful commit hash: 8d6b959
+- Latest run summary: README.md's status line rewritten to a stable, parseable format (`(N/M tasks done)`, `(N tests passing)`) with corrected current numbers (56/57 tasks, 400 tests) — was stuck at "v1-v4, 37/37 tasks, 253 tests" from several roadmaps ago. Added two new drift signal categories, `readme-plan`/`readme-state` (both `warn` severity), comparing README's stated counts against the plan file's actual DONE/total and the state file's last recorded test count — surfaced by both `forge drift` and `forge check`, never blocking. Roadmap v7 now complete except AUTO-055 (CI enforcement), on hold pending the user confirming Forgejo Actions is enabled on forgejo.familytechlab.com. 400 total tests pass (6 new).
+- Validation commands and results: `python -m pytest` — 400 tests pass. `forge lint-plan` — ok. `forge drift` reports no drift against this repo's own files.
+- Current blockers: AUTO-055 blocked pending user confirmation of Forgejo Actions availability — the only remaining open task in Roadmap v7.
+- Recommended next task: AUTO-055 once Forgejo Actions is confirmed enabled — otherwise, plan Roadmap v8 or take direction from the user.

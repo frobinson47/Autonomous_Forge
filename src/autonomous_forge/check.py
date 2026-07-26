@@ -43,6 +43,7 @@ def execute_check(
     policy = policy_path or root / ".forge" / "policy.md"
     state = root / ".ai" / "AUTONOMOUS_STATE.md"
     changelog = root / ".ai" / "AUTONOMOUS_CHANGELOG.md"
+    readme = root / "README.md"
 
     # Lint
     lint_diags: list[str] = []
@@ -65,12 +66,14 @@ def execute_check(
         state_text = state.read_text(encoding="utf-8") if state.exists() else None
         changelog_text = changelog.read_text(encoding="utf-8") if changelog.exists() else None
         policy_text_drift = policy.read_text(encoding="utf-8") if policy.exists() else None
+        readme_text = readme.read_text(encoding="utf-8") if readme.exists() else None
         signals = collect_drift_signals(
             plan_text_drift,
             state_text=state_text,
             changelog_text=changelog_text,
             policy_text=policy_text_drift,
             root=root,
+            readme_text=readme_text,
         )
         error_signals = [s for s in signals if s.severity == "error"]
         if error_signals:

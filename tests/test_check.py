@@ -128,6 +128,22 @@ class TestExecuteCheck:
         assert result.validation_ok is False
         assert result.all_passed is False
 
+    @patch("autonomous_forge.check.get_changed_files", return_value=[])
+    def test_stale_readme_surfaces_as_warning_not_failure(self, mock_git, tmp_path):
+        _setup(tmp_path)
+        (tmp_path / "README.md").write_text(
+            "Status: (99/99 tasks done), tested (12345 tests passing).\n",
+            encoding="utf-8",
+        )
+        (tmp_path / ".ai/AUTONOMOUS_STATE.md").write_text(
+            "- Validation commands and results: `python -m pytest` — 1 tests pass.\n",
+            encoding="utf-8",
+        )
+        result = execute_check(root=tmp_path, validate=False)
+        assert result.drift_ok is True  # warn severity — does not fail the check
+        assert any("readme" in msg.lower() for msg in result.drift_signals)
+        assert result.all_passed is True
+
 
 class TestFormatCheckResult:
     def test_format_all_pass(self):

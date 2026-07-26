@@ -232,3 +232,49 @@ def test_drift_cli_missing_plan(tmp_path, capsys):
     assert result == 2
     output = capsys.readouterr().out
     assert "Plan file not found" in output
+
+
+class TestReadmeVsPlanAndState:
+    PLAN = (
+        "### AUTO-001 — First task\n"
+        "Priority: P1\n"
+        "Status: DONE\n"
+        "\n"
+        "### AUTO-002 — Second task\n"
+        "Priority: P2\n"
+        "Status: TODO\n"
+    )
+
+    def test_no_signal_when_counts_match(self):
+        readme = "Status: (1/2 tasks done), tested (10 tests passing)."
+        state = "- Validation commands and results: `python -m pytest` — 10 tests pass.\n"
+        signals = collect_drift_signals(self.PLAN, state_text=state, readme_text=readme)
+        assert signals == []
+
+    def test_signal_when_task_counts_diverge(self):
+        readme = "Status: (5/5 tasks done), tested (10 tests passing)."
+        state = "- Validation commands and results: `python -m pytest` — 10 tests pass.\n"
+        signals = collect_drift_signals(self.PLAN, state_text=state, readme_text=readme)
+        assert len(signals) == 1
+        assert signals[0].category == "readme-plan"
+        assert "5/5" in signals[0].message
+        assert "1/2" in signals[0].message
+
+    def test_signal_when_test_counts_diverge(self):
+        readme = "Status: (1/2 tasks done), tested (999 tests passing)."
+        state = "- Validation commands and results: `python -m pytest` — 10 tests pass.\n"
+        signals = collect_drift_signals(self.PLAN, state_text=state, readme_text=readme)
+        assert len(signals) == 1
+        assert signals[0].category == "readme-state"
+        assert "999" in signals[0].message
+        assert "10" in signals[0].message
+
+    def test_no_check_when_readme_format_not_found(self):
+        readme = "Status: still under construction."
+        state = "- Validation commands and results: `python -m pytest` — 10 tests pass.\n"
+        signals = collect_drift_signals(self.PLAN, state_text=state, readme_text=readme)
+        assert signals == []
+
+    def test_no_check_when_readme_text_not_provided(self):
+        signals = collect_drift_signals(self.PLAN)
+        assert signals == []

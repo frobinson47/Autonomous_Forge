@@ -21,6 +21,11 @@ class DriftSignal:
 
 _STATE_FIELD_RE = re.compile(r"^- ([^:]+):\s*(.+)$")
 _CHANGELOG_TASK_RE = re.compile(r"^## \d{4}-\d{2}-\d{2} — (AUTO-\d{3,}|.+)$")
+_README_TASK_STATS_RE = re.compile(r"\((\d+)/(\d+) tasks done\)")
+_README_TEST_COUNT_RE = re.compile(r"\((\d+) tests passing\)")
+_STATE_TEST_COUNT_RE = re.compile(
+    r"Validation commands and results:.*?(\d+)\s+tests?\s+pass", re.IGNORECASE
+)
 
 
 def _parse_state_fields(state_text: str) -> dict[str, str]:
@@ -118,6 +123,54 @@ def _check_changelog_vs_plan(
     return signals
 
 
+def _check_readme_vs_plan_and_state(
+    readme_text: str,
+    tasks: list[PlanTask],
+    state_text: str | None,
+) -> list[DriftSignal]:
+    """Check README's stated task/test counts against the plan and state file.
+
+    Catches the exact staleness the project's own purpose is meant to
+    prevent — see AUTO-057. Requires README.md's status line to state its
+    counts as ``(N/M tasks done)`` and ``(N tests passing)``; if that format
+    isn't found, this check silently does nothing rather than guessing.
+    """
+    signals: list[DriftSignal] = []
+
+    stats_match = _README_TASK_STATS_RE.search(readme_text)
+    if stats_match:
+        readme_done, readme_total = int(stats_match.group(1)), int(stats_match.group(2))
+        actual_done = sum(1 for t in tasks if t.status == "DONE")
+        actual_total = len(tasks)
+        if readme_done != actual_done or readme_total != actual_total:
+            signals.append(DriftSignal(
+                category="readme-plan",
+                severity="warn",
+                message=(
+                    f"README states {readme_done}/{readme_total} tasks done, "
+                    f"but the plan currently has {actual_done}/{actual_total}."
+                ),
+            ))
+
+    if state_text is not None:
+        test_match = _README_TEST_COUNT_RE.search(readme_text)
+        state_match = _STATE_TEST_COUNT_RE.search(state_text)
+        if test_match and state_match:
+            readme_tests = int(test_match.group(1))
+            state_tests = int(state_match.group(1))
+            if readme_tests != state_tests:
+                signals.append(DriftSignal(
+                    category="readme-state",
+                    severity="warn",
+                    message=(
+                        f"README states {readme_tests} tests passing, but "
+                        f"AUTONOMOUS_STATE.md's last recorded run says {state_tests}."
+                    ),
+                ))
+
+    return signals
+
+
 def _check_policy_path_existence(
     policy_text: str,
     root: Path,
@@ -156,6 +209,7 @@ def collect_drift_signals(
     changelog_text: str | None = None,
     policy_text: str | None = None,
     root: Path = Path("."),
+    readme_text: str | None = None,
 ) -> list[DriftSignal]:
     """Collect all drift signals without changing any files."""
     signals: list[DriftSignal] = []
@@ -173,6 +227,9 @@ def collect_drift_signals(
     if policy_text is not None:
         signals.extend(_check_policy_path_existence(policy_text, root))
 
+    if readme_text is not None:
+        signals.extend(_check_readme_vs_plan_and_state(readme_text, tasks, state_text))
+
     return signals
 
 
@@ -182,10 +239,11 @@ def build_drift_report(
     changelog_text: str | None = None,
     policy_text: str | None = None,
     root: Path = Path("."),
+    readme_text: str | None = None,
 ) -> str:
     """Return a human-readable drift report without changing files."""
     signals = collect_drift_signals(
-        plan_text, state_text, changelog_text, policy_text, root
+        plan_text, state_text, changelog_text, policy_text, root, readme_text
     )
     lines = [
         "Drift report",
@@ -210,10 +268,13 @@ def read_drift_report(
     changelog_path: Path = Path(".ai/AUTONOMOUS_CHANGELOG.md"),
     policy_path: Path = Path(".forge/policy.md"),
     root: Path = Path("."),
+    readme_path: Path | None = None,
 ) -> str:
     """Read local files and build a drift report."""
     plan_text = plan_path.read_text(encoding="utf-8")
     state_text = state_path.read_text(encoding="utf-8") if state_path.exists() else None
     changelog_text = changelog_path.read_text(encoding="utf-8") if changelog_path.exists() else None
     policy_text = policy_path.read_text(encoding="utf-8") if policy_path.exists() else None
-    return build_drift_report(plan_text, state_text, changelog_text, policy_text, root)
+    readme_p = readme_path or (root / "README.md")
+    readme_text = readme_p.read_text(encoding="utf-8") if readme_p.exists() else None
+    return build_drift_report(plan_text, state_text, changelog_text, policy_text, root, readme_text)

@@ -17,7 +17,9 @@ It keeps a durable, human-readable roadmap (`.ai/AUTONOMOUS_PLAN.md`) as the sin
 
 ## Current status
 
-Autonomous Forge is pre-1.0 but functional end-to-end: Roadmap v1–v4 are complete (37/37 tasks), with the full pipeline, policy enforcement, drift detection, session handoff, run metrics, and Forgejo sync all implemented and tested (253 tests passing). See `.ai/AUTONOMOUS_PLAN.md` and `.ai/AUTONOMOUS_STATE.md` for the current roadmap and state.
+Autonomous Forge is pre-1.0 but functional end-to-end: Roadmap v1–v6 are complete and v7 is in progress (56/57 tasks done), with the full pipeline, fail-closed policy enforcement, drift detection, session handoff, run metrics, and Forgejo sync all implemented and tested (400 tests passing). See `.ai/AUTONOMOUS_PLAN.md` and `.ai/AUTONOMOUS_STATE.md` for the current roadmap and state.
+
+`forge drift`/`forge check` flag it automatically if these counts ever drift out of sync with the plan file or `.ai/AUTONOMOUS_STATE.md` again (see AUTO-057) — the `(N/M tasks done)` and `(N tests passing)` phrasing above is load-bearing, not just prose.
 
 ## Install for local development
 

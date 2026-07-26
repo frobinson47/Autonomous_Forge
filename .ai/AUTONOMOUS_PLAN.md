@@ -766,16 +766,16 @@ Notes: Low urgency at 47/999 tasks used, but cheap to fix now versus rediscoveri
 
 ### AUTO-057 — Fix README's stale roadmap/test-count stats and add a drift check for them
 Priority: P1
-Status: TODO
+Status: DONE
 
 Goal: README currently says Roadmap v1-v4 complete (37/37 tasks, 253 tests) - actual state is v6 complete (47/47 tasks, 329 tests). Fix it now, and add a check that catches this class of staleness automatically going forward.
-Why it matters: TBD
+Why it matters: A tool whose entire purpose is catching metadata drift having its own README silently drift out of date is the most self-undermining possible instance of the problem it exists to solve.
 Scope: Update README.md's status line to current, accurate numbers. Then extend forge drift (or forge check) to flag when README's stated task/test counts diverge from the actual plan file's DONE count and the last recorded test count in AUTONOMOUS_STATE.md, so this can't silently drift again.
 Expected files or areas: README.md, src/autonomous_forge/drift.py, tests, docs/COMMANDS.md
 Acceptance criteria: README's status line matches current reality; forge drift reports a signal when README's stated counts no longer match the plan file's DONE count or the state file's last test count.
-Validation: TBD
-Risks or assumptions: None.
-Notes: Flagged by the assessment as especially damaging given the project's whole purpose is preventing exactly this kind of metadata drift. Quick fix for the immediate staleness; the drift-check extension prevents recurrence.
+Validation: `python -m pytest` — 400 tests pass (6 new: test_drift.py x5, test_check.py x1). `forge lint-plan` — ok. `forge drift` against this repo's real files (after this task's own DONE flip and state update) reports no drift.
+Risks or assumptions: The check requires README's status line to use an exact phrasing — `(N/M tasks done)` and `(N tests passing)` — and the state file's test count to appear as `<N> tests pass` right after "Validation commands and results:". If either format changes without updating the regex, the check silently does nothing rather than false-flagging — matches this project's general "prefer false negatives over unsafe/wrong assertions" posture (see docs/POLICY.md's now-corrected "Conservative defaults" language from DEC-012/013, same philosophy applied here).
+Notes: Flagged by the assessment as especially damaging given the project's whole purpose is preventing exactly this kind of metadata drift. Quick fix for the immediate staleness; the drift-check extension prevents recurrence. New signal categories: `readme-plan`, `readme-state` (both `warn` severity — surfaced by both `forge drift` and `forge check`, never blocking since README staleness isn't a safety issue the way a missing policy or unapproved change is).
 
 ## Future Ideas
 
