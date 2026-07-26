@@ -753,16 +753,16 @@ Notes: Requires confirming Forgejo Actions is actually enabled on forgejo.family
 
 ### AUTO-056 — Handle the AUTO-999 task ID ceiling
 Priority: P3
-Status: TODO
+Status: DONE
 
 Goal: Task heading regex is fixed to exactly 3 digits, hard-capping IDs at AUTO-999. Currently at AUTO-047 with plenty of headroom, but the ceiling should be handled deliberately rather than discovered as a production failure.
-Why it matters: TBD
+Why it matters: A fixed-3-digit heading regex doesn't error loudly at AUTO-1000 — it just silently fails to match the whole heading line, so the task disappears from parsing entirely (not selected, not lint-checked, not synced) with no error message pointing at why.
 Scope: Either widen the regex to allow 3+ digit IDs going forward (zero-padded to at least 3, no upper bound) or explicitly document and test a migration path for when the ceiling is approached. Prefer widening the regex - simpler, backward compatible with all existing 3-digit IDs, no migration needed.
 Expected files or areas: src/autonomous_forge/plan.py, src/autonomous_forge/planadd.py, tests
 Acceptance criteria: forge plan add correctly generates AUTO-1000 after AUTO-999 exists (tested with a synthetic high-numbered fixture, not by actually creating 999 real tasks); all existing 3-digit task IDs continue to parse and sort correctly.
-Validation: TBD
-Risks or assumptions: None.
-Notes: Low urgency at 47/999 tasks used, but cheap to fix now versus rediscovering it as a production bug at scale.
+Validation: `python -m pytest` — 394 tests pass (6 new: test_planadd.py x2, test_plan.py x2, test_drift.py x2). `forge lint-plan` — ok.
+Risks or assumptions: `planadd.py`'s `f"AUTO-{next_num:03d}"` ID-generation format already worked correctly beyond 999 with no change needed (Python's `:03d` is a minimum width, not a truncation) — the ceiling bug was entirely in parsing regexes, not generation.
+Notes: Low urgency at 47/999 tasks used, but cheap to fix now versus rediscovering it as a production bug at scale. Widened `\d{3}` to `\d{3,}` in four places beyond plan.py's main task-heading regex, found by grepping the whole codebase for the same fixed-width pattern: `approvals.py`'s approval-heading regex, and three regexes in `drift.py` (changelog task-heading match, state-file current-task-ID match, changelog-vs-plan task-ID validity check) — all four would have hit the identical silent-non-match failure mode at AUTO-1000 if left unfixed alongside the main one.
 
 ### AUTO-057 — Fix README's stale roadmap/test-count stats and add a drift check for them
 Priority: P1

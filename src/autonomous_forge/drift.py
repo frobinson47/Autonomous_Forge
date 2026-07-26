@@ -20,7 +20,7 @@ class DriftSignal:
 
 
 _STATE_FIELD_RE = re.compile(r"^- ([^:]+):\s*(.+)$")
-_CHANGELOG_TASK_RE = re.compile(r"^## \d{4}-\d{2}-\d{2} — (AUTO-\d{3}|.+)$")
+_CHANGELOG_TASK_RE = re.compile(r"^## \d{4}-\d{2}-\d{2} — (AUTO-\d{3,}|.+)$")
 
 
 def _parse_state_fields(state_text: str) -> dict[str, str]:
@@ -52,7 +52,7 @@ def _check_state_vs_plan(
     task_map = {t.task_id: t for t in tasks}
 
     current_task_raw = state_fields.get("Current task ID", "")
-    current_task_id_match = re.match(r"(AUTO-\d{3})", current_task_raw)
+    current_task_id_match = re.match(r"(AUTO-\d{3,})", current_task_raw)
     if not current_task_id_match:
         if current_task_raw:
             signals.append(DriftSignal(
@@ -109,7 +109,7 @@ def _check_changelog_vs_plan(
     signals: list[DriftSignal] = []
     plan_ids = {t.task_id for t in tasks}
     for cid in changelog_task_ids:
-        if re.match(r"^AUTO-\d{3}$", cid) and cid not in plan_ids:
+        if re.match(r"^AUTO-\d{3,}$", cid) and cid not in plan_ids:
             signals.append(DriftSignal(
                 category="changelog-plan",
                 severity="warn",

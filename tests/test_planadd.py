@@ -81,6 +81,69 @@ class TestAddTask:
         assert r1.task_id == "AUTO-003"
         assert r2.task_id == "AUTO-004"
 
+    def test_generates_four_digit_id_after_999(self, tmp_path):
+        # Synthetic ceiling fixture rather than creating 999 real tasks.
+        plan_with_999 = """\
+# Roadmap
+
+### AUTO-999 — Last three-digit task
+Priority: P1
+Status: DONE
+
+Goal: Fill the ceiling.
+Why it matters: Test fixture.
+Scope: Test fixture.
+Expected files or areas: tests.
+Acceptance criteria: Passes.
+Validation: N/A.
+Risks or assumptions: None.
+Notes: Test fixture.
+"""
+        plan_path = _setup(tmp_path, plan=plan_with_999)
+        result = add_task("Next task", goal="Do the next thing", plan_path=plan_path)
+        assert result.task_id == "AUTO-1000"
+        text = plan_path.read_text(encoding="utf-8")
+        assert "### AUTO-1000 — Next task" in text
+
+    def test_four_digit_task_still_parses_and_sorts_correctly(self, tmp_path):
+        plan_with_1000 = """\
+# Roadmap
+
+### AUTO-999 — Nine ninety nine
+Priority: P2
+Status: TODO
+
+Goal: Test.
+Why it matters: Test fixture.
+Scope: Test fixture.
+Expected files or areas: tests.
+Acceptance criteria: Passes.
+Validation: N/A.
+Risks or assumptions: None.
+Notes: Test fixture.
+
+### AUTO-1000 — One thousand
+Priority: P0
+Status: TODO
+
+Goal: Test.
+Why it matters: Test fixture.
+Scope: Test fixture.
+Expected files or areas: tests.
+Acceptance criteria: Passes.
+Validation: N/A.
+Risks or assumptions: None.
+Notes: Test fixture.
+"""
+        from autonomous_forge.plan import parse_plan_tasks, select_eligible_task
+
+        tasks = parse_plan_tasks(plan_with_1000)
+        assert [t.task_id for t in tasks] == ["AUTO-999", "AUTO-1000"]
+        # AUTO-1000 is P0 (higher priority) and TODO, so it must be selected
+        # over AUTO-999 (P2) despite sorting after it lexicographically.
+        selected = select_eligible_task(tasks)
+        assert selected.task_id == "AUTO-1000"
+
     def test_not_confused_by_auto_id_mentioned_in_prose(self, tmp_path):
         # A task whose own Goal/Notes text mentions a much higher AUTO-###
         # (e.g. discussing "AUTO-999") must not make the next real ID jump

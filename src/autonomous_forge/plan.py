@@ -6,7 +6,7 @@ from dataclasses import dataclass
 import re
 
 
-_TASK_HEADING_RE = re.compile(r"^### (AUTO-\d{3}) — (.+)$")
+_TASK_HEADING_RE = re.compile(r"^### (AUTO-\d{3,}) — (.+)$")
 _FIELD_RE = re.compile(r"^([^:]+):\s*(.*)$")
 _TASK_FIELD_RE = re.compile(r"^(Priority|Status):\s*(.+)$")
 _APPROVAL_FIELD_RE = re.compile(r"^Approval needed:\s*(.*)$")

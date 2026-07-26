@@ -83,6 +83,35 @@ def test_stale_commit_hash_detected():
     assert any("pending" in s.message.lower() for s in signals)
 
 
+def test_state_matches_plan_with_four_digit_task_id():
+    plan = (
+        "### AUTO-1000 — Four digit task\n"
+        "Priority: P1\n"
+        "Status: TODO\n"
+    )
+    state = (
+        "# State\n"
+        "- Current task ID: AUTO-1000 — Four digit task\n"
+        "- Current task status: TODO\n"
+    )
+    signals = collect_drift_signals(plan, state_text=state)
+    assert signals == []
+
+
+def test_changelog_accepts_four_digit_task_id():
+    plan = (
+        "### AUTO-1000 — Four digit task\n"
+        "Priority: P1\n"
+        "Status: DONE\n"
+    )
+    changelog = (
+        "# Changelog\n"
+        "## 2026-07-07 — AUTO-1000\n"
+    )
+    signals = collect_drift_signals(plan, changelog_text=changelog)
+    assert signals == []
+
+
 def test_changelog_references_unknown_task():
     changelog = (
         "# Changelog\n"

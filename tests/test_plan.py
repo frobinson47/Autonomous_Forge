@@ -61,6 +61,38 @@ Goal: Add usage analytics.
     )
 
 
+def test_parse_task_heading_supports_four_digit_ids():
+    # Task heading IDs are not capped at 3 digits (AUTO-999) — the regex
+    # accepts 3 or more, so parsing doesn't silently break once AUTO-1000
+    # exists (see AUTO-056).
+    tasks = parse_plan_tasks(
+        """### AUTO-1000 — Four digit task
+Priority: P1
+Status: TODO
+"""
+    )
+    assert tasks[0].task_id == "AUTO-1000"
+    assert tasks[0].title == "Four digit task"
+
+
+def test_lint_accepts_four_digit_task_id():
+    diagnostics = lint_plan_structure(
+        """### AUTO-1000 — Four digit task
+Priority: P1
+Status: TODO
+Goal: Test.
+Why it matters: Test.
+Scope: Test.
+Expected files or areas: tests.
+Acceptance criteria: Test.
+Validation: Test.
+Risks or assumptions: None.
+Notes: Test.
+"""
+    )
+    assert diagnostics == []
+
+
 def test_parse_normalizes_pending_and_complete_status_aliases():
     tasks = parse_plan_tasks(
         """### AUTO-010 — Pending task
