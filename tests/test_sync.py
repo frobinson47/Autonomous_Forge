@@ -228,7 +228,14 @@ class TestSyncCLI:
 
         from autonomous_forge.cli import main
 
-        with patch("autonomous_forge.sync.ForgejoClient.list_issues", return_value=[]):
+        # Must patch _load_token explicitly: without it, this test only
+        # passed by accident on machines with a real FORGEJO_TOKEN already
+        # in the environment (e.g. from other forge sync work in the same
+        # shell) — a clean CI container has none, so execute_sync returned
+        # a "No Forgejo token found" error before ever reaching the mocked
+        # ForgejoClient.list_issues call, and this test failed there first.
+        with patch("autonomous_forge.sync.ForgejoClient.list_issues", return_value=[]), \
+             patch("autonomous_forge.sync._load_token", return_value="fake-token"):
             code = main([
                 "sync",
                 "--root", str(tmp_path),
