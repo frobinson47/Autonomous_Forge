@@ -727,16 +727,16 @@ Notes: Complements the policy fail-closed tasks - same fail-closed philosophy ap
 
 ### AUTO-054 — Split cli.py and sync.py into smaller modules
 Priority: P3
-Status: TODO
+Status: DONE
 
 Goal: cli.py (~1300 lines) and sync.py (~700 lines) have grown into monoliths mixing dispatch/orchestration with business logic; split them into smaller, clearer modules before more commands are added.
-Why it matters: TBD
+Why it matters: A single long if/elif dispatch chain and a file mixing HTTP transport with reconciliation logic and orphan-import logic both make it easy for a new command or feature to accidentally duplicate or diverge from existing patterns, and hard to unit-test one concern (e.g. label reconciliation) without dragging in the others.
 Scope: cli.py: keep argument parsing thin, move each command's dispatch handler into its own function or module rather than one long if/elif chain in main(). sync.py: separate the Forgejo HTTP transport (ForgejoClient) from issue-matching/label/milestone reconciliation logic and from the orphan-import logic, which are currently all in one file.
 Expected files or areas: src/autonomous_forge/cli.py, src/autonomous_forge/sync.py, tests
 Acceptance criteria: No behavior change - same commands, same output, same exit codes. cli.py's main() dispatch chain and sync.py's responsibilities are demonstrably split into smaller, independently testable units. Full test suite passes unchanged.
-Validation: TBD
-Risks or assumptions: None.
-Notes: Structural refactor only - explicitly no behavior changes, to keep this reviewable as pure internal reorganization separate from the safety-semantics changes elsewhere in this roadmap.
+Validation: `python -m pytest` — 388 tests pass, same count as before this task (pure internal reorganization, no new test scenarios added — existing tests moved and had patch targets updated to match new module boundaries). `forge lint-plan` — ok. Manually verified `forge plan` (no subcommand), `forge lint-plan`, and `forge status` all still work.
+Risks or assumptions: Found and fixed a genuine pre-existing bug while touching this code: `forge plan` with no subcommand crashed with `NameError: name 'plan_parser' is not defined` — `plan_parser` was a local variable inside `build_parser()`, never actually in scope inside `main()`'s dispatch block. Replaced with the top-level `parser.print_help()` (general help instead of plan-specific help, but no longer crashes). Untested edge case, so it went unnoticed until this refactor.
+Notes: Structural refactor only - explicitly no behavior changes (aside from the incidental bugfix above), to keep this reviewable as pure internal reorganization separate from the safety-semantics changes elsewhere in this roadmap. Final split: cli.py's main() is now a thin dispatch-table lookup over 29 independent `_cmd_*` handler functions (each independently callable/testable) instead of a 344-line if/elif chain. sync.py (692 lines) split three ways: forgejo_client.py (new, ~125 lines — ForgejoClient + repo/token detection, no plan.py dependency), sync.py (365 lines — SyncAction/SyncResult/execute_sync + issue-matching/label/milestone reconciliation), sync_orphans.py (new, ~219 lines — OrphanReport/ImportResult + execute_orphan_report/execute_import_orphans). Test files mirrored the split: test_forgejo_client.py (new), test_sync.py (trimmed), test_sync_orphans.py (new) — patch targets updated from `autonomous_forge.sync.X` to `autonomous_forge.sync_orphans.X`/`autonomous_forge.forgejo_client.X` wherever the patched call site actually moved modules.
 
 ### AUTO-055 — Add real CI enforcement to this repo (not just documented)
 Priority: P2

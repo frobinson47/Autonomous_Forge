@@ -270,3 +270,4 @@
 - 2026-07-25: AUTO-051 — Replace shell=True in forge validate with safer execution (DONE)
 - 2026-07-25: AUTO-052 — Make .forge/.lock acquisition atomic (DONE)
 - 2026-07-25: AUTO-053 — Require forge lint-plan to pass before mutable pipeline stages (DONE)
+- 2026-07-25: AUTO-054 — Split cli.py and sync.py into smaller modules (DONE)

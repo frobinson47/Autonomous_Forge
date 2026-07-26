@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 from pathlib import Path
+from typing import Callable
 
 from autonomous_forge.approvals import format_approval_confirmation, record_approval
 from autonomous_forge.check import execute_check, format_check_result
@@ -30,13 +31,12 @@ from autonomous_forge.pipeline import execute_pipeline, format_pipeline_result
 from autonomous_forge.push import execute_push, format_push_result
 from autonomous_forge.inventory import build_repository_inventory
 from autonomous_forge.run import execute_run, format_run_outcome, save_run_outcome
-from autonomous_forge.sync import (
+from autonomous_forge.sync import execute_sync, format_sync_result
+from autonomous_forge.sync_orphans import (
     execute_import_orphans,
     execute_orphan_report,
-    execute_sync,
     format_import_result,
     format_orphan_report,
-    format_sync_result,
 )
 from autonomous_forge.validate import format_validation_result, run_validation
 from autonomous_forge.session import (
@@ -1078,6 +1078,400 @@ def _run_resume_multi(roots_arg: str) -> int:
     return 0
 
 
+def _cmd_tasks(args: argparse.Namespace) -> int:
+    return _print_tasks(
+        Path(args.plan or ".ai/AUTONOMOUS_PLAN.md"),
+        next_only=args.next,
+        status_filter=args.status,
+        priority_filter=args.priority,
+    )
+
+
+def _cmd_lint_plan(args: argparse.Namespace) -> int:
+    return _print_lint_plan(Path(args.plan or ".ai/AUTONOMOUS_PLAN.md"))
+
+
+def _cmd_report(args: argparse.Namespace) -> int:
+    return _print_report(
+        Path(args.plan or ".ai/AUTONOMOUS_PLAN.md"),
+        Path(args.state),
+        Path(args.policy or ".forge/policy.md"),
+    )
+
+
+def _cmd_policy(args: argparse.Namespace) -> int:
+    return _print_policy(Path(args.policy or ".forge/policy.md"))
+
+
+def _cmd_run_summary(args: argparse.Namespace) -> int:
+    return _print_run_summary(
+        Path(args.plan or ".ai/AUTONOMOUS_PLAN.md"),
+        Path(args.policy or ".forge/policy.md"),
+        args.timestamp,
+    )
+
+
+def _cmd_inventory(args: argparse.Namespace) -> int:
+    return _print_inventory(Path(args.root))
+
+
+def _cmd_drift(args: argparse.Namespace) -> int:
+    return _print_drift(
+        Path(args.plan or ".ai/AUTONOMOUS_PLAN.md"),
+        Path(args.state),
+        Path(args.changelog),
+        Path(args.policy or ".forge/policy.md"),
+        Path(args.root),
+    )
+
+
+def _cmd_pause(args: argparse.Namespace) -> int:
+    return _run_pause(
+        Path(args.root),
+        working_on=args.working_on,
+        tried=args.tried,
+        stuck_on=args.stuck_on,
+        half_finished=args.half_finished,
+        next_steps=args.next_steps,
+        notes=args.notes,
+        timestamp=args.timestamp,
+    )
+
+
+def _cmd_resume(args: argparse.Namespace) -> int:
+    if args.roots:
+        return _run_resume_multi(args.roots)
+    return _run_resume(Path(args.root))
+
+
+def _cmd_context(args: argparse.Namespace) -> int:
+    print(build_project_context(Path(args.root)))
+    return 0
+
+
+def _cmd_init(args: argparse.Namespace) -> int:
+    from datetime import datetime, timezone
+
+    date = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    result = init_forge(Path(args.root), project_name=args.name, date=date)
+    print(format_init_result(result))
+    return 0
+
+
+def _cmd_run(args: argparse.Namespace) -> int:
+    root = Path(args.root)
+    plan_path = Path(args.plan) if args.plan else None
+    policy_path = Path(args.policy) if args.policy else None
+    try:
+        outcome = execute_run(
+            root,
+            plan_path=plan_path,
+            policy_path=policy_path,
+            validate=not args.no_validate,
+            validate_command=args.run_cmd,
+            dry_run=args.dry_run,
+            timestamp=args.timestamp,
+            require_policy=not args.no_policy_required,
+            advisory_paths=args.advisory_paths,
+            allow_shell_command=args.allow_shell_command,
+            require_lint_pass=not args.no_lint_required,
+        )
+    except FileNotFoundError as exc:
+        print(f"File not found: {exc}")
+        return 2
+    print(format_run_outcome(outcome))
+    if not args.no_save:
+        path = save_run_outcome(outcome, root)
+        print(f"\nRun saved: {path}")
+    return 1 if outcome.blocked else 0
+
+
+def _cmd_sync(args: argparse.Namespace) -> int:
+    root = Path(args.root)
+    plan_path = Path(args.plan) if args.plan else None
+    if args.import_orphans:
+        try:
+            import_result = execute_import_orphans(
+                root,
+                plan_path=plan_path,
+                repo_override=args.repo,
+            )
+        except FileNotFoundError as exc:
+            print(f"File not found: {exc}")
+            return 2
+        print(format_import_result(import_result))
+        return 1 if import_result.errors else 0
+    if args.report_orphans:
+        try:
+            orphan_report = execute_orphan_report(
+                root,
+                plan_path=plan_path,
+                repo_override=args.repo,
+            )
+        except FileNotFoundError as exc:
+            print(f"File not found: {exc}")
+            return 2
+        print(format_orphan_report(orphan_report))
+        return 1 if orphan_report.errors else 0
+    try:
+        result = execute_sync(
+            root,
+            plan_path=plan_path,
+            dry_run=args.dry_run,
+            repo_override=args.repo,
+        )
+    except FileNotFoundError as exc:
+        print(f"File not found: {exc}")
+        return 2
+    print(format_sync_result(result))
+    return 1 if result.errors else 0
+
+
+def _cmd_pipeline(args: argparse.Namespace) -> int:
+    root = Path(args.root)
+    plan_path = Path(args.plan) if args.plan else None
+    policy_path = Path(args.policy) if args.policy else None
+    try:
+        result = execute_pipeline(
+            root,
+            plan_path=plan_path,
+            policy_path=policy_path,
+            validate_command=args.pipeline_cmd,
+            commit=args.commit,
+            push=args.push,
+            sync=args.sync,
+            commit_message=args.pipeline_message,
+            dry_run=args.dry_run,
+            timestamp=args.timestamp,
+            require_policy=not args.no_policy_required,
+            advisory_paths=args.advisory_paths,
+            allow_shell_command=args.allow_shell_command,
+            require_lint_pass=not args.no_lint_required,
+        )
+    except FileNotFoundError as exc:
+        print(f"File not found: {exc}")
+        return 2
+    print(format_pipeline_result(result))
+    if result.run_outcome and result.run_outcome.blocked:
+        return 1
+    if result.commit_result and not result.commit_result.committed and args.commit:
+        return 1
+    if result.push_result and not result.push_result.pushed and args.push:
+        return 1
+    return 0
+
+
+def _cmd_log(args: argparse.Namespace) -> int:
+    entries = list_runs(Path(args.root), limit=args.limit)
+    print(format_run_log(entries, verbose=args.verbose))
+    return 0
+
+
+def _cmd_commit(args: argparse.Namespace) -> int:
+    root = Path(args.root)
+    plan_path = Path(args.plan) if args.plan else None
+    policy_path = Path(args.policy) if args.policy else None
+    if args.check_only:
+        pf = run_pre_flight(
+            root, plan_path=plan_path, policy_path=policy_path,
+            validate=not args.no_validate,
+            validate_command=args.commit_cmd,
+            require_policy=not args.no_policy_required,
+            advisory_paths=args.advisory_paths,
+            allow_shell_command=args.allow_shell_command,
+            require_lint_pass=not args.no_lint_required,
+        )
+        print(format_pre_flight(pf))
+        return 0 if pf.safe else 1
+    result = execute_commit(
+        root, message=args.message,
+        plan_path=plan_path, policy_path=policy_path,
+        validate=not args.no_validate,
+        validate_command=args.commit_cmd,
+        require_policy=not args.no_policy_required,
+        advisory_paths=args.advisory_paths,
+        allow_shell_command=args.allow_shell_command,
+        require_lint_pass=not args.no_lint_required,
+    )
+    print(format_commit_result(result))
+    return 0 if result.committed else 1
+
+
+def _cmd_push(args: argparse.Namespace) -> int:
+    result = execute_push(root=Path(args.root), remote=args.remote)
+    print(format_push_result(result))
+    return 0 if result.pushed else 1
+
+
+def _cmd_mark(args: argparse.Namespace) -> int:
+    plan_path = Path(args.plan) if args.plan else None
+    result = mark_task_status(args.task_id, args.new_status, plan_path)
+    print(format_mark_result(result))
+    return 0 if result.updated else 1
+
+
+def _cmd_approve(args: argparse.Namespace) -> int:
+    path = record_approval(
+        args.task_id, args.category,
+        root=Path(args.root), note=args.note,
+    )
+    print(format_approval_confirmation(args.task_id, args.category, path))
+    return 0
+
+
+def _cmd_revert(args: argparse.Namespace) -> int:
+    root = Path(args.root)
+    plan_path = Path(args.plan) if args.plan else None
+    result = execute_revert(
+        args.task_id, root, plan_path=plan_path, commit_override=args.revert_commit,
+    )
+    print(format_revert_result(result))
+    return 0 if result.reverted else 1
+
+
+def _cmd_status(args: argparse.Namespace) -> int:
+    root = Path(args.root)
+    plan_path = Path(args.plan) if args.plan else None
+    print(get_status(root, plan_path=plan_path))
+    return 0
+
+
+def _cmd_plan(args: argparse.Namespace, parser: argparse.ArgumentParser) -> int:
+    if args.plan_action == "add":
+        plan_path = Path(args.plan) if args.plan else None
+        result = add_task(
+            args.title,
+            goal=args.goal,
+            priority=args.priority,
+            plan_path=plan_path,
+            scope=args.scope,
+            files=args.files,
+            acceptance=args.acceptance,
+            notes=args.notes,
+        )
+        print(format_add_result(result))
+        return 0 if result.added else 1
+    # `plan_parser` (the "plan" subcommand's own parser) is a local variable
+    # inside build_parser(), not accessible here — previously this line
+    # referenced it directly and raised NameError on `forge plan` with no
+    # subcommand. Fall back to the top-level parser's help instead.
+    parser.print_help()
+    return 0
+
+
+def _cmd_metrics(args: argparse.Namespace) -> int:
+    m = compute_metrics(Path(args.root))
+    print(format_metrics_json(m) if args.json else format_metrics(m))
+    return 0
+
+
+def _cmd_export(args: argparse.Namespace) -> int:
+    root = Path(args.root)
+    plan_path = Path(args.plan) if args.plan else None
+    print(export_state(root, plan_path=plan_path, include_runs=args.runs, run_limit=args.limit))
+    return 0
+
+
+def _cmd_check(args: argparse.Namespace) -> int:
+    root = Path(args.root)
+    plan_path = Path(args.plan) if args.plan else None
+    policy_path = Path(args.policy) if args.policy else None
+    result = execute_check(
+        root,
+        plan_path=plan_path,
+        policy_path=policy_path,
+        validate=not args.no_validate,
+        validate_command=args.check_cmd,
+        timeout=args.timeout,
+    )
+    print(format_check_result(result))
+    return 0 if result.all_passed else 1
+
+
+def _cmd_watch(args: argparse.Namespace) -> int:
+    root = Path(args.root)
+    plan_path = Path(args.plan) if args.plan else None
+    policy_path = Path(args.policy) if args.policy else None
+    return run_watch(
+        root,
+        plan_path=plan_path,
+        policy_path=policy_path,
+        validate=not args.no_validate,
+        validate_command=args.watch_cmd,
+        timeout=args.timeout,
+        interval=args.interval,
+        once=args.once,
+    )
+
+
+def _cmd_doctor(args: argparse.Namespace) -> int:
+    root = Path(args.root)
+    plan_path = Path(args.plan) if args.plan else None
+    policy_path = Path(args.policy) if args.policy else None
+    result = run_doctor(
+        root,
+        plan_path=plan_path,
+        policy_path=policy_path,
+        repo_override=args.repo,
+    )
+    print(format_doctor_report(result))
+    return 0 if result.all_passed else 1
+
+
+def _cmd_diff_check(args: argparse.Namespace) -> int:
+    root = Path(args.root)
+    policy_path = Path(args.policy) if args.policy else None
+    print(read_diff_report(root, policy_path=policy_path, staged_only=args.staged))
+    return 0
+
+
+def _cmd_validate(args: argparse.Namespace) -> int:
+    root = Path(args.root)
+    policy_path = Path(args.policy) if args.policy else None
+    result = run_validation(
+        root, command=args.validate_cmd,
+        policy_path=policy_path, timeout_seconds=args.timeout,
+        allow_shell_command=args.allow_shell_command,
+    )
+    print(format_validation_result(result))
+    return 0 if result.passed else 1
+
+
+# Maps `args.command` to its handler. "plan" and "version" are special-cased
+# in main() — "plan" needs the top-level parser for its help fallback, and
+# "version" is checked before a command is even required.
+_COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], int]] = {
+    "tasks": _cmd_tasks,
+    "lint-plan": _cmd_lint_plan,
+    "report": _cmd_report,
+    "policy": _cmd_policy,
+    "run-summary": _cmd_run_summary,
+    "inventory": _cmd_inventory,
+    "drift": _cmd_drift,
+    "pause": _cmd_pause,
+    "resume": _cmd_resume,
+    "context": _cmd_context,
+    "init": _cmd_init,
+    "run": _cmd_run,
+    "sync": _cmd_sync,
+    "pipeline": _cmd_pipeline,
+    "log": _cmd_log,
+    "commit": _cmd_commit,
+    "push": _cmd_push,
+    "mark": _cmd_mark,
+    "approve": _cmd_approve,
+    "revert": _cmd_revert,
+    "status": _cmd_status,
+    "metrics": _cmd_metrics,
+    "export": _cmd_export,
+    "check": _cmd_check,
+    "watch": _cmd_watch,
+    "doctor": _cmd_doctor,
+    "diff-check": _cmd_diff_check,
+    "validate": _cmd_validate,
+}
+
+
 def main(argv: list[str] | None = None) -> int:
     """Run the Forge CLI.
 
@@ -1096,331 +1490,12 @@ def main(argv: list[str] | None = None) -> int:
         print(f"forge {__version__}")
         return 0
 
-    if args.command == "tasks":
-        return _print_tasks(
-            Path(args.plan or ".ai/AUTONOMOUS_PLAN.md"),
-            next_only=args.next,
-            status_filter=args.status,
-            priority_filter=args.priority,
-        )
-
-    if args.command == "lint-plan":
-        return _print_lint_plan(Path(args.plan or ".ai/AUTONOMOUS_PLAN.md"))
-
-    if args.command == "report":
-        return _print_report(
-            Path(args.plan or ".ai/AUTONOMOUS_PLAN.md"),
-            Path(args.state),
-            Path(args.policy or ".forge/policy.md"),
-        )
-
-    if args.command == "policy":
-        return _print_policy(Path(args.policy or ".forge/policy.md"))
-
-    if args.command == "run-summary":
-        return _print_run_summary(
-            Path(args.plan or ".ai/AUTONOMOUS_PLAN.md"),
-            Path(args.policy or ".forge/policy.md"),
-            args.timestamp,
-        )
-
-    if args.command == "inventory":
-        return _print_inventory(Path(args.root))
-
-    if args.command == "drift":
-        return _print_drift(
-            Path(args.plan or ".ai/AUTONOMOUS_PLAN.md"),
-            Path(args.state),
-            Path(args.changelog),
-            Path(args.policy or ".forge/policy.md"),
-            Path(args.root),
-        )
-
-    if args.command == "pause":
-        return _run_pause(
-            Path(args.root),
-            working_on=args.working_on,
-            tried=args.tried,
-            stuck_on=args.stuck_on,
-            half_finished=args.half_finished,
-            next_steps=args.next_steps,
-            notes=args.notes,
-            timestamp=args.timestamp,
-        )
-
-    if args.command == "resume":
-        if args.roots:
-            return _run_resume_multi(args.roots)
-        return _run_resume(Path(args.root))
-
-    if args.command == "context":
-        print(build_project_context(Path(args.root)))
-        return 0
-
-    if args.command == "init":
-        from datetime import datetime, timezone
-
-        date = datetime.now(timezone.utc).strftime("%Y-%m-%d")
-        result = init_forge(Path(args.root), project_name=args.name, date=date)
-        print(format_init_result(result))
-        return 0
-
-    if args.command == "run":
-        root = Path(args.root)
-        plan_path = Path(args.plan) if args.plan else None
-        policy_path = Path(args.policy) if args.policy else None
-        try:
-            outcome = execute_run(
-                root,
-                plan_path=plan_path,
-                policy_path=policy_path,
-                validate=not args.no_validate,
-                validate_command=args.run_cmd,
-                dry_run=args.dry_run,
-                timestamp=args.timestamp,
-                require_policy=not args.no_policy_required,
-                advisory_paths=args.advisory_paths,
-                allow_shell_command=args.allow_shell_command,
-                require_lint_pass=not args.no_lint_required,
-            )
-        except FileNotFoundError as exc:
-            print(f"File not found: {exc}")
-            return 2
-        print(format_run_outcome(outcome))
-        if not args.no_save:
-            path = save_run_outcome(outcome, root)
-            print(f"\nRun saved: {path}")
-        return 1 if outcome.blocked else 0
-
-    if args.command == "sync":
-        root = Path(args.root)
-        plan_path = Path(args.plan) if args.plan else None
-        if args.import_orphans:
-            try:
-                import_result = execute_import_orphans(
-                    root,
-                    plan_path=plan_path,
-                    repo_override=args.repo,
-                )
-            except FileNotFoundError as exc:
-                print(f"File not found: {exc}")
-                return 2
-            print(format_import_result(import_result))
-            return 1 if import_result.errors else 0
-        if args.report_orphans:
-            try:
-                orphan_report = execute_orphan_report(
-                    root,
-                    plan_path=plan_path,
-                    repo_override=args.repo,
-                )
-            except FileNotFoundError as exc:
-                print(f"File not found: {exc}")
-                return 2
-            print(format_orphan_report(orphan_report))
-            return 1 if orphan_report.errors else 0
-        try:
-            result = execute_sync(
-                root,
-                plan_path=plan_path,
-                dry_run=args.dry_run,
-                repo_override=args.repo,
-            )
-        except FileNotFoundError as exc:
-            print(f"File not found: {exc}")
-            return 2
-        print(format_sync_result(result))
-        return 1 if result.errors else 0
-
-    if args.command == "pipeline":
-        root = Path(args.root)
-        plan_path = Path(args.plan) if args.plan else None
-        policy_path = Path(args.policy) if args.policy else None
-        try:
-            result = execute_pipeline(
-                root,
-                plan_path=plan_path,
-                policy_path=policy_path,
-                validate_command=args.pipeline_cmd,
-                commit=args.commit,
-                push=args.push,
-                sync=args.sync,
-                commit_message=args.pipeline_message,
-                dry_run=args.dry_run,
-                timestamp=args.timestamp,
-                require_policy=not args.no_policy_required,
-                advisory_paths=args.advisory_paths,
-                allow_shell_command=args.allow_shell_command,
-                require_lint_pass=not args.no_lint_required,
-            )
-        except FileNotFoundError as exc:
-            print(f"File not found: {exc}")
-            return 2
-        print(format_pipeline_result(result))
-        if result.run_outcome and result.run_outcome.blocked:
-            return 1
-        if result.commit_result and not result.commit_result.committed and args.commit:
-            return 1
-        if result.push_result and not result.push_result.pushed and args.push:
-            return 1
-        return 0
-
-    if args.command == "log":
-        entries = list_runs(Path(args.root), limit=args.limit)
-        print(format_run_log(entries, verbose=args.verbose))
-        return 0
-
-    if args.command == "commit":
-        root = Path(args.root)
-        plan_path = Path(args.plan) if args.plan else None
-        policy_path = Path(args.policy) if args.policy else None
-        if args.check_only:
-            pf = run_pre_flight(
-                root, plan_path=plan_path, policy_path=policy_path,
-                validate=not args.no_validate,
-                validate_command=args.commit_cmd,
-                require_policy=not args.no_policy_required,
-                advisory_paths=args.advisory_paths,
-                allow_shell_command=args.allow_shell_command,
-                require_lint_pass=not args.no_lint_required,
-            )
-            print(format_pre_flight(pf))
-            return 0 if pf.safe else 1
-        result = execute_commit(
-            root, message=args.message,
-            plan_path=plan_path, policy_path=policy_path,
-            validate=not args.no_validate,
-            validate_command=args.commit_cmd,
-            require_policy=not args.no_policy_required,
-            advisory_paths=args.advisory_paths,
-            allow_shell_command=args.allow_shell_command,
-            require_lint_pass=not args.no_lint_required,
-        )
-        print(format_commit_result(result))
-        return 0 if result.committed else 1
-
-    if args.command == "push":
-        result = execute_push(root=Path(args.root), remote=args.remote)
-        print(format_push_result(result))
-        return 0 if result.pushed else 1
-
-    if args.command == "mark":
-        plan_path = Path(args.plan) if args.plan else None
-        result = mark_task_status(args.task_id, args.new_status, plan_path)
-        print(format_mark_result(result))
-        return 0 if result.updated else 1
-
-    if args.command == "approve":
-        path = record_approval(
-            args.task_id, args.category,
-            root=Path(args.root), note=args.note,
-        )
-        print(format_approval_confirmation(args.task_id, args.category, path))
-        return 0
-
-    if args.command == "revert":
-        root = Path(args.root)
-        plan_path = Path(args.plan) if args.plan else None
-        result = execute_revert(
-            args.task_id, root, plan_path=plan_path, commit_override=args.revert_commit,
-        )
-        print(format_revert_result(result))
-        return 0 if result.reverted else 1
-
-    if args.command == "status":
-        root = Path(args.root)
-        plan_path = Path(args.plan) if args.plan else None
-        print(get_status(root, plan_path=plan_path))
-        return 0
-
     if args.command == "plan":
-        if args.plan_action == "add":
-            plan_path = Path(args.plan) if args.plan else None
-            result = add_task(
-                args.title,
-                goal=args.goal,
-                priority=args.priority,
-                plan_path=plan_path,
-                scope=args.scope,
-                files=args.files,
-                acceptance=args.acceptance,
-                notes=args.notes,
-            )
-            print(format_add_result(result))
-            return 0 if result.added else 1
-        plan_parser.print_help()
-        return 0
+        return _cmd_plan(args, parser)
 
-    if args.command == "metrics":
-        m = compute_metrics(Path(args.root))
-        print(format_metrics_json(m) if args.json else format_metrics(m))
-        return 0
-
-    if args.command == "export":
-        root = Path(args.root)
-        plan_path = Path(args.plan) if args.plan else None
-        print(export_state(root, plan_path=plan_path, include_runs=args.runs, run_limit=args.limit))
-        return 0
-
-    if args.command == "check":
-        root = Path(args.root)
-        plan_path = Path(args.plan) if args.plan else None
-        policy_path = Path(args.policy) if args.policy else None
-        result = execute_check(
-            root,
-            plan_path=plan_path,
-            policy_path=policy_path,
-            validate=not args.no_validate,
-            validate_command=args.check_cmd,
-            timeout=args.timeout,
-        )
-        print(format_check_result(result))
-        return 0 if result.all_passed else 1
-
-    if args.command == "watch":
-        root = Path(args.root)
-        plan_path = Path(args.plan) if args.plan else None
-        policy_path = Path(args.policy) if args.policy else None
-        return run_watch(
-            root,
-            plan_path=plan_path,
-            policy_path=policy_path,
-            validate=not args.no_validate,
-            validate_command=args.watch_cmd,
-            timeout=args.timeout,
-            interval=args.interval,
-            once=args.once,
-        )
-
-    if args.command == "doctor":
-        root = Path(args.root)
-        plan_path = Path(args.plan) if args.plan else None
-        policy_path = Path(args.policy) if args.policy else None
-        result = run_doctor(
-            root,
-            plan_path=plan_path,
-            policy_path=policy_path,
-            repo_override=args.repo,
-        )
-        print(format_doctor_report(result))
-        return 0 if result.all_passed else 1
-
-    if args.command == "diff-check":
-        root = Path(args.root)
-        policy_path = Path(args.policy) if args.policy else None
-        print(read_diff_report(root, policy_path=policy_path, staged_only=args.staged))
-        return 0
-
-    if args.command == "validate":
-        root = Path(args.root)
-        policy_path = Path(args.policy) if args.policy else None
-        result = run_validation(
-            root, command=args.validate_cmd,
-            policy_path=policy_path, timeout_seconds=args.timeout,
-            allow_shell_command=args.allow_shell_command,
-        )
-        print(format_validation_result(result))
-        return 0 if result.passed else 1
+    handler = _COMMAND_HANDLERS.get(args.command)
+    if handler is not None:
+        return handler(args)
 
     parser.print_help()
     return 0
