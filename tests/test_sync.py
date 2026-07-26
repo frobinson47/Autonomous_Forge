@@ -104,6 +104,23 @@ class TestHelpers:
         assert _detect_roadmap_version(_make_task("AUTO-001"), SYNC_PLAN) == "Roadmap v1"
         assert _detect_roadmap_version(_make_task("AUTO-003"), SYNC_PLAN) == "Roadmap v2"
 
+    def test_detect_roadmap_version_resets_on_other_section_heading(self):
+        # A non-"Roadmap vN" section (e.g. "## Backlog") after a roadmap
+        # section must NOT inherit that roadmap's milestone — regression
+        # test for a bug where a task under "## Backlog" silently kept
+        # getting synced into "Roadmap v1" because current_version was
+        # never reset by any heading other than "## Roadmap vN".
+        plan = SYNC_PLAN + """
+## Backlog
+
+### AUTO-004 — Someday maybe
+Priority: P3
+Status: TODO
+
+Goal: Not scheduled yet.
+"""
+        assert _detect_roadmap_version(_make_task("AUTO-004"), plan) is None
+
     def test_extract_task_block(self):
         block = _extract_task_block("AUTO-002", SYNC_PLAN)
         assert "Write tests" in block

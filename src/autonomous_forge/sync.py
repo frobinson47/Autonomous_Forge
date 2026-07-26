@@ -153,12 +153,21 @@ def _labels_for_task(task: PlanTask, label_map: dict[str, int]) -> list[int]:
 
 
 def _detect_roadmap_version(task: PlanTask, plan_text: str) -> str | None:
-    """Detect which roadmap version a task belongs to."""
+    """Detect which roadmap version a task belongs to.
+
+    Only tasks directly under a ``## Roadmap vN`` heading get that milestone.
+    Any other top-level (``##``) section — e.g. ``## Backlog`` — resets the
+    current version to None, so tasks under it are left without an
+    auto-detected milestone instead of silently inheriting whichever
+    ``Roadmap vN`` heading last appeared earlier in the file.
+    """
     lines = plan_text.splitlines()
     current_version = None
     for line in lines:
         if re.match(r"^##\s+Roadmap\s+v\d+", line):
             current_version = line.lstrip("#").strip()
+        elif re.match(r"^##\s+\S", line):
+            current_version = None
         if re.match(rf"^###\s+{re.escape(task.task_id)}\s", line):
             return current_version
     return None
