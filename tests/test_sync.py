@@ -85,6 +85,33 @@ class TestHelpers:
         ]
         assert _find_issue_for_task("AUTO-001", issues)["number"] == 6
 
+    def test_find_issue_for_task_uses_notes_backlink_over_title(self):
+        # Notes-field backlink (written by --import-orphans, or present in
+        # repos bulk-imported by hand before forge-sync existed) must win
+        # even when the issue's title doesn't match this tool's naming
+        # convention at all — that's the whole point of the backlink.
+        plan_text = (
+            "### AUTO-001 — Build the widget\n"
+            "Priority: P1\n"
+            "Status: DONE\n"
+            "Notes: Imported from Forgejo issue #42 (https://example/issues/42).\n"
+        )
+        issues = [
+            {"title": "Totally unrelated legacy title", "number": 42},
+            {"title": "[AUTO-001] Build the widget", "number": 99},
+        ]
+        assert _find_issue_for_task("AUTO-001", issues, plan_text)["number"] == 42
+
+    def test_find_issue_for_task_falls_back_to_title_when_no_backlink(self):
+        plan_text = (
+            "### AUTO-001 — Build the widget\n"
+            "Priority: P1\n"
+            "Status: DONE\n"
+            "Notes: No backlink here.\n"
+        )
+        issues = [{"title": "[AUTO-001] Build the widget", "number": 5}]
+        assert _find_issue_for_task("AUTO-001", issues, plan_text)["number"] == 5
+
     def test_labels_for_task(self):
         label_map = {
             "status:todo": 10,

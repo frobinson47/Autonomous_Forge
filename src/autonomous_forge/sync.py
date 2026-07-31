@@ -118,19 +118,52 @@ def _ensure_milestone(client: ForgejoClient, title: str) -> int:
     return result["id"]
 
 
-def _find_issue_for_task(task_id: str, issues: list[dict]) -> dict | None:
+_ISSUE_BACKLINK_RE = re.compile(r"Forgejo issue #(\d+)")
+
+
+def _backlinked_issue_number(task_id: str, plan_text: str) -> int | None:
+    """Find a Forgejo issue number recorded in a task's Notes field.
+
+    ``forge sync --import-orphans`` (see ``sync_orphans.py``) writes
+    ``Notes: Imported from Forgejo issue #N (...)`` when it converts a
+    pre-existing issue into an AUTO-xxx task stub. Many repos also predate
+    forge-sync entirely and were bulk-imported by hand with the same
+    backlink convention. Either way, the backlink is the authoritative link
+    — it survives issue titles that don't (and never will) match this
+    tool's ``[AUTO-xxx] Title`` naming convention.
+    """
+    block = _extract_task_block(task_id, plan_text)
+    if not block:
+        return None
+    match = _ISSUE_BACKLINK_RE.search(block)
+    return int(match.group(1)) if match else None
+
+
+def _find_issue_for_task(
+    task_id: str, issues: list[dict], plan_text: str = ""
+) -> dict | None:
     """Find the Forgejo issue corresponding to an AUTO task.
 
-    Matches this tool's own ``[AUTO-xxx] Title`` format as well as the
-    unbracketed ``AUTO-xxx: Title`` format some repos already used before
-    forge-sync existed — otherwise re-running sync against a repo with
-    pre-existing manually-filed issues creates a full duplicate set instead
-    of updating the originals.
+    Checks, in order:
+    1. A ``Forgejo issue #N`` backlink in the task's Notes field (see
+       ``_backlinked_issue_number``) — the authoritative match when present,
+       since it was recorded explicitly rather than inferred from title.
+    2. This tool's own ``[AUTO-xxx] Title`` format as well as the
+       unbracketed ``AUTO-xxx: Title`` format some repos already used before
+       forge-sync existed — otherwise re-running sync against a repo with
+       pre-existing manually-filed issues creates a full duplicate set
+       instead of updating the originals.
 
-    If more than one issue matches (e.g. a leftover duplicate from before
-    this matching was fixed), prefer the lowest issue number — the original,
-    not whichever the API happened to list first.
+    If more than one issue matches by title (e.g. a leftover duplicate from
+    before this matching was fixed), prefer the lowest issue number — the
+    original, not whichever the API happened to list first.
     """
+    backlink = _backlinked_issue_number(task_id, plan_text)
+    if backlink is not None:
+        for issue in issues:
+            if issue["number"] == backlink:
+                return issue
+
     bracketed = f"[{task_id}]"
     unbracketed = f"{task_id}:"
     matches = [
@@ -224,7 +257,7 @@ def execute_sync(
 
         dry_run_actions: list[SyncAction] = []
         for task in tasks:
-            issue = _find_issue_for_task(task.task_id, existing_issues)
+            issue = _find_issue_for_task(task.task_id, existing_issues, plan_text)
             dry_run_actions.append(SyncAction(
                 task_id=task.task_id,
                 action="would-create" if issue is None else "would-sync",
@@ -248,7 +281,7 @@ def execute_sync(
 
     for task in tasks:
         try:
-            issue = _find_issue_for_task(task.task_id, existing_issues)
+            issue = _find_issue_for_task(task.task_id, existing_issues, plan_text)
             target_labels = _labels_for_task(task, label_map)
 
             roadmap_version = _detect_roadmap_version(task, plan_text)

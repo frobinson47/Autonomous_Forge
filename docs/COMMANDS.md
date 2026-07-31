@@ -430,6 +430,8 @@ Locking: `forge run` (and `forge pipeline`, which calls it internally) acquires 
 
 Purpose: sync AUTO-xxx tasks from the plan file to Forgejo issues. One-way: plan is the source of truth, Forgejo is the mirror.
 
+Issue matching: a task is matched to an existing Forgejo issue by, in order, (1) a `Forgejo issue #N` backlink in the task's Notes field — written by `--import-orphans`, or present in repos bulk-imported by hand before `forge sync` existed — which wins regardless of the issue's title, then (2) the issue title starting with `[AUTO-xxx]` or the legacy unbracketed `AUTO-xxx:`. Without a title or backlink match, sync creates a new issue. This means repos with pre-existing issues that don't follow either title convention need a one-time `Forgejo issue #N` note added to the corresponding task (or run `--import-orphans` first) to avoid duplicate issues on the next sync.
+
 Inputs:
 
 - `--root`: repository root, defaulting to `.`.
