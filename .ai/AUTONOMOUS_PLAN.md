@@ -777,6 +777,166 @@ Validation: `python -m pytest` — 400 tests pass (6 new: test_drift.py x5, test
 Risks or assumptions: The check requires README's status line to use an exact phrasing — `(N/M tasks done)` and `(N tests passing)` — and the state file's test count to appear as `<N> tests pass` right after "Validation commands and results:". If either format changes without updating the regex, the check silently does nothing rather than false-flagging — matches this project's general "prefer false negatives over unsafe/wrong assertions" posture (see docs/POLICY.md's now-corrected "Conservative defaults" language from DEC-012/013, same philosophy applied here).
 Notes: Flagged by the assessment as especially damaging given the project's whole purpose is preventing exactly this kind of metadata drift. Quick fix for the immediate staleness; the drift-check extension prevents recurrence. New signal categories: `readme-plan`, `readme-state` (both `warn` severity — surfaced by both `forge drift` and `forge check`, never blocking since README staleness isn't a safety issue the way a missing policy or unapproved change is).
 
+## Roadmap v8
+
+Sourced from `docs/SECURITY_ASSESSMENT_2026-08-23.md` (2026-08-23 external security/completeness assessment). Grouped by dependency: fail-closed correctness bugs first, then policy-ordering fixes, then documentation/positioning, then robustness/hardening. See DEC-015 in `.ai/DECISIONS.md` for the grouping rationale.
+
+### AUTO-058 — Fix forge check's fail-open policy-diff exception handling
+Priority: P1
+Status: TODO
+
+Goal: `execute_check` (`src/autonomous_forge/check.py:89-98`) only runs the diff policy check if a policy file exists, then wraps it in a bare `except Exception:` that silently leaves `diff_ok=True`. A missing, unreadable, malformed, or internally failing policy check currently reports PASS.
+Why it matters: `forge check` is the advertised all-in-one verification command and the intended CI signal. A tool whose purpose is trustworthy gating must not report success when the gate didn't actually run — this directly contradicts README's "forge check enforces policy" claim (SEC-003 in the assessment).
+Scope: Narrow the exception handling to specific expected exception types; any other failure (including missing/malformed policy) must set `diff_ok=False` and surface the error in output, not swallow it silently.
+Expected files or areas: src/autonomous_forge/check.py, tests
+Acceptance criteria: `forge check` fails when the policy file is missing, malformed, unreadable, or the diff-policy checker raises unexpectedly. New regression tests cover all four cases.
+Validation: `python -m pytest`, `ruff check .`, `mypy`, `forge check` against a repo with a deliberately broken policy file (should now FAIL, not PASS).
+Risks or assumptions: Must not break the existing "no policy file at all = skip check" case if that's still intended behavior distinct from "policy file exists but is broken" — confirm which of these two should fail closed vs. which is a legitimately optional feature before implementing.
+Notes: Assessment reference: SEC-003.
+
+### AUTO-059 — Return exit code 1 when pipeline sync fails
+Priority: P1
+Status: TODO
+
+Goal: `execute_pipeline` records sync errors in `stopped_reason` (`src/autonomous_forge/pipeline.py:222-235`), but `_cmd_pipeline` (`src/autonomous_forge/cli.py:1262-1269`) only checks run/commit/push failures before returning 0. The documented exit-code contract promises exit 1 for sync errors.
+Why it matters: A CI script or wrapper relying on `forge pipeline`'s exit code to detect failure will see success even when Forgejo sync errored.
+Scope: Check `sync_result.errors` in `_cmd_pipeline` and return 1 when nonempty, matching the same pattern already used for run/commit/push.
+Expected files or areas: src/autonomous_forge/cli.py, tests
+Acceptance criteria: A CLI-level test simulates a sync error and asserts exit code 1.
+Validation: `python -m pytest`, `ruff check .`, `mypy`.
+Risks or assumptions: None significant — small, isolated fix.
+Notes: Assessment reference: COMP-003.
+
+### AUTO-060 — Distinguish "no changes" from "could not inspect changes" in Git helpers
+Priority: P2
+Status: TODO
+
+Goal: Several Git helpers, notably `get_changed_files` (`src/autonomous_forge/diffcheck.py:22-50`), return empty stdout without checking the subprocess return code, so a Git failure is indistinguishable from "no changes." In commit pre-flight this currently blocks (safe by accident), but in reports and `forge check` it can produce a false-clean signal.
+Why it matters: Fail-open-by-accident is fragile — it happens to be safe today only because of how the result is currently consumed downstream; any future caller that doesn't share that assumption inherits a silent bug (SEC-008).
+Scope: Audit `diffcheck.py` and any other Git helper with the same shape (grep for return-code-ignoring subprocess calls, similar to how AUTO-056 grepped for the fixed-width ID regex). Make Git failures raise or return an explicit error/result type distinct from "zero changed files." Fail closed anywhere the result gates a mutation or CI success.
+Expected files or areas: src/autonomous_forge/diffcheck.py, other modules found by the audit, tests
+Acceptance criteria: A simulated Git failure (e.g. not a repo, git binary missing) is distinguishable from a clean working tree in every caller that currently can't tell them apart, with tests for each.
+Validation: `python -m pytest`, `ruff check .`, `mypy`.
+Risks or assumptions: Broadest-scope task in this roadmap — start with `diffcheck.py`, then decide whether the audit's other findings become follow-up tasks or fold into this one, based on how many turn up.
+Notes: Assessment reference: SEC-008.
+
+### AUTO-061 — Move changelog staging before the final commit policy check
+Priority: P2
+Status: TODO
+
+Goal: `execute_commit` (`src/autonomous_forge/commit.py:125-296`) runs pre-flight policy checks against the currently staged files, then *afterward* generates and stages `.ai/AUTONOMOUS_CHANGELOG.md` and commits it — without re-running policy or validation against the now-different staged tree.
+Why it matters: A repository whose policy disallows changes to the changelog path (or anywhere else the changelog-generation step happens to touch) can still have it committed, because the check ran against a staged tree that no longer matches what's actually committed (SEC-005).
+Scope: Reorder `execute_commit` so changelog generation and staging happens before the final staged-diff policy check, so the check validates the exact tree that will be committed. Also check `git add`'s return code (currently unchecked).
+Expected files or areas: src/autonomous_forge/commit.py, tests
+Acceptance criteria: A policy that disallows the changelog path causes commit to fail closed even though changelog generation would otherwise have staged it. `git add` failure is detected and surfaced.
+Validation: `python -m pytest`, `ruff check .`, `mypy`.
+Risks or assumptions: Low risk, single-file change to control flow ordering.
+Notes: Assessment reference: SEC-005.
+
+### AUTO-062 — Verify staged changes match the selected task's declared scope
+Priority: P2
+Status: TODO
+
+Goal: Nothing currently checks that the actually-staged diff corresponds to the selected task's Scope or Expected files. Unrelated staged changes can be committed under any task ID, and task selection can be influenced by an unstaged plan while the real commit contains something else (COMP-002).
+Why it matters: This is the second half of "audit-integrity" alongside SEC-002's approval gate — a task ID in a commit message is currently a label, not a verified claim.
+Scope: This is a design decision, not just a bugfix — resolve it via a short decision record before implementing (see DEC-015 note below). Candidate approach: compare the staged file set against the task's declared Expected files or areas immediately before commit; warn or block on mismatch depending on what the decision record settles on. Do not silently make this strict without discussing severity (warn vs. block) with the user first, since it changes commit UX for every existing workflow.
+Expected files or areas: src/autonomous_forge/commit.py, src/autonomous_forge/plan.py, tests, .ai/DECISIONS.md
+Acceptance criteria: TBD pending the decision record — at minimum, README/docs disclose plainly that task attribution is currently conventional, not verified, until this ships.
+Validation: `python -m pytest`, `ruff check .`, `mypy`.
+Risks or assumptions: Highest UX-impact task in this roadmap — get explicit sign-off on strictness (warn vs. hard block) before writing code, per this project's "ask, don't assume" default.
+Notes: Assessment reference: COMP-002.
+
+### AUTO-063 — Add SECURITY.md and a threat-model section to the README
+Priority: P1
+Status: TODO
+
+Goal: `forge` executes repository-controlled validation code with the user's full privileges and environment (`src/autonomous_forge/validate.py:87-130`), and the "human approval required" mechanism is a self-declared, unauthenticated convention (`src/autonomous_forge/approvals.py:76-114`) — but the README doesn't state either limitation plainly (SEC-001, SEC-002).
+Why it matters: These are acceptable, by-design tradeoffs for a trusted single-operator tool, but only if users know that's the model. Undisclosed, they read as safety claims the tool doesn't actually make.
+Scope: Add a `SECURITY.md` at repo root covering: validation = full local code execution, not a sandbox; only run Forge against repositories/branches you trust; "human approval" = an auditable operator attestation, not authenticated approval. Add a short pointer/summary near the top of the README.
+Expected files or areas: SECURITY.md (new), README.md
+Acceptance criteria: Both documents plainly state the trust model before any usage instructions.
+Validation: Manual read-through; `forge lint-plan`.
+Risks or assumptions: Pure documentation — no code risk.
+Notes: Assessment reference: SEC-001, SEC-002. Also closes part of COMP-005 (no SECURITY.md).
+
+### AUTO-064 — Reframe README positioning away from "autonomous executor"
+Priority: P1
+Status: TODO
+
+Goal: The roadmap already states the tool is "not ... an autonomous executor" (`.ai/AUTONOMOUS_PLAN.md:7-9` in the Product scope and non-goals section above), while the README currently calls it a tool for "autonomous software-improvement loops." The implementation selects a task, inspects the diff, runs validation, and optionally commits/pushes/syncs — it does not invoke an agent or apply a task itself (COMP-001).
+Why it matters: Flagged by the assessment as the single biggest external-positioning risk — an easy "this isn't actually autonomous" rebuttal undermines everything else the tool does well.
+Scope: Update README's framing to something like "workflow guardrails for human/agent-authored repository changes" — local-first planning, policy checks, validation, auditable run records, and opt-in commit/push/Forgejo sync. Explicitly not an agent runner.
+Expected files or areas: README.md
+Acceptance criteria: README and roadmap no longer contradict each other on what the tool does.
+Validation: Manual read-through; `forge lint-plan`.
+Risks or assumptions: Pure documentation — no code risk. Coordinate with AUTO-063 since both touch the README's opening section.
+Notes: Assessment reference: COMP-001.
+
+### AUTO-065 — Fix stale test-count and roadmap-count metadata across docs
+Priority: P2
+Status: TODO
+
+Goal: README and `.ai/AUTONOMOUS_STATE.md` say 401 tests; actual is 406 as of this review. `.ai/AUTONOMOUS_PLAN.md`'s own "Current implementation status" section (line 17, above the roadmap table) still says "Roadmaps v1 through v6... 329 tests" despite the roadmap itself running through v7 (57/57) — a second, independent staleness this assessment surfaced. `docs/CODEBASE_ASSESSMENT.md` still presents 317 tests as current. `forge drift`'s README/state check (added in AUTO-057) compares two prose sources to each other, not to pytest's actual collected/passed count, so it didn't catch this drift (COMP-004).
+Why it matters: The project's stated purpose is catching exactly this class of drift — every instance of it left uncorrected undermines the pitch.
+Scope: Update the test/task counts in README.md, `.ai/AUTONOMOUS_STATE.md`, and `.ai/AUTONOMOUS_PLAN.md`'s "Current implementation status" paragraph to current, accurate numbers. Archive or clearly mark `docs/CODEBASE_ASSESSMENT.md` as historical. Extend `forge drift` (or a new signal) to derive the test count from an actual pytest run rather than comparing README prose against state-file prose.
+Expected files or areas: README.md, .ai/AUTONOMOUS_STATE.md, .ai/AUTONOMOUS_PLAN.md, docs/CODEBASE_ASSESSMENT.md, src/autonomous_forge/drift.py, tests
+Acceptance criteria: All four documents agree with each other and with a live `pytest -q` run; `forge drift` flags a machine-verified count instead of two hand-maintained numbers agreeing by coincidence.
+Validation: `python -m pytest`, `forge drift` clean against the corrected files.
+Risks or assumptions: Running pytest as part of `forge drift` adds real wall-clock cost to what's currently a fast static check — decide whether this belongs in `forge drift` itself or a separate opt-in `forge check --verify-counts` style flag.
+Notes: Assessment reference: COMP-004.
+
+### AUTO-066 — Redact secrets from persisted validation output
+Priority: P3
+Status: TODO
+
+Goal: Validation captures stdout/stderr (`src/autonomous_forge/validate.py:122-137`), `execute_run` retains their tail (`src/autonomous_forge/run.py:301-318`), and run summaries write that output verbatim (`src/autonomous_forge/run.py:416-427`). The run directory is gitignored, but a test or tool that prints a token leaves it on disk, exposed to anyone with local file access or a copied diagnostic bundle (SEC-004).
+Why it matters: Defense in depth for the one class of local risk this tool doesn't already gitignore-away.
+Scope: Add best-effort redaction for common credential formats (API key prefixes, bearer tokens, etc.) and any configured secret values, before persisting validation output. Restrict run-file permissions where the platform supports it. Add an opt-in no-output-persistence mode.
+Expected files or areas: src/autonomous_forge/validate.py, src/autonomous_forge/run.py, tests, README.md/SECURITY.md
+Acceptance criteria: Known credential-shaped patterns are redacted in persisted run files; docs explicitly state this is best-effort, not complete secret detection.
+Validation: `python -m pytest`, `ruff check .`, `mypy`.
+Risks or assumptions: Must not overclaim — document as best-effort only, since arbitrary program output can leak secrets in unpredictable shapes no regex will catch.
+Notes: Assessment reference: SEC-004.
+
+### AUTO-067 — Make the Forgejo client configurable and harden its error handling
+Priority: P3
+Status: TODO
+
+Goal: Repository detection and API URLs are hardcoded to `forgejo.familytechlab.com` (`src/autonomous_forge/forgejo_client.py:15-29`, `:55-75`), making the advertised Forgejo integration unusable for external adopters. The HTTP layer only catches `HTTPError`; DNS failures, refused connections, TLS failures, timeouts, malformed JSON, and unexpected response shapes can escape as raw tracebacks, since `sync.py` generally only catches `RuntimeError` (SEC-006).
+Why it matters: Hardcoding one operator's own instance is fine for dogfooding but blocks anyone else from using `forge sync` at all — and unhandled transport errors surface as unfriendly stack traces instead of CLI errors.
+Scope: Make the base URL configurable (repo config or env var, consistent with AUTO-039's config-defaults pattern). Validate it's HTTPS and well-formed. Normalize/validate owner and repo names. Catch `URLError`, timeout, JSON-decode, and unexpected-schema failures alongside `HTTPError`, returning consistent CLI-level errors.
+Expected files or areas: src/autonomous_forge/forgejo_client.py, src/autonomous_forge/sync.py, src/autonomous_forge/config.py (if that's where AUTO-039's config lives), tests, docs/COMMANDS.md
+Acceptance criteria: `forge sync` works against a configured non-default Forgejo instance in tests; simulated DNS/timeout/malformed-JSON failures produce a clean CLI error, not a traceback.
+Validation: `python -m pytest`, `ruff check .`, `mypy`.
+Risks or assumptions: Retry/backoff should only be added for idempotent reads, or with carefully scoped operation-specific semantics — do not blanket-retry mutating calls.
+Notes: Assessment reference: SEC-006.
+
+### AUTO-068 — Pin CI and dev-dependency supply chain
+Priority: P3
+Status: TODO
+
+Goal: The build backend, dev tools, container image, OS packages, and `actions/checkout@v4` are all unpinned (`pyproject.toml:1-3`, `:25-32`; `.forgejo/workflows/forge-check.yml:9-22`), so a clean CI build can change without any repository change. Configured Ruff rules deliberately omit security rules — `ruff check src --select S` (run outside the normal CI config) surfaced 17 findings during this review, including the fail-open exception in check.py that's already AUTO-058 (SEC-007).
+Why it matters: Reproducibility and supply-chain pinning are table stakes before calling CI "hardened" — right now a passing CI run today doesn't guarantee the same result tomorrow.
+Scope: Pin `actions/checkout` by commit digest. Lock or pin dev dependencies (the `dev` extra added in AUTO-055). Pin the container image by digest for releases. Add a security-focused static-analysis CI job — decide whether that means enabling `S` in the existing scoped `[tool.ruff.lint]` selection or running it as a separate advisory job, since AUTO-055 deliberately scoped Ruff down to start CI green.
+Expected files or areas: .forgejo/workflows/forge-check.yml, pyproject.toml, tests (if any pinning is testable)
+Acceptance criteria: CI action and container references are pinned by digest; dev dependencies are locked; a security-rules CI job runs (even if advisory/non-blocking initially).
+Validation: A pushed commit against the updated workflow; `ruff check .`.
+Risks or assumptions: Adding `S` findings as blocking could reopen a large backlog similar to AUTO-055's original 93-finding out-of-the-box Ruff surface — start advisory/non-blocking, decide on enforcement separately.
+Notes: Assessment reference: SEC-007. The one already-fixed-elsewhere finding from the `--select S` run (the check.py fail-open exception) is tracked as AUTO-058, not duplicated here.
+
+### AUTO-069 — Alpha-readiness polish: coverage threshold, package metadata, compatibility matrix
+Priority: P3
+Status: TODO
+
+Goal: No coverage threshold in CI, no project URLs in package metadata, and CI only runs Python 3.12 despite `pyproject.toml` claiming 3.10–3.12 support (COMP-005).
+Why it matters: Minor individually, but each is a small credibility gap for anyone evaluating whether to adopt the tool.
+Scope: Wire `pytest-cov` (already a dev extra from AUTO-055) into CI with a coverage report (threshold enforcement optional — decide based on current baseline, don't pick an arbitrary number). Add project URLs (repository, issues) to `pyproject.toml`. Add a CI matrix covering 3.10, 3.11, 3.12 to match the claimed support range, or narrow the claimed range to match what's actually tested.
+Expected files or areas: pyproject.toml, .forgejo/workflows/forge-check.yml
+Acceptance criteria: CI reports coverage; package metadata includes project URLs; claimed Python support range matches what CI actually exercises.
+Validation: A pushed commit against the updated workflow; `python -m pytest --cov`.
+Risks or assumptions: Lowest priority in this roadmap — pure polish, no behavior risk.
+Notes: Assessment reference: COMP-005. `SECURITY.md` (also part of COMP-005) is covered by AUTO-063, not duplicated here.
+
 ## Future Ideas
 
 - (empty — all previously listed ideas were promoted into Roadmap v4, v5, or v6)
