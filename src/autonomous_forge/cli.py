@@ -798,6 +798,11 @@ def build_parser() -> argparse.ArgumentParser:
         default=300,
         help="validation timeout in seconds (default: 300)",
     )
+    check_parser.add_argument(
+        "--no-policy-required",
+        action="store_true",
+        help="don't fail closed when the policy file is missing or malformed",
+    )
 
     watch_parser = subparsers.add_parser(
         "watch",
@@ -845,6 +850,11 @@ def build_parser() -> argparse.ArgumentParser:
         "--once",
         action="store_true",
         help="run a single check cycle and exit",
+    )
+    watch_parser.add_argument(
+        "--no-policy-required",
+        action="store_true",
+        help="don't fail closed when the policy file is missing or malformed",
     )
 
     doctor_parser = subparsers.add_parser(
@@ -1391,6 +1401,7 @@ def _cmd_check(args: argparse.Namespace) -> int:
         validate=not args.no_validate,
         validate_command=args.check_cmd,
         timeout=args.timeout,
+        require_policy=not args.no_policy_required,
     )
     print(format_check_result(result))
     return 0 if result.all_passed else 1
@@ -1409,6 +1420,7 @@ def _cmd_watch(args: argparse.Namespace) -> int:
         timeout=args.timeout,
         interval=args.interval,
         once=args.once,
+        require_policy=not args.no_policy_required,
     )
 
 

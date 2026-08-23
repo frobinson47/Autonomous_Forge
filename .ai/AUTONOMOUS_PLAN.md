@@ -783,16 +783,16 @@ Sourced from `docs/SECURITY_ASSESSMENT_2026-08-23.md` (2026-08-23 external secur
 
 ### AUTO-058 — Fix forge check's fail-open policy-diff exception handling
 Priority: P1
-Status: TODO
+Status: DONE
 
 Goal: `execute_check` (`src/autonomous_forge/check.py:89-98`) only runs the diff policy check if a policy file exists, then wraps it in a bare `except Exception:` that silently leaves `diff_ok=True`. A missing, unreadable, malformed, or internally failing policy check currently reports PASS.
 Why it matters: `forge check` is the advertised all-in-one verification command and the intended CI signal. A tool whose purpose is trustworthy gating must not report success when the gate didn't actually run — this directly contradicts README's "forge check enforces policy" claim (SEC-003 in the assessment).
 Scope: Narrow the exception handling to specific expected exception types; any other failure (including missing/malformed policy) must set `diff_ok=False` and surface the error in output, not swallow it silently.
 Expected files or areas: src/autonomous_forge/check.py, tests
 Acceptance criteria: `forge check` fails when the policy file is missing, malformed, unreadable, or the diff-policy checker raises unexpectedly. New regression tests cover all four cases.
-Validation: `python -m pytest`, `ruff check .`, `mypy`, `forge check` against a repo with a deliberately broken policy file (should now FAIL, not PASS).
-Risks or assumptions: Must not break the existing "no policy file at all = skip check" case if that's still intended behavior distinct from "policy file exists but is broken" — confirm which of these two should fail closed vs. which is a legitimately optional feature before implementing.
-Notes: Assessment reference: SEC-003.
+Validation: `python -m pytest` — 411 tests pass (5 new: missing-policy-fails-closed, missing-policy-override, malformed-policy-fails-closed, unreadable-policy-fails-closed, unexpected-exception-not-swallowed). `ruff check .` — clean. `mypy` — clean. `forge lint-plan` — ok. Manually verified against a throwaway repo: malformed policy → exit 1 with a clear message; missing policy → exit 1 by default, exit 0 with `--no-policy-required`.
+Risks or assumptions: Resolved the open "no policy at all" question by matching `commit.py`/`run.py`'s existing `require_policy` pattern exactly — missing policy now fails closed by default too, with the same `require_policy=False` / `--no-policy-required` escape hatch those commands already use, for consistency across all three gating commands. Also fixed an adjacent bug found while testing: the Drift block's own `policy.read_text()` call (line 69) only caught `(FileNotFoundError, PlanParseError)`, so an unreadable (not just missing) policy file crashed `forge check` entirely before ever reaching the diff-check block — widened to `(OSError, PlanParseError)`; Drift stays advisory/non-blocking either way (unchanged from AUTO-057's design), only the diff-check gate is newly blocking.
+Notes: Assessment reference: SEC-003. Added `--no-policy-required` to both `forge check` and `forge watch` (which wraps `execute_check`) for symmetry with `forge run`/`forge commit`/`forge pipeline`'s existing flag. docs/COMMANDS.md updated with the new flag and a fail-closed example for both commands.
 
 ### AUTO-059 — Return exit code 1 when pipeline sync fails
 Priority: P1

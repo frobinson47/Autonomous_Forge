@@ -1,12 +1,12 @@
 # Autonomous State
 
-- Current roadmap version: v7
-- Current task ID: AUTO-055 — Add real CI enforcement to this repo (not just documented)
+- Current roadmap version: v8
+- Current task ID: AUTO-058 — Fix forge check's fail-open policy-diff exception handling
 - Current task status: DONE
 - Current branch: main
-- Last run timestamp: 2026-07-26T00:00:00+00:00
-- Last successful commit hash: 96aacda
-- Latest run summary: Added `.forgejo/workflows/forge-check.yml` (runs Ruff, mypy, then `forge check` on every push/PR). Added a `dev` extra to pyproject.toml (`pytest`, `pytest-asyncio`, `pytest-cov`, `ruff`, `mypy`) plus scoped `[tool.ruff.lint]` (conservative `E4/E7/E9/F/I` selection, not ruff's broader out-of-the-box defaults) and `[tool.mypy]` config. Fixed the 9 real findings mypy surfaced (loose JSON-API return typing in forgejo_client.py via `cast()`, one variable redefinition in sync.py) and cleaned up ~65 ruff findings (mostly import sorting, a couple of unused variables/ambiguous names) so CI starts green. Added `.forgejo/workflows/**` to `.forge/policy.md`'s Allowed paths (was missing, would've been blocked by AUTO-049's fail-closed allowlist). **Roadmap v7 is now fully complete (57/57 tasks).** 401 total tests pass (1 new — a hardening fix to AUTO-052's concurrency test that flaked once under Windows tmp-dir cleanup timing).
-- Validation commands and results: `python -m pytest` — 401 tests pass (401/401, run 5x with no flakes after the hardening fix). `ruff check .` — clean. `mypy` — clean. `forge lint-plan` — ok. `forge drift` — clean.
-- Current blockers: None — but note: checked the Forgejo Actions API after pushing AUTO-055's workflow file and observed 0 workflow runs despite the repo reporting `has_actions: true`, meaning no runner appears to be attached/picking up jobs. Reported to the user; they chose to accept AUTO-055 as done and treat runner attachment as separate infra work, not blocking this repo's roadmap.
-- Recommended next task: Roadmap v7 is complete — plan Roadmap v8, or take direction from the user on what's next. Consider following up on the CI runner gap above once infra is addressed.
+- Last run timestamp: 2026-08-23T00:00:00+00:00
+- Last successful commit hash: (this task's commit — see git log)
+- Latest run summary: Roadmap v8 (AUTO-058 through AUTO-069) was added from an external security/completeness assessment (`docs/SECURITY_ASSESSMENT_2026-08-23.md`, see DEC-015). AUTO-058 is the first task completed: `forge check`'s diff-policy check no longer fails open on a missing, malformed, or unreadable policy file — it now fails closed by default (matching `forge run`/`forge commit`'s existing `require_policy` pattern), with a new `--no-policy-required` override on both `forge check` and `forge watch`. Also fixed an adjacent crash: the Drift block's own policy read only caught `FileNotFoundError`, so an unreadable (not missing) policy file crashed the whole command before reaching the diff-check block — widened to catch `OSError`.
+- Validation commands and results: `python -m pytest` — 411 tests pass (406 baseline + 5 new for AUTO-058). `ruff check .` — clean. `mypy` — clean. `forge lint-plan` — ok. Manually verified in a throwaway repo: malformed/missing policy → `forge check` exit 1 with a clear message; `--no-policy-required` restores exit 0.
+- Current blockers: None. Unrelated, carried over from AUTO-055: no confirmed CI runner is attached to this repo's Forgejo Actions workflow (0 observed runs) — separate infra work, not blocking the roadmap.
+- Recommended next task: AUTO-059 — return exit code 1 when `forge pipeline` sync fails (same "tool misreports its own pass/fail" class of bug as AUTO-058, next in Roadmap v8's Tier 1).

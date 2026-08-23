@@ -11,6 +11,7 @@ from autonomous_forge.plan import (
     PlanParseError,
     lint_plan_structure,
 )
+from autonomous_forge.policy import validate_policy_text
 from autonomous_forge.validate import run_validation
 
 
@@ -36,6 +37,7 @@ def execute_check(
     validate: bool = True,
     validate_command: str | None = None,
     timeout: int = 300,
+    require_policy: bool = True,
 ) -> CheckResult:
     """Run lint, drift, diff-check, and validation."""
     plan = plan_path or root / ".ai" / "AUTONOMOUS_PLAN.md"
@@ -80,22 +82,34 @@ def execute_check(
             drift_msgs = [f"[{s.severity}] ({s.category}) {s.message}" for s in error_signals]
         elif signals:
             drift_msgs = [f"[{s.severity}] ({s.category}) {s.message}" for s in signals]
-    except (FileNotFoundError, PlanParseError):
+    except (OSError, PlanParseError):
         pass
 
     # Diff-check
     diff_violations: list[str] = []
     diff_ok = True
+    policy_text: str | None = None
     try:
         if policy.exists():
             policy_text = policy.read_text(encoding="utf-8")
+    except OSError as exc:
+        diff_ok = False
+        diff_violations = [f"Could not read policy file {policy}: {exc}"]
+    else:
+        if require_policy:
+            policy_problem = validate_policy_text(policy_text)
+            if policy_problem:
+                diff_ok = False
+                diff_violations = [
+                    f"Policy required but {policy_problem}: {policy}. "
+                    "Pass require_policy=False (CLI: --no-policy-required) to override."
+                ]
+        if diff_ok and policy_text is not None:
             changed = get_changed_files(root)
             violations = check_diff_against_policy(changed, policy_text)
             if violations:
                 diff_ok = False
                 diff_violations = [f"{v.path}: {v.message}" for v in violations]
-    except Exception:
-        pass
 
     # Validation
     val_ok: bool | None = None

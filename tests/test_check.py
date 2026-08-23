@@ -93,6 +93,58 @@ class TestExecuteCheck:
         assert result.all_passed is False
 
     @patch("autonomous_forge.check.get_changed_files", return_value=[])
+    def test_missing_policy_fails_closed_by_default(self, mock_git, tmp_path):
+        _setup(tmp_path)
+        (tmp_path / ".forge/policy.md").unlink()
+        result = execute_check(root=tmp_path, validate=False)
+        assert result.diff_ok is False
+        assert any("missing" in v.lower() for v in result.diff_violations)
+        assert result.all_passed is False
+
+    @patch("autonomous_forge.check.get_changed_files", return_value=[])
+    def test_missing_policy_override_skips_check(self, mock_git, tmp_path):
+        _setup(tmp_path)
+        (tmp_path / ".forge/policy.md").unlink()
+        result = execute_check(root=tmp_path, validate=False, require_policy=False)
+        assert result.diff_ok is True
+        assert result.all_passed is True
+
+    @patch("autonomous_forge.check.get_changed_files", return_value=[])
+    def test_malformed_policy_fails_closed(self, mock_git, tmp_path):
+        _setup(tmp_path)
+        (tmp_path / ".forge/policy.md").write_text(
+            "# Repository Policy\n\nnot a heading or a bullet\n", encoding="utf-8"
+        )
+        result = execute_check(root=tmp_path, validate=False)
+        assert result.diff_ok is False
+        assert any("malformed" in v.lower() for v in result.diff_violations)
+        assert result.all_passed is False
+
+    @patch("autonomous_forge.check.get_changed_files", return_value=[])
+    def test_unreadable_policy_fails_closed(self, mock_git, tmp_path):
+        _setup(tmp_path)
+        (tmp_path / ".forge/policy.md").unlink()
+        (tmp_path / ".forge/policy.md").mkdir()
+        result = execute_check(root=tmp_path, validate=False)
+        assert result.diff_ok is False
+        assert any("could not read policy file" in v.lower() for v in result.diff_violations)
+        assert result.all_passed is False
+
+    @patch("autonomous_forge.check.check_diff_against_policy")
+    @patch("autonomous_forge.check.get_changed_files", return_value=["src/x.py"])
+    def test_unexpected_diff_check_exception_is_not_swallowed(
+        self, mock_git, mock_diff, tmp_path
+    ):
+        _setup(tmp_path)
+        mock_diff.side_effect = RuntimeError("boom")
+        try:
+            execute_check(root=tmp_path, validate=False)
+        except RuntimeError as exc:
+            assert "boom" in str(exc)
+        else:
+            raise AssertionError("expected RuntimeError to propagate, not be swallowed")
+
+    @patch("autonomous_forge.check.get_changed_files", return_value=[])
     def test_missing_plan(self, mock_git, tmp_path):
         (tmp_path / ".forge").mkdir(exist_ok=True)
         result = execute_check(root=tmp_path, validate=False)

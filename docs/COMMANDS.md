@@ -812,6 +812,7 @@ Inputs:
 - `--cmd`: validation command override.
 - `--no-validate`: skip validation.
 - `--timeout`: validation timeout in seconds (default: 300).
+- `--no-policy-required`: don't fail closed when the policy file is missing or malformed (AUTO-058) — restores the pre-AUTO-058 behavior of skipping the diff-check policy gate instead of failing it.
 
 Expected successful output:
 
@@ -837,12 +838,24 @@ Validation: skipped
 Result: ISSUES FOUND
 ```
 
+Diff-check fails closed (AUTO-058) when the policy file is missing, malformed, or unreadable — not just when a changed file violates it:
+
+```text
+Forge check
+Lint: PASS
+Drift: PASS
+Diff-check: FAIL
+  Policy required but missing: .forge/policy.md. Pass require_policy=False (CLI: --no-policy-required) to override.
+Validation: skipped
+Result: ISSUES FOUND
+```
+
 Exit codes:
 
 - `0` when all checks pass.
 - `1` when any check fails.
 
-Safety limits: **runs external validation commands** via subprocess. Reads metadata files and runs `git` for diff-check. Does not write files, commit, push, or call networks.
+Safety limits: **runs external validation commands** via subprocess. Reads metadata files and runs `git` for diff-check. Does not write files, commit, push, or call networks. A missing, malformed, or unreadable policy file fails the diff-check step closed by default, matching `forge run`/`forge commit`'s fail-closed posture (AUTO-048, AUTO-058) — pass `--no-policy-required` to skip the policy gate instead of failing it.
 
 ## `forge watch`
 
@@ -858,6 +871,7 @@ Inputs:
 - `--timeout`: validation timeout in seconds (default: 300).
 - `--interval`: seconds between check cycles (default: 300).
 - `--once`: run a single check cycle and exit, instead of looping.
+- `--no-policy-required`: don't fail closed when the policy file is missing or malformed — same override as `forge check` (AUTO-058).
 
 Expected output (one block per cycle, repeating every `--interval` seconds):
 

@@ -23,6 +23,7 @@ def run_watch(
     max_cycles: int | None = None,
     sleep_fn: Callable[[float], None] = time.sleep,
     print_fn: Callable[[str], None] = print,
+    require_policy: bool = True,
 ) -> int:
     """Run `forge check` on a loop and return the last cycle's exit code.
 
@@ -45,6 +46,7 @@ def run_watch(
                 validate=validate,
                 validate_command=validate_command,
                 timeout=timeout,
+                require_policy=require_policy,
             )
             report = format_check_result(result).replace("\n", "\n  ")
             print_fn(f"[cycle {cycle}] {report}")
