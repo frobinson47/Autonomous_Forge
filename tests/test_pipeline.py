@@ -12,6 +12,7 @@ from autonomous_forge.pipeline import (
     format_pipeline_result,
 )
 from autonomous_forge.push import PushResult
+from autonomous_forge.sync import SyncResult
 
 _LINT_CLEAN_TAIL = """\
 Why it matters: Test fixture.
@@ -370,4 +371,23 @@ class TestPipelineCLI:
             "--dry-run",
             "--timestamp", "2026-01-01T00:00:00+00:00",
         ])
+        assert code == 1
+
+    def test_pipeline_sync_errors_exit_1(self, tmp_path):
+        from autonomous_forge.cli import main
+
+        fake_result = PipelineResult(
+            run_outcome=None,
+            commit_result=None,
+            push_result=None,
+            sync_result=SyncResult(actions=(), repo="owner/repo", errors=("boom",)),
+            stage_reached="complete",
+            stopped_reason="Sync errors: boom",
+        )
+        with patch("autonomous_forge.cli.execute_pipeline", return_value=fake_result):
+            code = main([
+                "pipeline",
+                "--root", str(tmp_path),
+                "--commit", "--push", "--sync",
+            ])
         assert code == 1

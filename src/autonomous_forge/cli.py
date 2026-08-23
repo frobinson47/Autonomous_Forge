@@ -1276,6 +1276,8 @@ def _cmd_pipeline(args: argparse.Namespace) -> int:
         return 1
     if result.push_result and not result.push_result.pushed and args.push:
         return 1
+    if result.sync_result and result.sync_result.errors:
+        return 1
     return 0
 
 

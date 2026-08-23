@@ -796,15 +796,15 @@ Notes: Assessment reference: SEC-003. Added `--no-policy-required` to both `forg
 
 ### AUTO-059 — Return exit code 1 when pipeline sync fails
 Priority: P1
-Status: TODO
+Status: DONE
 
 Goal: `execute_pipeline` records sync errors in `stopped_reason` (`src/autonomous_forge/pipeline.py:222-235`), but `_cmd_pipeline` (`src/autonomous_forge/cli.py:1262-1269`) only checks run/commit/push failures before returning 0. The documented exit-code contract promises exit 1 for sync errors.
 Why it matters: A CI script or wrapper relying on `forge pipeline`'s exit code to detect failure will see success even when Forgejo sync errored.
 Scope: Check `sync_result.errors` in `_cmd_pipeline` and return 1 when nonempty, matching the same pattern already used for run/commit/push.
 Expected files or areas: src/autonomous_forge/cli.py, tests
 Acceptance criteria: A CLI-level test simulates a sync error and asserts exit code 1.
-Validation: `python -m pytest`, `ruff check .`, `mypy`.
-Risks or assumptions: None significant — small, isolated fix.
+Validation: `python -m pytest` — 412 tests pass (1 new: `test_pipeline_sync_errors_exit_1`, a CLI-level test that patches `execute_pipeline` to return a `PipelineResult` with `sync_result.errors` set and asserts `main()` returns 1). `ruff check .` — clean. `mypy` — clean. `forge lint-plan` — ok. Manually verified: invoking `main()` with a mocked sync-error result prints "Stopped: Sync errors: ..." and returns exit code 1.
+Risks or assumptions: None significant — small, isolated fix; three-line change in `_cmd_pipeline`.
 Notes: Assessment reference: COMP-003.
 
 ### AUTO-060 — Distinguish "no changes" from "could not inspect changes" in Git helpers
