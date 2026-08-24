@@ -10,7 +10,7 @@ from autonomous_forge.diffcheck import (
     check_diff_against_policy,
     get_changed_files,
 )
-from autonomous_forge.drift import collect_drift_signals
+from autonomous_forge.drift import check_readme_test_count_against_validation, collect_drift_signals
 from autonomous_forge.plan import (
     PlanParseError,
     lint_plan_structure,
@@ -66,6 +66,7 @@ def execute_check(
     # Drift
     drift_msgs: list[str] = []
     drift_ok = True
+    readme_text: str | None = None
     try:
         plan_text_drift = plan.read_text(encoding="utf-8")
         state_text = state.read_text(encoding="utf-8") if state.exists() else None
@@ -134,6 +135,16 @@ def execute_check(
         val_output = result.stdout or ""
         if result.stderr:
             val_output = f"{val_output}\n{result.stderr}" if val_output else result.stderr
+
+        if readme_text is not None:
+            actual_test_signal = check_readme_test_count_against_validation(
+                readme_text, val_output
+            )
+            if actual_test_signal is not None:
+                drift_msgs.append(
+                    f"[{actual_test_signal.severity}] ({actual_test_signal.category}) "
+                    f"{actual_test_signal.message}"
+                )
 
     all_passed = lint_ok and drift_ok and diff_ok and (val_ok is not False)
 

@@ -281,3 +281,4 @@
 - 2026-08-24: AUTO-062 — Verify staged changes match the selected task's declared scope (DONE)
 - 2026-08-24: AUTO-063 — Add SECURITY.md and a threat-model section to the README (DONE)
 - 2026-08-24: AUTO-064 — Reframe README positioning away from "autonomous executor" (DONE)
+- 2026-08-24: AUTO-065 — Fix stale test-count and roadmap-count metadata across docs (DONE)

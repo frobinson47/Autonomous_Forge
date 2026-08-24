@@ -288,6 +288,8 @@ Signal categories: `state-plan`, `stale-state`, `changelog-plan`, `policy-repo`,
 
 `readme-plan`/`readme-state` (AUTO-057): if README.md's status line states its counts as `(N/M tasks done)` and `(N tests passing)`, drift compares them against the plan file's actual DONE/total task counts and the test count last recorded in `AUTONOMOUS_STATE.md`'s "Validation commands and results" line. If README doesn't use that exact phrasing, this check silently does nothing — it never guesses at a different format. Also surfaced (non-fatal, `warn` severity) by `forge check`.
 
+`readme-actual-tests` (AUTO-065 / COMP-004): `forge check`-only, not emitted by `forge drift` itself — `forge drift` has no subprocess access to a live validation run. When `forge check` runs validation, it parses the actual `N passed` count out of that run's own pytest output and compares it directly against README's `(N tests passing)` line. Unlike `readme-state` above (which compares two hand-maintained numbers to each other and can agree by coincidence if both go stale together), this is derived from a real, just-executed test run — silently does nothing if the validation command isn't pytest-shaped or README doesn't use the documented phrasing.
+
 Exit codes:
 
 - `0` when the drift report is built, including when signals are detected.

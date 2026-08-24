@@ -26,6 +26,7 @@ _README_TEST_COUNT_RE = re.compile(r"\((\d+) tests passing\)")
 _STATE_TEST_COUNT_RE = re.compile(
     r"Validation commands and results:.*?(\d+)\s+tests?\s+pass", re.IGNORECASE
 )
+_PYTEST_PASSED_RE = re.compile(r"(\d+)\s+passed", re.IGNORECASE)
 
 
 def _parse_state_fields(state_text: str) -> dict[str, str]:
@@ -169,6 +170,42 @@ def _check_readme_vs_plan_and_state(
                 ))
 
     return signals
+
+
+def check_readme_test_count_against_validation(
+    readme_text: str,
+    validation_output: str,
+) -> DriftSignal | None:
+    """Compare README's stated test count against a real validation run's own output.
+
+    Unlike ``readme-state`` above, this doesn't compare two hand-maintained
+    numbers against each other — it parses the actual passed-test count out
+    of a pytest invocation's own stdout, so it can't silently agree by
+    coincidence the way two prose sources can (COMP-004). Silently returns
+    None if README doesn't use the documented ``(N tests passing)``
+    phrasing, or the validation output doesn't contain a recognizable
+    pytest summary line (e.g. a non-pytest validation command) — same
+    "prefer no signal over a guess" posture as every other regex-based
+    check in this module.
+    """
+    test_match = _README_TEST_COUNT_RE.search(readme_text)
+    if not test_match:
+        return None
+    passed_match = _PYTEST_PASSED_RE.search(validation_output)
+    if not passed_match:
+        return None
+    readme_tests = int(test_match.group(1))
+    actual_tests = int(passed_match.group(1))
+    if readme_tests == actual_tests:
+        return None
+    return DriftSignal(
+        category="readme-actual-tests",
+        severity="warn",
+        message=(
+            f"README states {readme_tests} tests passing, but the "
+            f"validation run just reported {actual_tests} passed."
+        ),
+    )
 
 
 def _check_policy_path_existence(

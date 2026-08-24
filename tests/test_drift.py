@@ -1,5 +1,9 @@
 from autonomous_forge.cli import main
-from autonomous_forge.drift import build_drift_report, collect_drift_signals
+from autonomous_forge.drift import (
+    build_drift_report,
+    check_readme_test_count_against_validation,
+    collect_drift_signals,
+)
 
 PLAN_TWO_TASKS = """\
 ### AUTO-001 — First task
@@ -277,3 +281,35 @@ class TestReadmeVsPlanAndState:
     def test_no_check_when_readme_text_not_provided(self):
         signals = collect_drift_signals(self.PLAN)
         assert signals == []
+
+
+class TestReadmeTestCountAgainstValidation:
+    def test_no_signal_when_counts_match(self):
+        readme = "Status: (10 tests passing)."
+        output = "....\n10 passed in 1.23s\n"
+        assert check_readme_test_count_against_validation(readme, output) is None
+
+    def test_signal_when_counts_diverge(self):
+        readme = "Status: (999 tests passing)."
+        output = "....\n10 passed in 1.23s\n"
+        signal = check_readme_test_count_against_validation(readme, output)
+        assert signal is not None
+        assert signal.category == "readme-actual-tests"
+        assert signal.severity == "warn"
+        assert "999" in signal.message
+        assert "10" in signal.message
+
+    def test_no_signal_when_readme_format_not_found(self):
+        readme = "Status: still under construction."
+        output = "....\n10 passed in 1.23s\n"
+        assert check_readme_test_count_against_validation(readme, output) is None
+
+    def test_no_signal_when_output_not_pytest_shaped(self):
+        readme = "Status: (10 tests passing)."
+        output = "Build succeeded.\n"
+        assert check_readme_test_count_against_validation(readme, output) is None
+
+    def test_ignores_skipped_and_failed_counts_matches_on_passed_only(self):
+        readme = "Status: (10 tests passing)."
+        output = "....\n10 passed, 2 skipped in 1.23s\n"
+        assert check_readme_test_count_against_validation(readme, output) is None

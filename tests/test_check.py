@@ -175,6 +175,24 @@ class TestExecuteCheck:
 
     @patch("autonomous_forge.check.get_changed_files", return_value=[])
     @patch("autonomous_forge.check.run_validation")
+    def test_readme_actual_test_count_signal_surfaces_in_drift(self, mock_val, mock_git, tmp_path):
+        _setup(tmp_path)
+        (tmp_path / "README.md").write_text("Status: (999 tests passing).\n", encoding="utf-8")
+        from autonomous_forge.validate import ValidationResult
+        mock_val.return_value = ValidationResult(
+            passed=True, command="pytest", stdout="10 passed in 1.23s", stderr="",
+            exit_code=0, timestamp="2026-01-01T00:00:00+00:00",
+        )
+        result = execute_check(root=tmp_path, validate=True)
+        assert result.validation_ok is True
+        assert any("readme-actual-tests" in s for s in result.drift_signals)
+        assert any("999" in s and "10" in s for s in result.drift_signals)
+        # Non-blocking: this signal alone must not fail the run.
+        assert result.drift_ok is True
+        assert result.all_passed is True
+
+    @patch("autonomous_forge.check.get_changed_files", return_value=[])
+    @patch("autonomous_forge.check.run_validation")
     def test_validation_fail(self, mock_val, mock_git, tmp_path):
         _setup(tmp_path)
         from autonomous_forge.validate import ValidationResult

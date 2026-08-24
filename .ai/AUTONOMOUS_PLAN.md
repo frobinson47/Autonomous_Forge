@@ -14,7 +14,7 @@ The project has two interfaces: a Python CLI (`forge`) and Claude Code skills (`
 
 ## Current implementation status
 
-Roadmaps v1 through v6 are complete (47 tasks). Roadmap v6 fixed the long-standing plan-lint Notes gap, resolved an orphaned duplicate doc, added `forge metrics --json`, documented a CI recipe, and added `forge revert`. All 329 tests pass at runtime.
+Roadmaps v1 through v7 are complete (57 tasks). Roadmap v8, a security/completeness hardening pass sourced from an external assessment (see DEC-015), is in progress. All 438 tests pass at runtime.
 
 ## Technical debt
 
@@ -874,16 +874,16 @@ Notes: Assessment reference: COMP-001. New opening explicitly states "It does no
 
 ### AUTO-065 — Fix stale test-count and roadmap-count metadata across docs
 Priority: P2
-Status: TODO
+Status: DONE
 
 Goal: README and `.ai/AUTONOMOUS_STATE.md` say 401 tests; actual is 406 as of this review. `.ai/AUTONOMOUS_PLAN.md`'s own "Current implementation status" section (line 17, above the roadmap table) still says "Roadmaps v1 through v6... 329 tests" despite the roadmap itself running through v7 (57/57) — a second, independent staleness this assessment surfaced. `docs/CODEBASE_ASSESSMENT.md` still presents 317 tests as current. `forge drift`'s README/state check (added in AUTO-057) compares two prose sources to each other, not to pytest's actual collected/passed count, so it didn't catch this drift (COMP-004).
 Why it matters: The project's stated purpose is catching exactly this class of drift — every instance of it left uncorrected undermines the pitch.
 Scope: Update the test/task counts in README.md, `.ai/AUTONOMOUS_STATE.md`, and `.ai/AUTONOMOUS_PLAN.md`'s "Current implementation status" paragraph to current, accurate numbers. Archive or clearly mark `docs/CODEBASE_ASSESSMENT.md` as historical. Extend `forge drift` (or a new signal) to derive the test count from an actual pytest run rather than comparing README prose against state-file prose.
 Expected files or areas: README.md, .ai/AUTONOMOUS_STATE.md, .ai/AUTONOMOUS_PLAN.md, docs/CODEBASE_ASSESSMENT.md, src/autonomous_forge/drift.py, tests
 Acceptance criteria: All four documents agree with each other and with a live `pytest -q` run; `forge drift` flags a machine-verified count instead of two hand-maintained numbers agreeing by coincidence.
-Validation: `python -m pytest`, `forge drift` clean against the corrected files.
-Risks or assumptions: Running pytest as part of `forge drift` adds real wall-clock cost to what's currently a fast static check — decide whether this belongs in `forge drift` itself or a separate opt-in `forge check --verify-counts` style flag.
-Notes: Assessment reference: COMP-004.
+Validation: `python -m pytest` — 438 tests pass (432 baseline + 6 new: 5 in `tests/test_drift.py` for `check_readme_test_count_against_validation` — match, mismatch, format-not-found, non-pytest-output, skipped-count-ignored — plus 1 in `tests/test_check.py` confirming the signal surfaces via `execute_check` and stays non-blocking). `ruff check .`/`mypy` — clean. `forge lint-plan` — ok. `forge drift` clean against the corrected README/state/plan (verified after this task's own state-file update, matching every prior task's DONE-flip pattern in this roadmap).
+Risks or assumptions: Resolved the "where does this belong" question from the original Risks note: added `check_readme_test_count_against_validation` (`drift.py`) as a function `forge drift` itself does *not* call (it has no subprocess access to a live validation run) — instead wired into `forge check`, which already runs validation as a separate step, so no second pytest invocation is added anywhere. This is the "separate opt-in mechanism" alternative from the original note, not a wall-clock-cost addition to `forge drift`. The new `readme-actual-tests` signal is `warn` severity and does not affect `drift_ok`/`all_passed`, matching the existing non-blocking posture for README staleness.
+Notes: Assessment reference: COMP-004. `docs/CODEBASE_ASSESSMENT.md` marked archived/historical with a banner rather than deleted or rewritten — its own findings (advisory-only policy enforcement) were real for the state of the code at the time it was written (2026-07-25, predates DEC-012/Roadmap v7) and are preserved as historical record. `docs/COMMANDS.md`'s `forge drift` section documents the new `readme-actual-tests` category and clarifies it's `forge check`-only.
 
 ### AUTO-066 — Redact secrets from persisted validation output
 Priority: P3

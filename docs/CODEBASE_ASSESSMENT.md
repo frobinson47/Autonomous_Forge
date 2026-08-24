@@ -1,5 +1,7 @@
 # Autonomous Forge — Codebase Assessment
 
+> **Archived — historical snapshot, 2026-07-25.** This assessment predates Roadmap v7 (which fixed the fail-closed policy gaps described below, see DEC-012) and Roadmap v8. Its `317 passed` test count and any statements about advisory-only enforcement are **not current** — see `.ai/AUTONOMOUS_STATE.md` for live status, or the more recent `docs/SECURITY_ASSESSMENT_2026-08-23.md` for a current external assessment. Kept for historical context (AUTO-065), not deleted or rewritten.
+
 ## Executive summary
 
 Autonomous Forge is a small, well-tested Python CLI for repository maintenance workflows. It excels at making agent/human work explicit, reviewable, and local-first: a Markdown roadmap determines the next task; Git diff checks and validation precede committing; higher-impact actions require explicit flags.
