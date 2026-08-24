@@ -6,6 +6,7 @@
 - `tests/**`
 - `docs/**`
 - `README.md`
+- `SECURITY.md`
 - `.ai/**`
 - `.forge/**`
 - `.forgejo/workflows/**`

@@ -279,3 +279,4 @@
 - 2026-08-23: AUTO-060 — Distinguish "no changes" from "could not inspect changes" in Git helpers (DONE)
 - 2026-08-24: AUTO-061 — Move changelog staging before the final commit policy check (DONE)
 - 2026-08-24: AUTO-062 — Verify staged changes match the selected task's declared scope (DONE)
+- 2026-08-24: AUTO-063 — Add SECURITY.md and a threat-model section to the README (DONE)

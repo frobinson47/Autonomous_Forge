@@ -848,16 +848,16 @@ Notes: Assessment reference: COMP-002. Decision record: DEC-016. Added `expected
 
 ### AUTO-063 — Add SECURITY.md and a threat-model section to the README
 Priority: P1
-Status: TODO
+Status: DONE
 
 Goal: `forge` executes repository-controlled validation code with the user's full privileges and environment (`src/autonomous_forge/validate.py:87-130`), and the "human approval required" mechanism is a self-declared, unauthenticated convention (`src/autonomous_forge/approvals.py:76-114`) — but the README doesn't state either limitation plainly (SEC-001, SEC-002).
 Why it matters: These are acceptable, by-design tradeoffs for a trusted single-operator tool, but only if users know that's the model. Undisclosed, they read as safety claims the tool doesn't actually make.
 Scope: Add a `SECURITY.md` at repo root covering: validation = full local code execution, not a sandbox; only run Forge against repositories/branches you trust; "human approval" = an auditable operator attestation, not authenticated approval. Add a short pointer/summary near the top of the README.
 Expected files or areas: SECURITY.md (new), README.md
 Acceptance criteria: Both documents plainly state the trust model before any usage instructions.
-Validation: Manual read-through; `forge lint-plan`.
-Risks or assumptions: Pure documentation — no code risk.
-Notes: Assessment reference: SEC-001, SEC-002. Also closes part of COMP-005 (no SECURITY.md).
+Validation: Manual read-through; `forge lint-plan` — ok; `python -m pytest` — 432 tests pass (unchanged, pure documentation); `ruff check .`/`mypy` — clean. Manually verified `forge diff-check --staged` reports the new `SECURITY.md` as policy-compliant after adding it to `.forge/policy.md`'s Allowed paths.
+Risks or assumptions: Pure documentation — no code risk. `SECURITY.md` wasn't in `.forge/policy.md`'s Allowed paths (a new root-level file) — added it, same pattern as AUTO-055 adding `.forgejo/workflows/**` when it needed to maintain its own file under AUTO-049's fail-closed allowlist.
+Notes: Assessment reference: SEC-001, SEC-002. Also closes part of COMP-005 (no SECURITY.md). `SECURITY.md` also documents the AUTO-062/DEC-016 scope-warning behavior and the AUTO-060 unredacted-run-output caveat, so it reads as one coherent trust-model document rather than only covering the two findings this task was scoped for.
 
 ### AUTO-064 — Reframe README positioning away from "autonomous executor"
 Priority: P1

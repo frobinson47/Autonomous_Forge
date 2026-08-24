@@ -4,6 +4,10 @@ Autonomous Forge is an open-source, AI-built and AI-maintained developer tool fo
 
 It keeps a durable, human-readable roadmap (`.ai/AUTONOMOUS_PLAN.md`) as the single source of truth for what work is next, then provides a `forge` CLI that can select a task, validate it, check it against a repository policy, commit, push, and sync the result to a Forgejo issue tracker — with every stage gated behind explicit opt-in flags and a conservative, documented policy boundary for anything higher-risk.
 
+## Security and threat model
+
+Autonomous Forge is built for **one trusted operator working in a repository and branch they already trust** — it is not a sandbox. Validation runs full local code execution (your validation command, `python -m pytest` by default, inherits your process environment and runs arbitrary repository code); "human approval required" is a self-declared, auditable operator attestation, not authenticated approval. See [`SECURITY.md`](SECURITY.md) for the full threat model before running this against a repository or branch you don't trust.
+
 ## What it gives you
 
 - **A durable plan-of-record.** Tasks live in a roadmap file with IDs, priorities, and statuses. `forge tasks --next` deterministically picks the next eligible task — no manual triage.
