@@ -1,8 +1,8 @@
 # Autonomous Forge
 
-Autonomous Forge is an open-source, AI-built and AI-maintained developer tool for safely running repository-native autonomous software-improvement loops.
+Autonomous Forge is an open-source, AI-built and AI-maintained developer tool that adds local-first workflow guardrails around repository changes made by a human or a coding agent: task planning, policy checks, validation, auditable run records, and opt-in commit/push/Forgejo sync.
 
-It keeps a durable, human-readable roadmap (`.ai/AUTONOMOUS_PLAN.md`) as the single source of truth for what work is next, then provides a `forge` CLI that can select a task, validate it, check it against a repository policy, commit, push, and sync the result to a Forgejo issue tracker — with every stage gated behind explicit opt-in flags and a conservative, documented policy boundary for anything higher-risk.
+**It is not an autonomous executor or an AI agent.** It does not implement tasks, write code, or invoke an AI model. It reads a durable, human-readable roadmap (`.ai/AUTONOMOUS_PLAN.md`) as the single source of truth for what work is next, selects the next eligible task, inspects whatever diff already exists in the working tree, validates it, checks it against a repository policy, and — only when explicitly asked, one flag per stage — commits, pushes, and syncs the result to a Forgejo issue tracker. The actual implementation work (writing the code, fixing the bug) is done by you or your agent, before Forge ever runs.
 
 ## Security and threat model
 

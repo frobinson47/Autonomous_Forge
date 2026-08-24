@@ -861,16 +861,16 @@ Notes: Assessment reference: SEC-001, SEC-002. Also closes part of COMP-005 (no 
 
 ### AUTO-064 — Reframe README positioning away from "autonomous executor"
 Priority: P1
-Status: TODO
+Status: DONE
 
 Goal: The roadmap already states the tool is "not ... an autonomous executor" (`.ai/AUTONOMOUS_PLAN.md:7-9` in the Product scope and non-goals section above), while the README currently calls it a tool for "autonomous software-improvement loops." The implementation selects a task, inspects the diff, runs validation, and optionally commits/pushes/syncs — it does not invoke an agent or apply a task itself (COMP-001).
 Why it matters: Flagged by the assessment as the single biggest external-positioning risk — an easy "this isn't actually autonomous" rebuttal undermines everything else the tool does well.
 Scope: Update README's framing to something like "workflow guardrails for human/agent-authored repository changes" — local-first planning, policy checks, validation, auditable run records, and opt-in commit/push/Forgejo sync. Explicitly not an agent runner.
 Expected files or areas: README.md
 Acceptance criteria: README and roadmap no longer contradict each other on what the tool does.
-Validation: Manual read-through; `forge lint-plan`.
-Risks or assumptions: Pure documentation — no code risk. Coordinate with AUTO-063 since both touch the README's opening section.
-Notes: Assessment reference: COMP-001.
+Validation: Manual read-through; `forge lint-plan` — ok; `python -m pytest` — 432 tests pass (unchanged, pure documentation); `forge drift` — the only signals are the expected readme-plan/readme-state count staleness (AUTO-065's job, not this task's). Grepped README.md, docs/COMMANDS.md, and CONTRIBUTING.md for the same "software-improvement loop"/"autonomous executor" framing — only the archived external assessment file itself (`docs/SECURITY_ASSESSMENT_2026-08-23.md`, a dated snapshot, not touched) still uses that language; the other docs were already accurately worded.
+Risks or assumptions: Pure documentation — no code risk. Landed together with AUTO-063 in the same session since both touch the README's opening section, per this task's own Risks note about coordinating them.
+Notes: Assessment reference: COMP-001. New opening explicitly states "It does not implement tasks, write code, or invoke an AI model" and "The actual implementation work ... is done by you or your agent, before Forge ever runs" — directly closing the contradiction the assessment flagged, not just softening the language.
 
 ### AUTO-065 — Fix stale test-count and roadmap-count metadata across docs
 Priority: P2
