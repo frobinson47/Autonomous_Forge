@@ -19,6 +19,7 @@ from autonomous_forge.plan import (
     select_eligible_task,
 )
 from autonomous_forge.policy import validate_policy_text
+from autonomous_forge.scope import find_out_of_scope_files
 from autonomous_forge.validate import run_validation
 
 
@@ -34,6 +35,7 @@ class CommitPreFlight:
     task_id: str
     task_title: str
     block_reason: str
+    scope_warnings: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -90,6 +92,7 @@ def run_pre_flight(
     task_id = ""
     task_title = ""
     approval_needed = ""
+    expected_files = ""
     if plan_p.exists():
         plan_text = plan_p.read_text(encoding="utf-8")
 
@@ -118,6 +121,7 @@ def run_pre_flight(
             task_id = selected.task_id
             task_title = selected.title
             approval_needed = selected.approval_needed
+            expected_files = selected.expected_files
 
     if approval_needed and not has_approval(task_id, root=root):
         return CommitPreFlight(
@@ -160,6 +164,14 @@ def run_pre_flight(
             block_reason="No changed files to commit.",
         )
 
+    # Advisory only (DEC-016 / AUTO-062): flags files that don't obviously
+    # match the selected task's declared scope, but never blocks on it —
+    # `Expected files or areas` is free-form prose written by whoever
+    # authored the task, not a strict policy, and a mismatch is just as
+    # likely to mean the wrong task got auto-selected as it is to mean the
+    # diff is actually wrong.
+    scope_warnings = find_out_of_scope_files(changed, expected_files)
+
     if require_policy:
         policy_problem = validate_policy_text(policy_text)
         if policy_problem:
@@ -175,6 +187,7 @@ def run_pre_flight(
                     f"Policy required but {policy_problem}: {policy_p}. "
                     "Pass require_policy=False (CLI: --no-policy-required) to override."
                 ),
+                scope_warnings=scope_warnings,
             )
 
     violations_list: list[str] = []
@@ -194,6 +207,7 @@ def run_pre_flight(
                 task_id=task_id,
                 task_title=task_title,
                 block_reason=f"Prohibited file(s): {', '.join(v.path for v in prohibited)}",
+                scope_warnings=scope_warnings,
             )
         violations_list = [
             f"[{v.rule}] {v.path}: {v.message}" for v in diff_violations
@@ -212,6 +226,7 @@ def run_pre_flight(
                     f"File(s) outside allowed paths: {', '.join(v.path for v in not_allowed)}. "
                     "Pass --advisory-paths to report only, or widen .forge/policy.md's Allowed paths."
                 ),
+                scope_warnings=scope_warnings,
             )
 
     validation_passed = None
@@ -240,6 +255,7 @@ def run_pre_flight(
                 task_id=task_id,
                 task_title=task_title,
                 block_reason="Validation failed.",
+                scope_warnings=scope_warnings,
             )
 
     return CommitPreFlight(
@@ -251,6 +267,7 @@ def run_pre_flight(
         task_id=task_id,
         task_title=task_title,
         block_reason="",
+        scope_warnings=scope_warnings,
     )
 
 
@@ -403,6 +420,14 @@ def format_pre_flight(pf: CommitPreFlight) -> str:
         lines.append(f"Policy violations: {len(pf.violations)}")
         for v in pf.violations:
             lines.append(f"  {v}")
+
+    if pf.scope_warnings:
+        lines.append(
+            f"Scope warning: {len(pf.scope_warnings)} changed file(s) don't match "
+            f"{pf.task_id}'s declared Expected files or areas (advisory only, does not block):"
+        )
+        for f in pf.scope_warnings:
+            lines.append(f"  {f}")
 
     if pf.validation_passed is not None:
         status = "PASSED" if pf.validation_passed else "FAILED"

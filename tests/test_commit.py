@@ -110,6 +110,23 @@ class TestPreFlight:
         assert pf.task_id == "AUTO-001"
         assert "src/foo.py" in pf.changed_files
 
+    @patch("autonomous_forge.commit.get_changed_files", return_value=["src/foo.py"])
+    def test_scope_mismatch_warns_but_does_not_block(self, mock_git, tmp_path):
+        # PLAN_WITH_TODO's fixture declares "Expected files or areas: tests."
+        # — src/foo.py doesn't match, so this must warn but still be safe
+        # (DEC-016: advisory only, never blocks).
+        _setup(tmp_path)
+        pf = run_pre_flight(root=tmp_path, validate=False)
+        assert pf.safe
+        assert pf.scope_warnings == ("src/foo.py",)
+
+    @patch("autonomous_forge.commit.get_changed_files", return_value=["tests/test_foo.py"])
+    def test_scope_match_has_no_warning(self, mock_git, tmp_path):
+        _setup(tmp_path)
+        pf = run_pre_flight(root=tmp_path, validate=False)
+        assert pf.safe
+        assert pf.scope_warnings == ()
+
     @patch("autonomous_forge.commit.get_changed_files", return_value=[".env"])
     def test_prohibited_blocks(self, mock_git, tmp_path):
         _setup(tmp_path)

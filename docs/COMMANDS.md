@@ -569,12 +569,24 @@ Message: <commit message>
 Changelog updated: <comma-separated AUTO-### list, if any task's Status flipped to DONE>
 ```
 
+If a changed file doesn't obviously match the selected task's `Expected files or areas` field, a scope warning is printed — this is advisory only and never blocks the commit (AUTO-062 / DEC-016):
+
+```text
+Forge commit pre-flight
+Task: AUTO-001 — Build widget
+Changed files: 1
+  docs/readme.md
+Scope warning: 1 changed file(s) don't match AUTO-001's declared Expected files or areas (advisory only, does not block):
+  docs/readme.md
+Result: SAFE to commit
+```
+
 Exit codes:
 
 - `0` when the commit succeeds (or `--check-only` reports SAFE).
 - `1` when blocked by prohibited files, validation failure, no changes, or git error.
 
-Safety limits: **this command runs git commit** and **runs external validation commands** via subprocess. It checks staged files against policy before committing. It does NOT push or modify the plan file. If git itself cannot be run to detect changed files, pre-flight blocks with "Could not determine changed files" — distinct from, and never conflated with, the genuine "No changed files to commit" case (AUTO-060 / SEC-008). It does NOT auto-stage arbitrary files — the one exception is `.ai/AUTONOMOUS_CHANGELOG.md`: if any task's Status flipped to DONE compared to HEAD (e.g. via a preceding `forge mark`), one dated line per newly-done task (`- <date>: AUTO-### — <title> (DONE)`, no commit hash — it doesn't exist yet) is appended to an *already-existing* changelog file and staged, landing in the same commit. Existing changelog content is never rewritten or reordered. The staged-diff policy check runs a second time after the changelog is staged (AUTO-061 / SEC-005) — a policy that disallows the changelog's path blocks the commit with "Changelog update violates policy" instead of silently letting it through the original pre-flight, which ran before the changelog file existed in the diff. A `git add` failure for the changelog is also checked and blocks with "git add failed for ...". See `autonomous_forge.changelog`. Auto-generated commit messages use the format `forge: AUTO-### — title`.
+Safety limits: **this command runs git commit** and **runs external validation commands** via subprocess. It checks staged files against policy before committing. It does NOT push or modify the plan file. If git itself cannot be run to detect changed files, pre-flight blocks with "Could not determine changed files" — distinct from, and never conflated with, the genuine "No changed files to commit" case (AUTO-060 / SEC-008). It does NOT auto-stage arbitrary files — the one exception is `.ai/AUTONOMOUS_CHANGELOG.md`: if any task's Status flipped to DONE compared to HEAD (e.g. via a preceding `forge mark`), one dated line per newly-done task (`- <date>: AUTO-### — <title> (DONE)`, no commit hash — it doesn't exist yet) is appended to an *already-existing* changelog file and staged, landing in the same commit. Existing changelog content is never rewritten or reordered. A scope mismatch between changed files and the selected task's declared `Expected files or areas` is reported but never blocks (AUTO-062 / DEC-016) — task attribution is a self-reported convention, not a verified claim. The staged-diff policy check runs a second time after the changelog is staged (AUTO-061 / SEC-005) — a policy that disallows the changelog's path blocks the commit with "Changelog update violates policy" instead of silently letting it through the original pre-flight, which ran before the changelog file existed in the diff. A `git add` failure for the changelog is also checked and blocks with "git add failed for ...". See `autonomous_forge.changelog`. Auto-generated commit messages use the format `forge: AUTO-### — title`.
 
 ## `forge push`
 

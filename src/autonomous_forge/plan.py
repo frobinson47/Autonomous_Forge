@@ -9,6 +9,7 @@ _TASK_HEADING_RE = re.compile(r"^### (AUTO-\d{3,}) — (.+)$")
 _FIELD_RE = re.compile(r"^([^:]+):\s*(.*)$")
 _TASK_FIELD_RE = re.compile(r"^(Priority|Status):\s*(.+)$")
 _APPROVAL_FIELD_RE = re.compile(r"^Approval needed:\s*(.*)$")
+_EXPECTED_FILES_FIELD_RE = re.compile(r"^Expected files or areas:\s*(.*)$")
 _PRIORITY_ORDER = {"P0": 0, "P1": 1, "P2": 2, "P3": 3}
 _SUPPORTED_STATUSES = {"TODO", "DONE", "BLOCKED", "SKIPPED"}
 _STATUS_ALIASES = {"PENDING": "TODO", "COMPLETE": "DONE"}
@@ -51,6 +52,7 @@ class PlanTask:
     status: str
     line_number: int
     approval_needed: str = ""
+    expected_files: str = ""
 
 
 @dataclass(frozen=True)
@@ -85,6 +87,7 @@ def parse_plan_tasks(plan_text: str) -> list[PlanTask]:
         line_number = index + 1
         fields: dict[str, str] = {}
         approval_needed = ""
+        expected_files = ""
         index += 1
 
         while index < len(lines) and not lines[index].startswith("### "):
@@ -95,6 +98,9 @@ def parse_plan_tasks(plan_text: str) -> list[PlanTask]:
                 approval_match = _APPROVAL_FIELD_RE.match(lines[index])
                 if approval_match:
                     approval_needed = approval_match.group(1).strip()
+                expected_match = _EXPECTED_FILES_FIELD_RE.match(lines[index])
+                if expected_match:
+                    expected_files = expected_match.group(1).strip()
             index += 1
 
         missing = [field for field in ("Priority", "Status") if field not in fields]
@@ -112,6 +118,7 @@ def parse_plan_tasks(plan_text: str) -> list[PlanTask]:
                 status=_normalize_status(fields["Status"]),
                 line_number=line_number,
                 approval_needed=approval_needed,
+                expected_files=expected_files,
             )
         )
 

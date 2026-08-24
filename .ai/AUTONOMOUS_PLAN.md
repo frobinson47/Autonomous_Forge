@@ -835,16 +835,16 @@ Notes: Assessment reference: SEC-005. Added `_git_add` (checks `git add`'s retur
 
 ### AUTO-062 — Verify staged changes match the selected task's declared scope
 Priority: P2
-Status: TODO
+Status: DONE
 
 Goal: Nothing currently checks that the actually-staged diff corresponds to the selected task's Scope or Expected files. Unrelated staged changes can be committed under any task ID, and task selection can be influenced by an unstaged plan while the real commit contains something else (COMP-002).
 Why it matters: This is the second half of "audit-integrity" alongside SEC-002's approval gate — a task ID in a commit message is currently a label, not a verified claim.
 Scope: This is a design decision, not just a bugfix — resolve it via a short decision record before implementing (see DEC-015 note below). Candidate approach: compare the staged file set against the task's declared Expected files or areas immediately before commit; warn or block on mismatch depending on what the decision record settles on. Do not silently make this strict without discussing severity (warn vs. block) with the user first, since it changes commit UX for every existing workflow.
 Expected files or areas: src/autonomous_forge/commit.py, src/autonomous_forge/plan.py, tests, .ai/DECISIONS.md
 Acceptance criteria: TBD pending the decision record — at minimum, README/docs disclose plainly that task attribution is currently conventional, not verified, until this ships.
-Validation: `python -m pytest`, `ruff check .`, `mypy`.
-Risks or assumptions: Highest UX-impact task in this roadmap — get explicit sign-off on strictness (warn vs. hard block) before writing code, per this project's "ask, don't assume" default.
-Notes: Assessment reference: COMP-002.
+Validation: `python -m pytest` — 432 tests pass (419 baseline + 13 new: 9 in `tests/test_scope.py` covering token matching — empty field, prose-only, prefix, glob, backtick-wrapped, bare-word-as-filename, bare-word-as-directory, comma-separated, real-project-style sentence field — plus 2 in `tests/test_commit.py` confirming a mismatch warns without blocking and a match produces no warning; existing plan/commit tests unaffected). `ruff check .` — clean. `mypy` — clean. `forge lint-plan` — ok. Manually verified live in a throwaway repo: a file outside the declared `Expected files or areas` produces a "Scope warning: ... (advisory only, does not block)" line and the commit still reports "Result: SAFE to commit".
+Risks or assumptions: User chose warn-only over block-by-default (see DEC-016) — a scope mismatch is visible but never prevents a commit, so this does not resolve the AUTO-058/059 mislabeling pattern itself, only surfaces it. `Expected files or areas` is free-form prose (e.g. "`src/x.py`, tests, README."), not a strict glob list — `scope.py`'s matcher had to handle trailing sentence periods stuck to the last token, backtick-quoted paths, and bare words that could mean either a directory (`docs` → `docs/**`) or a filename without extension (`README` → `README.md`); real entries in this repo's own plan file exercise all of these forms.
+Notes: Assessment reference: COMP-002. Decision record: DEC-016. Added `expected_files` as a new parsed `PlanTask` field (`plan.py`) and a new `scope.py` module, kept separate from `diffcheck.py`/`policy.py` since it's a different concept (task-authored prose vs. repo-wide policy) despite superficially similar path-matching logic.
 
 ### AUTO-063 — Add SECURITY.md and a threat-model section to the README
 Priority: P1
