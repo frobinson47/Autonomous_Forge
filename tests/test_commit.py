@@ -517,3 +517,43 @@ class TestExecuteCommitChangelogIntegration:
         assert result.changelog_task_ids == ()
         changelog_text = (tmp_path / ".ai/AUTONOMOUS_CHANGELOG.md").read_text(encoding="utf-8")
         assert changelog_text == "# Changelog\n"
+
+    def test_changelog_path_blocked_by_policy_after_staging(self, tmp_path):
+        # POLICY (module-level) allows only src/** and tests/** — .ai/** is
+        # not-allowed. The plan's DONE flip is left unstaged (matching the
+        # real forge-mark-then-commit workflow: find_newly_done_tasks reads
+        # the working tree directly, not the index), so the ORIGINAL
+        # pre-flight only sees src/foo.py and reports safe. Staging the
+        # changelog afterward must still be caught by the post-staging
+        # re-check (AUTO-061 / SEC-005), not silently committed.
+        _init_real_repo(tmp_path)
+        (tmp_path / ".ai/AUTONOMOUS_PLAN.md").write_text(PLAN_ALL_DONE, encoding="utf-8")
+        (tmp_path / "src").mkdir()
+        (tmp_path / "src/foo.py").write_text("# code\n", encoding="utf-8")
+        _git(["add", "src/foo.py"], tmp_path)
+
+        result = execute_commit(root=tmp_path, validate=False)
+
+        assert not result.committed
+        assert "Changelog update violates policy" in result.message
+        assert ".ai" in result.message or "AUTONOMOUS_CHANGELOG" in result.message
+
+        # Nothing was actually committed.
+        log = subprocess.run(
+            ["git", "log", "--oneline"], cwd=tmp_path,
+            capture_output=True, text=True,
+        )
+        assert log.stdout.count("\n") == 1  # only the "initial" commit
+
+    def test_git_add_failure_for_changelog_blocks(self, tmp_path):
+        _init_real_repo(tmp_path)
+        (tmp_path / ".ai/AUTONOMOUS_PLAN.md").write_text(PLAN_ALL_DONE, encoding="utf-8")
+        (tmp_path / "src").mkdir()
+        (tmp_path / "src/foo.py").write_text("# code\n", encoding="utf-8")
+        _git(["add", "src/foo.py"], tmp_path)
+
+        with patch("autonomous_forge.commit._git_add", return_value=False):
+            result = execute_commit(root=tmp_path, validate=False)
+
+        assert not result.committed
+        assert "git add failed" in result.message

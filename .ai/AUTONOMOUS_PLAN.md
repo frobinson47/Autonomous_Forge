@@ -822,16 +822,16 @@ Notes: Assessment reference: SEC-008. Added `GitCommandError` (in `diffcheck.py`
 
 ### AUTO-061 — Move changelog staging before the final commit policy check
 Priority: P2
-Status: TODO
+Status: DONE
 
 Goal: `execute_commit` (`src/autonomous_forge/commit.py:125-296`) runs pre-flight policy checks against the currently staged files, then *afterward* generates and stages `.ai/AUTONOMOUS_CHANGELOG.md` and commits it — without re-running policy or validation against the now-different staged tree.
 Why it matters: A repository whose policy disallows changes to the changelog path (or anywhere else the changelog-generation step happens to touch) can still have it committed, because the check ran against a staged tree that no longer matches what's actually committed (SEC-005).
 Scope: Reorder `execute_commit` so changelog generation and staging happens before the final staged-diff policy check, so the check validates the exact tree that will be committed. Also check `git add`'s return code (currently unchecked).
 Expected files or areas: src/autonomous_forge/commit.py, tests
 Acceptance criteria: A policy that disallows the changelog path causes commit to fail closed even though changelog generation would otherwise have staged it. `git add` failure is detected and surfaced.
-Validation: `python -m pytest`, `ruff check .`, `mypy`.
-Risks or assumptions: Low risk, single-file change to control flow ordering.
-Notes: Assessment reference: SEC-005.
+Validation: `python -m pytest` — 419 tests pass (417 baseline + 2 new: `test_changelog_path_blocked_by_policy_after_staging`, `test_git_add_failure_for_changelog_blocks`, both using a real git repo rather than mocks). `ruff check .` — clean. `mypy` — clean. `forge lint-plan` — ok. Manually verified end-to-end in a throwaway repo: a policy disallowing `.ai/**` blocks the commit with "Changelog update violates policy: .ai/AUTONOMOUS_CHANGELOG.md"; widening the policy to allow it commits normally with "Changelog updated: AUTO-001".
+Risks or assumptions: Chose targeted re-validation (re-run only the diff/policy check after staging the changelog) over re-running the full `run_pre_flight` a second time, to avoid doubling validation-command execution time on every commit — lint, approval, and validation-command results can't be affected by the changelog file being staged, only the diff/policy check can. `run_pre_flight` itself (and `--check-only`) is unchanged and stays non-mutating, matching its documented read-only preview contract — this reorder is entirely inside `execute_commit`. A blocked commit at this new re-validation point leaves the changelog change staged-but-uncommitted in the working tree (visible via `git status`) rather than auto-reverting the stage — consistent with how every other pre-flight block in this file already works (e.g. a blocked commit never un-stages the files the user originally staged either).
+Notes: Assessment reference: SEC-005. Added `_git_add` (checks `git add`'s return code, previously unchecked) alongside the existing unchecked `_run_git` helper — left `_run_git` itself unchanged since its other two call sites (`git rev-parse --short HEAD` after a successful commit) have no meaningful failure-handling story worth adding here.
 
 ### AUTO-062 — Verify staged changes match the selected task's declared scope
 Priority: P2

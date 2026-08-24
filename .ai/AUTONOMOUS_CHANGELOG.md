@@ -277,3 +277,4 @@
 - 2026-08-23: AUTO-058 — Fix forge check's fail-open policy-diff exception handling (DONE)
 - 2026-08-23: AUTO-059 — Return exit code 1 when pipeline sync fails (DONE)
 - 2026-08-23: AUTO-060 — Distinguish "no changes" from "could not inspect changes" in Git helpers (DONE)
+- 2026-08-24: AUTO-061 — Move changelog staging before the final commit policy check (DONE)

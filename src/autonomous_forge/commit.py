@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import subprocess
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
 
 from autonomous_forge.approvals import has_approval
@@ -59,6 +59,15 @@ def _run_git(args: list[str], root: Path) -> str:
         capture_output=True, text=True, cwd=root, timeout=30,
     )
     return result.stdout.strip()
+
+
+def _git_add(path: Path, root: Path) -> bool:
+    """Stage a file with `git add`, returning whether it succeeded."""
+    result = subprocess.run(
+        ["git", "add", str(path)],
+        capture_output=True, text=True, cwd=root, timeout=30,
+    )
+    return result.returncode == 0
 
 
 def run_pre_flight(
@@ -295,7 +304,58 @@ def execute_commit(
         changelog_p = append_changelog_entries(newly_done, root=root, timestamp=timestamp)
         if changelog_p is not None:
             changelog_task_ids = tuple(t.task_id for t in newly_done)
-            _run_git(["add", str(changelog_p)], root)
+            if not _git_add(changelog_p, root):
+                return CommitResult(
+                    committed=False,
+                    commit_hash="",
+                    message=f"git add failed for {changelog_p}",
+                    pre_flight=pre_flight,
+                )
+
+            # Re-validate the diff/policy check against the tree that will
+            # actually be committed, now that the changelog is staged too —
+            # the original pre-flight above ran before this file existed in
+            # the diff, so a policy that disallows this path must still be
+            # able to block it here instead of silently letting it through
+            # (AUTO-061 / SEC-005).
+            policy_p = policy_path or (root / ".forge/policy.md")
+            policy_text = _safe_read(policy_p)
+            if policy_text:
+                try:
+                    changed_after = get_changed_files(root, staged_only=staged_only)
+                except GitCommandError as exc:
+                    return CommitResult(
+                        committed=False,
+                        commit_hash="",
+                        message=(
+                            "Could not re-validate staged changes after "
+                            f"changelog update: {exc}"
+                        ),
+                        pre_flight=pre_flight,
+                    )
+                diff_violations = check_diff_against_policy(changed_after, policy_text)
+                prohibited = [v for v in diff_violations if v.rule == "prohibited"]
+                not_allowed = [v for v in diff_violations if v.rule == "not-allowed"]
+                blocking = [*prohibited, *(not_allowed if not advisory_paths else [])]
+                if blocking:
+                    updated_pre_flight = replace(
+                        pre_flight,
+                        changed_files=tuple(changed_after),
+                        violations=tuple(
+                            f"[{v.rule}] {v.path}: {v.message}" for v in diff_violations
+                        ),
+                        safe=False,
+                        block_reason=(
+                            "Changelog update violates policy: "
+                            f"{', '.join(v.path for v in blocking)}"
+                        ),
+                    )
+                    return CommitResult(
+                        committed=False,
+                        commit_hash="",
+                        message=updated_pre_flight.block_reason,
+                        pre_flight=updated_pre_flight,
+                    )
 
     try:
         result = subprocess.run(
