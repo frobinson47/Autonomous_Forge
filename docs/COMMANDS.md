@@ -379,6 +379,40 @@ Exit codes:
 
 Safety limits: reads session files and prints a briefing only; it does not change files, run external commands, or call networks. `--roots` reads each listed local path directly — it does not fetch or clone remote repos.
 
+## `forge diff-check`
+
+Purpose: report changed files against repository policy boundaries, standalone (the same check `forge run`/`forge commit`/`forge check` run internally).
+
+Inputs:
+
+- `--root`: repository root, defaulting to `.`.
+- `--policy`: policy Markdown path (defaults to `.forge/policy.md`).
+- `--staged`: check only staged files instead of the full working tree (staged + unstaged + untracked).
+
+Expected output:
+
+```text
+Diff check report
+Mode: read-only
+Changed files: 2
+Result: all changes comply with policy
+```
+
+If git itself cannot be run — not a git repository, git not installed, or the command times out — this is reported explicitly rather than treated as "no changes" (AUTO-060 / SEC-008):
+
+```text
+Diff check report
+Mode: read-only
+Result: could not inspect changes: 'git diff --cached --name-only' failed (exit 129): fatal: not a git repository
+```
+
+Exit codes:
+
+- `0` when the report is produced, including when there are no changes or no violations.
+- `1` when git could not be run (see above).
+
+Safety limits: **read-only** — runs `git` to detect changed files and reads the policy file; does not write files, commit, push, or call networks.
+
 ## `forge run`
 
 Purpose: execute one autonomous improvement cycle — select a task, validate, diff-check, detect drift, and record the outcome.
@@ -422,7 +456,7 @@ Exit codes:
 - `1` when the run is blocked (prohibited files, error-level drift, or a concurrent run already holding the lock — see below).
 - `2` when required input files are missing.
 
-Safety limits: **this command runs external commands** (validation suite via subprocess) and **writes files** to `.forge/runs/`. It runs `git` to detect changed files. It does NOT auto-commit, push, or modify tracked repository files. Blocked runs halt before validation. Run outcome files are local working state and should be gitignored.
+Safety limits: **this command runs external commands** (validation suite via subprocess) and **writes files** to `.forge/runs/`. It runs `git` to detect changed files. It does NOT auto-commit, push, or modify tracked repository files. Blocked runs halt before validation. Run outcome files are local working state and should be gitignored. If git itself cannot be run to detect changed files (not a repository, git missing, timeout), the run blocks with "Could not determine changed files" rather than silently proceeding as if nothing changed (AUTO-060 / SEC-008).
 
 Locking: `forge run` (and `forge pipeline`, which calls it internally) acquires a `.forge/.lock` file for the duration of the run, so two concurrent invocations against the same repo — e.g. a human and an agent, or two agent sessions — cannot race or double-commit. Acquisition itself is atomic (`O_CREAT | O_EXCL` — see AUTO-052): the check for an existing lock and creation of a new one are a single OS-level operation, so two near-simultaneous acquire attempts can never both succeed. A second concurrent invocation reports `BLOCKED: already running (pid <N>, since <timestamp>)` and exits `1` without touching the lock. A stale lock (its recorded process is no longer alive) is detected and cleared automatically — no manual cleanup needed. `.forge/.lock` is gitignored local working state, same as `.forge/runs/` and `.forge/sessions/`.
 
@@ -540,7 +574,7 @@ Exit codes:
 - `0` when the commit succeeds (or `--check-only` reports SAFE).
 - `1` when blocked by prohibited files, validation failure, no changes, or git error.
 
-Safety limits: **this command runs git commit** and **runs external validation commands** via subprocess. It checks staged files against policy before committing. It does NOT push or modify the plan file. It does NOT auto-stage arbitrary files — the one exception is `.ai/AUTONOMOUS_CHANGELOG.md`: if any task's Status flipped to DONE compared to HEAD (e.g. via a preceding `forge mark`), one dated line per newly-done task (`- <date>: AUTO-### — <title> (DONE)`, no commit hash — it doesn't exist yet) is appended to an *already-existing* changelog file and staged, landing in the same commit. Existing changelog content is never rewritten or reordered. See `autonomous_forge.changelog`. Auto-generated commit messages use the format `forge: AUTO-### — title`.
+Safety limits: **this command runs git commit** and **runs external validation commands** via subprocess. It checks staged files against policy before committing. It does NOT push or modify the plan file. If git itself cannot be run to detect changed files, pre-flight blocks with "Could not determine changed files" — distinct from, and never conflated with, the genuine "No changed files to commit" case (AUTO-060 / SEC-008). It does NOT auto-stage arbitrary files — the one exception is `.ai/AUTONOMOUS_CHANGELOG.md`: if any task's Status flipped to DONE compared to HEAD (e.g. via a preceding `forge mark`), one dated line per newly-done task (`- <date>: AUTO-### — <title> (DONE)`, no commit hash — it doesn't exist yet) is appended to an *already-existing* changelog file and staged, landing in the same commit. Existing changelog content is never rewritten or reordered. See `autonomous_forge.changelog`. Auto-generated commit messages use the format `forge: AUTO-### — title`.
 
 ## `forge push`
 

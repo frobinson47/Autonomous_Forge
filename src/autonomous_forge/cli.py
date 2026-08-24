@@ -1443,8 +1443,9 @@ def _cmd_doctor(args: argparse.Namespace) -> int:
 def _cmd_diff_check(args: argparse.Namespace) -> int:
     root = Path(args.root)
     policy_path = Path(args.policy) if args.policy else None
-    print(read_diff_report(root, policy_path=policy_path, staged_only=args.staged))
-    return 0
+    report = read_diff_report(root, policy_path=policy_path, staged_only=args.staged)
+    print(report)
+    return 1 if "could not inspect changes" in report else 0
 
 
 def _cmd_validate(args: argparse.Namespace) -> int:

@@ -14,6 +14,7 @@ from autonomous_forge.commit import (
     format_pre_flight,
     run_pre_flight,
 )
+from autonomous_forge.diffcheck import GitCommandError
 
 _LINT_CLEAN_TAIL = """\
 Why it matters: Test fixture.
@@ -92,6 +93,14 @@ class TestPreFlight:
         pf = run_pre_flight(root=tmp_path, validate=False)
         assert not pf.safe
         assert "No changed files" in pf.block_reason
+
+    @patch("autonomous_forge.commit.get_changed_files", side_effect=GitCommandError("boom"))
+    def test_git_failure_blocks_with_distinct_message(self, mock_git, tmp_path):
+        _setup(tmp_path)
+        pf = run_pre_flight(root=tmp_path, validate=False)
+        assert not pf.safe
+        assert "Could not determine changed files" in pf.block_reason
+        assert "No changed files" not in pf.block_reason
 
     @patch("autonomous_forge.commit.get_changed_files", return_value=["src/foo.py"])
     def test_clean_changes(self, mock_git, tmp_path):

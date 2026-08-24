@@ -7,7 +7,11 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from autonomous_forge.approvals import has_approval
-from autonomous_forge.diffcheck import check_diff_against_policy, get_changed_files
+from autonomous_forge.diffcheck import (
+    GitCommandError,
+    check_diff_against_policy,
+    get_changed_files,
+)
 from autonomous_forge.drift import collect_drift_signals
 from autonomous_forge.lock import LockHeldError, acquire_lock
 from autonomous_forge.plan import (
@@ -230,7 +234,23 @@ def _execute_run_body(
                 block_reason=f"Metadata drift detected: {error_drifts[0].message}",
             )
 
-    changed_files = get_changed_files(root)
+    try:
+        changed_files = get_changed_files(root)
+    except GitCommandError as exc:
+        return RunOutcome(
+            timestamp=ts,
+            selected_task=selected_task,
+            validation_passed=None,
+            validation_command="",
+            validation_output="",
+            diff_violations=0,
+            diff_details=(),
+            drift_signals=drift_count,
+            changed_files=(),
+            policy_status=policy_status,
+            blocked=True,
+            block_reason=f"Could not determine changed files: {exc}",
+        )
 
     if require_policy:
         policy_problem = validate_policy_text(policy_text)

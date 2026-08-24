@@ -809,16 +809,16 @@ Notes: Assessment reference: COMP-003.
 
 ### AUTO-060 — Distinguish "no changes" from "could not inspect changes" in Git helpers
 Priority: P2
-Status: TODO
+Status: DONE
 
 Goal: Several Git helpers, notably `get_changed_files` (`src/autonomous_forge/diffcheck.py:22-50`), return empty stdout without checking the subprocess return code, so a Git failure is indistinguishable from "no changes." In commit pre-flight this currently blocks (safe by accident), but in reports and `forge check` it can produce a false-clean signal.
 Why it matters: Fail-open-by-accident is fragile — it happens to be safe today only because of how the result is currently consumed downstream; any future caller that doesn't share that assumption inherits a silent bug (SEC-008).
 Scope: Audit `diffcheck.py` and any other Git helper with the same shape (grep for return-code-ignoring subprocess calls, similar to how AUTO-056 grepped for the fixed-width ID regex). Make Git failures raise or return an explicit error/result type distinct from "zero changed files." Fail closed anywhere the result gates a mutation or CI success.
 Expected files or areas: src/autonomous_forge/diffcheck.py, other modules found by the audit, tests
 Acceptance criteria: A simulated Git failure (e.g. not a repo, git binary missing) is distinguishable from a clean working tree in every caller that currently can't tell them apart, with tests for each.
-Validation: `python -m pytest`, `ruff check .`, `mypy`.
-Risks or assumptions: Broadest-scope task in this roadmap — start with `diffcheck.py`, then decide whether the audit's other findings become follow-up tasks or fold into this one, based on how many turn up.
-Notes: Assessment reference: SEC-008.
+Validation: `python -m pytest` — 417 tests pass (412 baseline + 5 new: `get_changed_files` raises on git failure, `forge diff-check` reports "could not inspect changes" and exits 1 in a non-repo directory, `forge commit`/`forge run`/`forge check` each block/fail with a distinct "Could not determine changed files" message instead of the misleading "No changed files" or a silent PASS). `ruff check .` — clean. `mypy` — clean. `forge lint-plan` — ok. Manually verified against a real non-git directory: `forge diff-check` and `forge check` both report the specific git error and exit 1; `forge commit` blocks with the distinct message instead of "No changed files to commit."
+Risks or assumptions: Audited every `subprocess.run`/`check_output`/`call` site in `src/autonomous_forge/*.py` (12 total). Found one more helper with the identical shape: `session.py`'s `_run_git` (used only by `forge pause`'s read-only git snapshot). Left it unchanged, deliberately — unlike `diffcheck.py`'s helper, nothing downstream treats its empty-on-failure result as a gating signal; it only affects what a human sees in a session handoff file, and `forge pause` already displays "unknown" for an unreadable branch. Revisit only if a future caller starts using it to gate a decision. `commit.py`'s own separate `_run_git` (used for `git add`/`git rev-parse` in the post-commit changelog-staging path) was also left untouched here — its return-code handling is explicitly AUTO-061's scope (SEC-005), not this task's, to avoid overlapping edits.
+Notes: Assessment reference: SEC-008. Added `GitCommandError` (in `diffcheck.py`) as the shared signal for "git could not be run," raised by `_run_git`/`get_changed_files` and now handled explicitly by `check.py`, `commit.py`, `run.py`, and `read_diff_report`. Capped the exception message to git's first stderr line — the uncapped version was dumping git's full multi-page usage text (e.g. when `--cached` isn't a valid flag outside a repo) into every error report. Also added a `forge diff-check` section to docs/COMMANDS.md — it had no documentation at all before this task, a pre-existing gap unrelated to AUTO-060 but touched directly by its new exit-code behavior.
 
 ### AUTO-061 — Move changelog staging before the final commit policy check
 Priority: P2

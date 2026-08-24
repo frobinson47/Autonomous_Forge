@@ -1,5 +1,12 @@
+from unittest.mock import patch
+
 from autonomous_forge.cli import main
-from autonomous_forge.diffcheck import build_diff_report, check_diff_against_policy
+from autonomous_forge.diffcheck import (
+    GitCommandError,
+    build_diff_report,
+    check_diff_against_policy,
+    get_changed_files,
+)
 
 POLICY_VALID = """\
 # Policy
@@ -72,8 +79,28 @@ def test_missing_policy_report():
     assert "not found" in report
 
 
-def test_diffcheck_cli_command(tmp_path, capsys):
+@patch("autonomous_forge.diffcheck.get_changed_files", return_value=[])
+def test_diffcheck_cli_command(mock_git, tmp_path, capsys):
     result = main(["diff-check", "--root", str(tmp_path)])
     assert result == 0
     output = capsys.readouterr().out
     assert "Diff check report" in output
+
+
+def test_diffcheck_cli_command_not_a_git_repo_exits_1(tmp_path, capsys):
+    # tmp_path is a real directory but not a git repository, so the
+    # underlying `git diff` calls fail — this must be reported as an
+    # error, not silently treated as "no changes" (AUTO-060 / SEC-008).
+    result = main(["diff-check", "--root", str(tmp_path)])
+    assert result == 1
+    output = capsys.readouterr().out
+    assert "could not inspect changes" in output
+
+
+def test_get_changed_files_raises_on_git_failure(tmp_path):
+    try:
+        get_changed_files(tmp_path)
+    except GitCommandError:
+        pass
+    else:
+        raise AssertionError("expected GitCommandError for a non-git directory")

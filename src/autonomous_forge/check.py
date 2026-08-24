@@ -5,7 +5,11 @@ from __future__ import annotations
 from dataclasses import dataclass
 from pathlib import Path
 
-from autonomous_forge.diffcheck import check_diff_against_policy, get_changed_files
+from autonomous_forge.diffcheck import (
+    GitCommandError,
+    check_diff_against_policy,
+    get_changed_files,
+)
 from autonomous_forge.drift import collect_drift_signals
 from autonomous_forge.plan import (
     PlanParseError,
@@ -105,11 +109,16 @@ def execute_check(
                     "Pass require_policy=False (CLI: --no-policy-required) to override."
                 ]
         if diff_ok and policy_text is not None:
-            changed = get_changed_files(root)
-            violations = check_diff_against_policy(changed, policy_text)
-            if violations:
+            try:
+                changed = get_changed_files(root)
+            except GitCommandError as exc:
                 diff_ok = False
-                diff_violations = [f"{v.path}: {v.message}" for v in violations]
+                diff_violations = [f"Could not determine changed files: {exc}"]
+            else:
+                violations = check_diff_against_policy(changed, policy_text)
+                if violations:
+                    diff_ok = False
+                    diff_violations = [f"{v.path}: {v.message}" for v in violations]
 
     # Validation
     val_ok: bool | None = None

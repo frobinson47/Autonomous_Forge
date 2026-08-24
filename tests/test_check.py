@@ -6,6 +6,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 from autonomous_forge.check import CheckResult, execute_check, format_check_result
+from autonomous_forge.diffcheck import GitCommandError
 
 PLAN = """\
 # Roadmap
@@ -128,6 +129,14 @@ class TestExecuteCheck:
         result = execute_check(root=tmp_path, validate=False)
         assert result.diff_ok is False
         assert any("could not read policy file" in v.lower() for v in result.diff_violations)
+        assert result.all_passed is False
+
+    @patch("autonomous_forge.check.get_changed_files", side_effect=GitCommandError("boom"))
+    def test_git_failure_fails_diff_check_closed(self, mock_git, tmp_path):
+        _setup(tmp_path)
+        result = execute_check(root=tmp_path, validate=False)
+        assert result.diff_ok is False
+        assert any("could not determine changed files" in v.lower() for v in result.diff_violations)
         assert result.all_passed is False
 
     @patch("autonomous_forge.check.check_diff_against_policy")

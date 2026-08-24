@@ -5,6 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 from unittest.mock import patch
 
+from autonomous_forge.diffcheck import GitCommandError
 from autonomous_forge.run import (
     RunOutcome,
     execute_run,
@@ -156,6 +157,17 @@ class TestExecuteRun:
         assert outcome.selected_task.task_id == "AUTO-001"
         assert outcome.validation_command == "skipped (dry run)"
         assert not outcome.blocked
+
+    @patch("autonomous_forge.run.get_changed_files", side_effect=GitCommandError("boom"))
+    def test_git_failure_blocks_with_distinct_message(self, mock_git, tmp_path: Path):
+        _setup_metadata(tmp_path, MINIMAL_PLAN, MINIMAL_POLICY)
+        outcome = execute_run(
+            root=tmp_path,
+            timestamp="2026-01-01T00:00:00+00:00",
+            dry_run=True,
+        )
+        assert outcome.blocked
+        assert "Could not determine changed files" in outcome.block_reason
 
     @patch("autonomous_forge.run.get_changed_files", return_value=[".env"])
     def test_blocked_by_prohibited_file(self, mock_git, tmp_path: Path):

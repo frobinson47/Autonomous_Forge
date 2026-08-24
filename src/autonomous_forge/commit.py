@@ -8,7 +8,11 @@ from pathlib import Path
 
 from autonomous_forge.approvals import has_approval
 from autonomous_forge.changelog import append_changelog_entries, find_newly_done_tasks
-from autonomous_forge.diffcheck import check_diff_against_policy, get_changed_files
+from autonomous_forge.diffcheck import (
+    GitCommandError,
+    check_diff_against_policy,
+    get_changed_files,
+)
 from autonomous_forge.plan import (
     lint_plan_structure,
     parse_plan_tasks,
@@ -122,7 +126,19 @@ def run_pre_flight(
             ),
         )
 
-    changed = get_changed_files(root, staged_only=staged_only)
+    try:
+        changed = get_changed_files(root, staged_only=staged_only)
+    except GitCommandError as exc:
+        return CommitPreFlight(
+            safe=False,
+            changed_files=(),
+            violations=(),
+            validation_passed=None,
+            validation_output="",
+            task_id=task_id,
+            task_title=task_title,
+            block_reason=f"Could not determine changed files: {exc}",
+        )
     if not changed:
         return CommitPreFlight(
             safe=False,

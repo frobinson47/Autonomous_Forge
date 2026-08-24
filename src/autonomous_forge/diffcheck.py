@@ -10,6 +10,16 @@ from pathlib import Path
 from autonomous_forge.policy import PolicyParseError, parse_repository_policy
 
 
+class GitCommandError(RuntimeError):
+    """Raised when a git command needed for diff-checking fails or can't run.
+
+    Distinguishes "git ran and found no changes" (empty result, not an
+    error) from "git could not be run or failed" (this exception) — a
+    caller that swallowed both the same way would silently treat a git
+    failure as a clean working tree.
+    """
+
+
 @dataclass(frozen=True)
 class DiffViolation:
     """A file change that violates policy boundaries."""
@@ -20,21 +30,35 @@ class DiffViolation:
 
 
 def _run_git(args: list[str], cwd: Path) -> str:
+    command = ["git"] + args
     try:
         result = subprocess.run(
-            ["git"] + args,
+            command,
             cwd=str(cwd),
             capture_output=True,
             text=True,
             timeout=10,
         )
-        return result.stdout.strip()
-    except (subprocess.TimeoutExpired, FileNotFoundError):
-        return ""
+    except subprocess.TimeoutExpired as exc:
+        raise GitCommandError(f"'{' '.join(command)}' timed out") from exc
+    except FileNotFoundError as exc:
+        raise GitCommandError(f"git executable not found: {exc}") from exc
+    if result.returncode != 0:
+        stderr_lines = result.stderr.strip().splitlines()
+        stderr_summary = stderr_lines[0] if stderr_lines else "(no error output)"
+        raise GitCommandError(
+            f"'{' '.join(command)}' failed (exit {result.returncode}): {stderr_summary}"
+        )
+    return result.stdout.strip()
 
 
 def get_changed_files(root: Path, staged_only: bool = False) -> list[str]:
-    """Get list of changed files from git diff."""
+    """Get list of changed files from git diff.
+
+    Raises GitCommandError if git cannot be run or fails — callers that
+    use an empty result to mean "no changes" must not treat this the
+    same way (see GitCommandError).
+    """
     if staged_only:
         output = _run_git(["diff", "--cached", "--name-only"], root)
     else:
@@ -146,8 +170,19 @@ def read_diff_report(
     policy_path: Path | None = None,
     staged_only: bool = False,
 ) -> str:
-    """Read git diff and policy, then build a diff-check report."""
+    """Read git diff and policy, then build a diff-check report.
+
+    Reports (does not raise) when git itself could not be run — the
+    caller checks for this via the returned text's "Result:" line.
+    """
     pol_path = policy_path or (root / ".forge/policy.md")
     policy_text = pol_path.read_text(encoding="utf-8") if pol_path.exists() else None
-    changed_files = get_changed_files(root, staged_only=staged_only)
+    try:
+        changed_files = get_changed_files(root, staged_only=staged_only)
+    except GitCommandError as exc:
+        return "\n".join([
+            "Diff check report",
+            "Mode: read-only",
+            f"Result: could not inspect changes: {exc}",
+        ])
     return build_diff_report(changed_files, policy_text)
