@@ -12,6 +12,7 @@ from __future__ import annotations
 import json
 import os
 import sys
+import tempfile
 import time
 from dataclasses import dataclass
 from pathlib import Path
@@ -98,11 +99,20 @@ def acquire_lock(root: Path = Path("."), timestamp: str | None = None) -> ForgeL
     unreadable/malformed) is cleared automatically before acquiring.
     Raises LockHeldError if a live lock is already held by another process.
 
-    Acquisition itself is atomic (``O_CREAT | O_EXCL``): the check for an
-    existing lock and the creation of a new one are a single OS-level
-    operation, so two processes racing to acquire at the same instant can
-    never both succeed — one always gets ``FileExistsError`` and re-checks
-    the (now real) winner's liveness instead.
+    Acquisition is atomic end-to-end: the payload is written in full to a
+    private temp file first, then published to the lock path via
+    ``os.link`` — which, like ``O_CREAT | O_EXCL``, fails with
+    ``FileExistsError`` if the destination already exists, so two processes
+    racing to acquire at the same instant can never both succeed. Unlike a
+    bare ``open(O_CREAT | O_EXCL)`` followed by a separate write, there is
+    no window where a racer can observe a lock file that exists but isn't
+    fully written yet — every lock file this function ever creates is
+    complete before it becomes visible at the lock path. (AUTO-070: an
+    earlier version of this function had exactly that window — a second
+    racer could read the not-yet-written file, fail to parse it, conclude
+    "no valid lock, safe to delete," and steal it out from under the first
+    racer, letting both report success. Caught by
+    `test_concurrent_acquire_never_succeeds_twice` on a real CI run.)
     """
     path = root / LOCK_RELATIVE_PATH
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -110,21 +120,33 @@ def acquire_lock(root: Path = Path("."), timestamp: str | None = None) -> ForgeL
     payload = json.dumps({"pid": os.getpid(), "acquired_at": now}).encode("utf-8")
 
     for _ in range(_MAX_ACQUIRE_ATTEMPTS):
+        tmp_fd, tmp_name = tempfile.mkstemp(dir=path.parent, prefix=".lock.", suffix=".tmp")
         try:
-            fd = os.open(path, os.O_CREAT | os.O_EXCL | os.O_WRONLY)
-        except FileExistsError:
-            existing_pid, acquired_at = _read_lock(path)
-            if existing_pid is not None and existing_pid != os.getpid() and _pid_alive(existing_pid):
-                raise LockHeldError(existing_pid, acquired_at)
+            with os.fdopen(tmp_fd, "wb") as f:
+                f.write(payload)
+
             try:
-                path.unlink()
+                os.link(tmp_name, path)
+            except FileExistsError:
+                existing_pid, acquired_at = _read_lock(path)
+                if (
+                    existing_pid is not None
+                    and existing_pid != os.getpid()
+                    and _pid_alive(existing_pid)
+                ):
+                    raise LockHeldError(existing_pid, acquired_at)
+                try:
+                    path.unlink()
+                except FileNotFoundError:
+                    pass
+                continue
+
+            return ForgeLock(root=root, path=path)
+        finally:
+            try:
+                os.unlink(tmp_name)
             except FileNotFoundError:
                 pass
-            continue
-
-        with os.fdopen(fd, "wb") as f:
-            f.write(payload)
-        return ForgeLock(root=root, path=path)
 
     existing_pid, acquired_at = _read_lock(path)
     if existing_pid is not None:
