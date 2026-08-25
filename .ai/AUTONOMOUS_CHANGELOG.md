@@ -290,3 +290,4 @@
 - 2026-08-25: AUTO-071 — Enforce a CI coverage threshold (DONE)
 - 2026-08-25: AUTO-072 — Enforce Ruff's S310 rule; document remaining S603/S607 suppressions (DONE)
 - 2026-08-25: AUTO-073 — Validate Forgejo API response shapes instead of trusting cast() (DONE)
+- 2026-08-25: AUTO-074 — Re-split cli.py (DONE)

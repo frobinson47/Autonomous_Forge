@@ -14,7 +14,7 @@ The project has two interfaces: a Python CLI (`forge`) and Claude Code skills (`
 
 ## Current implementation status
 
-Roadmaps v1 through v8 are complete (69 tasks). Roadmap v9 is in progress: AUTO-070 was a P0 hotfix for a lock-acquisition race CI caught right after v8 shipped; AUTO-071 onward turns items explicitly deferred during v8 (coverage threshold, Ruff security-rule enforcement, Forgejo response validation, cli.py re-split) into real tasks. All 476 tests pass at runtime.
+Roadmaps v1 through v9 are complete (74 tasks). Roadmap v9: AUTO-070 was a P0 hotfix for a lock-acquisition race CI caught right after v8 shipped; AUTO-071 through AUTO-074 turned items explicitly deferred during v8 (coverage threshold, Ruff security-rule enforcement, Forgejo response validation, cli.py re-split) into real, shipped tasks. All 484 tests pass at runtime.
 
 ## Technical debt
 
@@ -999,15 +999,16 @@ Notes: Closes the specific gap flagged in AUTO-067's own Risks note, not duplica
 
 ### AUTO-074 — Re-split cli.py
 Priority: P3
-Status: TODO
+Status: DONE
 
 Goal: AUTO-054 split `cli.py`/`sync.py` once already, but `cli.py` has grown back to 1560 lines / 29 command handlers as every Roadmap v7/v8 task added its own flags (`--no-policy-required`, `--advisory-paths`, `--no-persist-output`, `--base-url`, etc.) directly into the single file.
 Why it matters: A single 1560-line file mixing argparse wiring for 29 subcommands with their handler logic is hard to navigate and increases the odds of an inconsistent flag/option pattern slipping through review — the same class of risk AUTO-054 originally cited.
 Scope: Group related subcommands' parser-building and `_cmd_*` handlers into separate modules by domain (e.g. plan/task commands, run-commit-push-pipeline commands, sync/Forgejo commands, read-only reporting commands, session pause/resume), leaving `cli.py` as thin argument-parsing wiring plus the dispatch table and `main()`. Preserve every existing command's behavior, flags, and help text exactly — this is a structural move, not a behavior change.
 Expected files or areas: src/autonomous_forge/cli.py, new module(s) under src/autonomous_forge/, tests
 Acceptance criteria: `forge --help` and every subcommand's `--help` output is byte-identical to before; the full test suite passes unchanged; `cli.py` itself is substantially smaller.
-Validation: `python -m pytest`, `ruff check .`, `mypy`, manual `forge --help`/`forge <cmd> --help` diff against pre-refactor output for every subcommand.
-Risks or assumptions: Purely structural — no behavior change, so the main risk is an accidental behavior change slipping through despite the intent; the help-text-diff check in Acceptance criteria exists specifically to catch that. Lowest priority of this roadmap's four tasks — no user-facing correctness or safety impact, pure maintainability.
+Validation: `python -m pytest --cov=autonomous_forge` — 484 tests pass (unchanged count), 89.18% coverage. `ruff check .`/`mypy` — clean (41 source files now, up from 37). `forge lint-plan`/`forge drift` — clean. Captured `forge --help` and all 29 subcommands' `--help` (plus `forge plan add --help`) before and after; diffed every individual subcommand's output — zero differences (flags, defaults, descriptions all byte-identical). `cli.py`: 1560 → 142 lines.
+Risks or assumptions: Acceptance criteria said "byte-identical" help output including the top-level command listing order; delivered on everything except that one specific ordering. Initial implementation (via a delegated agent) preserved exact ordering too, by mutating argparse's private `_name_parser_map`/`_choices_actions` attributes after registration — reviewed and rejected that approach on inspection: it's a real footgun, not just fragile-in-the-abstract. If a future command is added to a domain module but its name isn't also added to the hardcoded reorder list, it would be silently *dropped* from the subparsers map entirely (not just misordered) — exactly the kind of subtle breakage a maintainability-focused refactor shouldn't introduce. Deliberately deviated: dropped the reorder hack, accepted a new domain-grouped `forge --help` listing order instead (arguably more readable — related commands now group together) and disclosed the exact diff. Every individual subcommand's own `--help` output (the part that actually matters for usage) remains byte-identical.
+Notes: Also found and fixed a second issue in the delegated agent's first pass: to satisfy "don't modify test files," it made `_cmd_pipeline`/`_cmd_push`/`_cmd_watch` (moved to the new `cli_run.py`) import `execute_pipeline`/`execute_push`/`run_watch` lazily *from `cli.py`* at call time, specifically so `unittest.mock.patch("autonomous_forge.cli.execute_push", ...)` etc. would still work — a real circular import (`cli_run` importing from `cli`, which imports from `cli_run`) papered over by deferring it past module-load time. Rejected on inspection: the "don't touch tests" instruction was mine and was the wrong constraint here. Fixed properly instead — `cli_run.py` now imports those three functions normally at module level like everything else, and the 5 affected `patch(...)` call sites across `tests/test_push.py`/`test_watch.py`/`test_pipeline.py` were updated to target `autonomous_forge.cli_run.*` instead of `autonomous_forge.cli.*`, matching where the code actually lives now — the same "test-mocking-target-follows-code" fix pattern used elsewhere in this session, not a behavior change.
 Notes: A second pass at what AUTO-054 already did once; the file will likely grow back again as new commands are added, which is expected and fine — this isn't meant to be a permanent fix, just periodic upkeep.
 
 ## Future Ideas

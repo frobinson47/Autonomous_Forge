@@ -76,7 +76,7 @@ class TestExecutePush:
 
 
 class TestPushCLI:
-    @patch("autonomous_forge.cli.execute_push")
+    @patch("autonomous_forge.cli_run.execute_push")
     def test_push_command_success(self, mock_push, tmp_path, capsys):
         from autonomous_forge.cli import main
 
@@ -91,7 +91,7 @@ class TestPushCLI:
         assert "PUSHED" in captured.out
         mock_push.assert_called_once_with(root=tmp_path, remote="origin")
 
-    @patch("autonomous_forge.cli.execute_push")
+    @patch("autonomous_forge.cli_run.execute_push")
     def test_push_command_failure_exits_1(self, mock_push, tmp_path, capsys):
         from autonomous_forge.cli import main
 

@@ -107,7 +107,7 @@ class TestRunWatch:
 
 
 class TestWatchCLI:
-    @patch("autonomous_forge.cli.run_watch")
+    @patch("autonomous_forge.cli_run.run_watch")
     def test_watch_once_cli(self, mock_run_watch, tmp_path: Path):
         from autonomous_forge.cli import main
 
@@ -118,7 +118,7 @@ class TestWatchCLI:
         _, kwargs = mock_run_watch.call_args
         assert kwargs["once"] is True
 
-    @patch("autonomous_forge.cli.run_watch")
+    @patch("autonomous_forge.cli_run.run_watch")
     def test_watch_interval_passed_through(self, mock_run_watch, tmp_path: Path):
         from autonomous_forge.cli import main
 

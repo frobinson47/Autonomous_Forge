@@ -1,0 +1,521 @@
+"""CLI commands for plan/roadmap management: tasks, lint-plan, report, policy,
+run-summary, inventory, drift, mark, plan (incl. `plan add`), status, metrics,
+export.
+"""
+
+from __future__ import annotations
+
+import argparse
+from pathlib import Path
+
+from autonomous_forge.drift import read_drift_report
+from autonomous_forge.export import export_state
+from autonomous_forge.inventory import build_repository_inventory
+from autonomous_forge.mark import format_mark_result, mark_task_status
+from autonomous_forge.metrics import (
+    compute_metrics,
+    format_metrics,
+    format_metrics_json,
+)
+from autonomous_forge.plan import (
+    PlanParseError,
+    PlanSelectionError,
+    lint_plan_structure,
+    parse_plan_tasks,
+    select_eligible_task,
+)
+from autonomous_forge.planadd import add_task, format_add_result
+from autonomous_forge.policy import (
+    PolicyParseError,
+    RepositoryPolicy,
+    parse_repository_policy,
+)
+from autonomous_forge.report import read_repository_report
+from autonomous_forge.run_summary import read_run_summary_preview
+from autonomous_forge.status import get_status
+
+
+def add_plan_parsers(subparsers: argparse._SubParsersAction) -> None:
+    """Add the plan/roadmap-related subcommand parsers."""
+    tasks_parser = subparsers.add_parser(
+        "tasks",
+        help="parse roadmap task headings without changing files",
+    )
+    tasks_parser.add_argument(
+        "--plan",
+        default=None,
+        help="path to the autonomous roadmap file (default: .ai/AUTONOMOUS_PLAN.md)",
+    )
+    tasks_parser.add_argument(
+        "--next",
+        action="store_true",
+        help="print only the next eligible TODO task",
+    )
+    tasks_parser.add_argument(
+        "--status",
+        default=None,
+        help="filter by status (TODO, DONE, BLOCKED, SKIPPED)",
+    )
+    tasks_parser.add_argument(
+        "--priority",
+        default=None,
+        help="filter by priority (P0, P1, P2, P3)",
+    )
+
+    lint_parser = subparsers.add_parser(
+        "lint-plan",
+        help="check roadmap task block structure without changing files",
+    )
+    lint_parser.add_argument(
+        "--plan",
+        default=None,
+        help="path to the autonomous roadmap file (default: .ai/AUTONOMOUS_PLAN.md)",
+    )
+
+    report_parser = subparsers.add_parser(
+        "report",
+        help="print a read-only dry-run repository report",
+    )
+    report_parser.add_argument(
+        "--plan",
+        default=None,
+        help="path to the autonomous roadmap file (default: .ai/AUTONOMOUS_PLAN.md)",
+    )
+    report_parser.add_argument(
+        "--state",
+        default=".ai/AUTONOMOUS_STATE.md",
+        help="path to the autonomous state file",
+    )
+    report_parser.add_argument(
+        "--policy",
+        default=None,
+        help="path to the repository policy file (default: .forge/policy.md)",
+    )
+
+    policy_parser = subparsers.add_parser(
+        "policy",
+        help="parse repository policy sections without changing files",
+    )
+    policy_parser.add_argument(
+        "--policy",
+        default=None,
+        help="path to the repository policy file (default: .forge/policy.md)",
+    )
+
+    run_summary_parser = subparsers.add_parser(
+        "run-summary",
+        help="preview a local run summary without writing files",
+    )
+    run_summary_parser.add_argument(
+        "--plan",
+        default=None,
+        help="path to the autonomous roadmap file (default: .ai/AUTONOMOUS_PLAN.md)",
+    )
+    run_summary_parser.add_argument(
+        "--policy",
+        default=None,
+        help="path to the repository policy file (default: .forge/policy.md)",
+    )
+    run_summary_parser.add_argument(
+        "--timestamp",
+        default=None,
+        help="optional ISO-8601 timestamp to make preview output deterministic",
+    )
+
+    inventory_parser = subparsers.add_parser(
+        "inventory",
+        help="print read-only repository health inventory signals",
+    )
+    inventory_parser.add_argument(
+        "--root",
+        default=".",
+        help="repository root to inspect for file-presence signals",
+    )
+
+    drift_parser = subparsers.add_parser(
+        "drift",
+        help="detect consistency drift between metadata files and the repository",
+    )
+    drift_parser.add_argument(
+        "--plan",
+        default=None,
+        help="path to the autonomous roadmap file (default: .ai/AUTONOMOUS_PLAN.md)",
+    )
+    drift_parser.add_argument(
+        "--state",
+        default=".ai/AUTONOMOUS_STATE.md",
+        help="path to the autonomous state file",
+    )
+    drift_parser.add_argument(
+        "--changelog",
+        default=".ai/AUTONOMOUS_CHANGELOG.md",
+        help="path to the autonomous changelog file",
+    )
+    drift_parser.add_argument(
+        "--policy",
+        default=None,
+        help="path to the repository policy file (default: .forge/policy.md)",
+    )
+    drift_parser.add_argument(
+        "--root",
+        default=".",
+        help="repository root to check policy path existence",
+    )
+
+    mark_parser = subparsers.add_parser(
+        "mark",
+        help="update a task's status in the plan file",
+    )
+    mark_parser.add_argument(
+        "task_id",
+        help="task ID (e.g. AUTO-001)",
+    )
+    mark_parser.add_argument(
+        "new_status",
+        help="new status (TODO, DONE, BLOCKED)",
+    )
+    mark_parser.add_argument(
+        "--plan",
+        default=None,
+        help="path to the autonomous roadmap file",
+    )
+
+    status_parser = subparsers.add_parser(
+        "status",
+        help="quick at-a-glance forge status",
+    )
+    status_parser.add_argument(
+        "--root",
+        default=".",
+        help="repository root",
+    )
+    status_parser.add_argument(
+        "--plan",
+        default=None,
+        help="path to the autonomous roadmap file",
+    )
+
+    plan_parser = subparsers.add_parser(
+        "plan",
+        help="plan management commands",
+    )
+    plan_subparsers = plan_parser.add_subparsers(dest="plan_action")
+    plan_add_parser = plan_subparsers.add_parser(
+        "add",
+        help="add a new task to the plan",
+    )
+    plan_add_parser.add_argument(
+        "--title",
+        required=True,
+        help="task title",
+    )
+    plan_add_parser.add_argument(
+        "--goal",
+        required=True,
+        help="task goal",
+    )
+    plan_add_parser.add_argument(
+        "--priority",
+        default="P1",
+        help="task priority (P0-P3, default: P1)",
+    )
+    plan_add_parser.add_argument(
+        "--plan",
+        default=None,
+        help="path to the autonomous roadmap file",
+    )
+    plan_add_parser.add_argument(
+        "--scope",
+        default="",
+        help="task scope",
+    )
+    plan_add_parser.add_argument(
+        "--files",
+        default="",
+        help="expected files or areas",
+    )
+    plan_add_parser.add_argument(
+        "--acceptance",
+        default="",
+        help="acceptance criteria",
+    )
+    plan_add_parser.add_argument(
+        "--notes",
+        default="",
+        help="additional notes",
+    )
+
+    metrics_parser = subparsers.add_parser(
+        "metrics",
+        help="aggregate stats from run history",
+    )
+    metrics_parser.add_argument(
+        "--root",
+        default=".",
+        help="repository root",
+    )
+    metrics_parser.add_argument(
+        "--json",
+        action="store_true",
+        help="print metrics as JSON instead of the human-readable report",
+    )
+
+    export_parser = subparsers.add_parser(
+        "export",
+        help="export forge state as JSON",
+    )
+    export_parser.add_argument(
+        "--root",
+        default=".",
+        help="repository root",
+    )
+    export_parser.add_argument(
+        "--plan",
+        default=None,
+        help="path to the autonomous roadmap file",
+    )
+    export_parser.add_argument(
+        "--runs",
+        action="store_true",
+        help="include run history in export",
+    )
+    export_parser.add_argument(
+        "--limit",
+        type=int,
+        default=20,
+        help="max runs to include (default: 20)",
+    )
+
+
+def _format_task(task) -> str:
+    return f"{task.task_id} [{task.priority}/{task.status}] {task.title}"
+
+
+def _format_policy(policy: RepositoryPolicy) -> str:
+    return "\n".join(
+        [
+            "Repository policy summary",
+            "Mode: read-only",
+            f"Allowed paths: {len(policy.allowed_paths)}",
+            f"Prohibited paths: {len(policy.prohibited_paths)}",
+            f"Human approval required: {len(policy.approval_required)}",
+            f"Validation expectations: {len(policy.validation_expectations)}",
+        ]
+    )
+
+
+def _print_tasks(
+    plan_path: Path,
+    *,
+    next_only: bool = False,
+    status_filter: str | None = None,
+    priority_filter: str | None = None,
+) -> int:
+    try:
+        tasks = parse_plan_tasks(plan_path.read_text(encoding="utf-8"))
+        selected_task = select_eligible_task(tasks) if next_only else None
+    except FileNotFoundError:
+        print(f"Plan file not found: {plan_path}")
+        return 2
+    except (PlanParseError, PlanSelectionError) as exc:
+        print(f"Plan error: {exc}")
+        return 2
+
+    if next_only:
+        if selected_task is None:
+            print("No eligible TODO task found.")
+        else:
+            print(_format_task(selected_task))
+        return 0
+
+    filtered = tasks
+    if status_filter:
+        filtered = [t for t in filtered if t.status == status_filter.upper()]
+    if priority_filter:
+        filtered = [t for t in filtered if t.priority == priority_filter.upper()]
+
+    if not filtered:
+        print("No matching tasks found.")
+        return 0
+
+    for task in filtered:
+        print(_format_task(task))
+
+    return 0
+
+
+def _print_lint_plan(plan_path: Path) -> int:
+    try:
+        diagnostics = lint_plan_structure(plan_path.read_text(encoding="utf-8"))
+    except FileNotFoundError:
+        print(f"Plan file not found: {plan_path}")
+        return 2
+
+    if not diagnostics:
+        print("Plan lint: ok")
+        return 0
+
+    print("Plan lint: failed")
+    for diagnostic in diagnostics:
+        print(f"line {diagnostic.line_number}: {diagnostic.message}")
+    return 2
+
+
+def _print_report(plan_path: Path, state_path: Path, policy_path: Path) -> int:
+    try:
+        print(read_repository_report(plan_path, state_path, policy_path))
+    except FileNotFoundError:
+        print(f"Plan file not found: {plan_path}")
+        return 2
+    except (PlanParseError, PlanSelectionError) as exc:
+        print(f"Plan error: {exc}")
+        return 2
+    return 0
+
+
+def _print_policy(policy_path: Path) -> int:
+    try:
+        policy = parse_repository_policy(policy_path.read_text(encoding="utf-8"))
+    except FileNotFoundError:
+        print(f"Policy file not found: {policy_path}")
+        return 2
+    except PolicyParseError as exc:
+        print(f"Policy error: {exc}")
+        return 2
+
+    print(_format_policy(policy))
+    return 0
+
+
+def _print_run_summary(plan_path: Path, policy_path: Path, timestamp: str | None) -> int:
+    try:
+        print(read_run_summary_preview(plan_path, policy_path, timestamp=timestamp))
+    except FileNotFoundError:
+        print(f"Plan file not found: {plan_path}")
+        return 2
+    except (PlanParseError, PlanSelectionError) as exc:
+        print(f"Plan error: {exc}")
+        return 2
+    return 0
+
+
+def _print_inventory(root_path: Path) -> int:
+    print(build_repository_inventory(root_path))
+    return 0
+
+
+def _print_drift(
+    plan_path: Path,
+    state_path: Path,
+    changelog_path: Path,
+    policy_path: Path,
+    root_path: Path,
+) -> int:
+    try:
+        print(
+            read_drift_report(plan_path, state_path, changelog_path, policy_path, root_path)
+        )
+    except FileNotFoundError:
+        print(f"Plan file not found: {plan_path}")
+        return 2
+    except (PlanParseError, PlanSelectionError) as exc:
+        print(f"Plan error: {exc}")
+        return 2
+    return 0
+
+
+def _cmd_tasks(args: argparse.Namespace) -> int:
+    return _print_tasks(
+        Path(args.plan or ".ai/AUTONOMOUS_PLAN.md"),
+        next_only=args.next,
+        status_filter=args.status,
+        priority_filter=args.priority,
+    )
+
+
+def _cmd_lint_plan(args: argparse.Namespace) -> int:
+    return _print_lint_plan(Path(args.plan or ".ai/AUTONOMOUS_PLAN.md"))
+
+
+def _cmd_report(args: argparse.Namespace) -> int:
+    return _print_report(
+        Path(args.plan or ".ai/AUTONOMOUS_PLAN.md"),
+        Path(args.state),
+        Path(args.policy or ".forge/policy.md"),
+    )
+
+
+def _cmd_policy(args: argparse.Namespace) -> int:
+    return _print_policy(Path(args.policy or ".forge/policy.md"))
+
+
+def _cmd_run_summary(args: argparse.Namespace) -> int:
+    return _print_run_summary(
+        Path(args.plan or ".ai/AUTONOMOUS_PLAN.md"),
+        Path(args.policy or ".forge/policy.md"),
+        args.timestamp,
+    )
+
+
+def _cmd_inventory(args: argparse.Namespace) -> int:
+    return _print_inventory(Path(args.root))
+
+
+def _cmd_drift(args: argparse.Namespace) -> int:
+    return _print_drift(
+        Path(args.plan or ".ai/AUTONOMOUS_PLAN.md"),
+        Path(args.state),
+        Path(args.changelog),
+        Path(args.policy or ".forge/policy.md"),
+        Path(args.root),
+    )
+
+
+def _cmd_mark(args: argparse.Namespace) -> int:
+    plan_path = Path(args.plan) if args.plan else None
+    result = mark_task_status(args.task_id, args.new_status, plan_path)
+    print(format_mark_result(result))
+    return 0 if result.updated else 1
+
+
+def _cmd_status(args: argparse.Namespace) -> int:
+    root = Path(args.root)
+    plan_path = Path(args.plan) if args.plan else None
+    print(get_status(root, plan_path=plan_path))
+    return 0
+
+
+def _cmd_plan(args: argparse.Namespace, parser: argparse.ArgumentParser) -> int:
+    if args.plan_action == "add":
+        plan_path = Path(args.plan) if args.plan else None
+        result = add_task(
+            args.title,
+            goal=args.goal,
+            priority=args.priority,
+            plan_path=plan_path,
+            scope=args.scope,
+            files=args.files,
+            acceptance=args.acceptance,
+            notes=args.notes,
+        )
+        print(format_add_result(result))
+        return 0 if result.added else 1
+    # `plan_parser` (the "plan" subcommand's own parser) is a local variable
+    # inside build_parser(), not accessible here — previously this line
+    # referenced it directly and raised NameError on `forge plan` with no
+    # subcommand. Fall back to the top-level parser's help instead.
+    parser.print_help()
+    return 0
+
+
+def _cmd_metrics(args: argparse.Namespace) -> int:
+    m = compute_metrics(Path(args.root))
+    print(format_metrics_json(m) if args.json else format_metrics(m))
+    return 0
+
+
+def _cmd_export(args: argparse.Namespace) -> int:
+    root = Path(args.root)
+    plan_path = Path(args.plan) if args.plan else None
+    print(export_state(root, plan_path=plan_path, include_runs=args.runs, run_limit=args.limit))
+    return 0

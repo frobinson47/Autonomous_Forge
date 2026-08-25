@@ -384,7 +384,7 @@ class TestPipelineCLI:
             stage_reached="complete",
             stopped_reason="Sync errors: boom",
         )
-        with patch("autonomous_forge.cli.execute_pipeline", return_value=fake_result):
+        with patch("autonomous_forge.cli_run.execute_pipeline", return_value=fake_result):
             code = main([
                 "pipeline",
                 "--root", str(tmp_path),
