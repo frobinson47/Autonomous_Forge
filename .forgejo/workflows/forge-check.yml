@@ -48,12 +48,14 @@ jobs:
       - name: forge check
         run: forge check
 
-      # Coverage report only, no enforced threshold (AUTO-069 / COMP-005) —
-      # an arbitrary percentage gate without baseline data to justify it
-      # would be its own, separate decision. Runs the suite a second time
-      # (forge check already ran it above via its own validation step);
-      # accepted as a small, deliberate CI-time cost for visibility, not
-      # worth the complexity of threading --cov through forge check itself.
+      # Coverage report with an enforced floor (AUTO-071): fail_under = 80
+      # in pyproject.toml's [tool.coverage.report], well below the 89%
+      # baseline measured when this was added — catches a real regression
+      # (e.g. a large new untested module), not ordinary small refactors.
+      # Runs the suite a second time (forge check already ran it above via
+      # its own validation step); accepted as a small, deliberate CI-time
+      # cost for visibility, not worth threading --cov through forge check
+      # itself.
       - name: Coverage
         run: pytest --cov=autonomous_forge --cov-report=term-missing
 

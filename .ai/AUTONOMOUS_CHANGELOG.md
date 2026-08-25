@@ -287,3 +287,4 @@
 - 2026-08-25: AUTO-068 — Pin CI and dev-dependency supply chain (DONE)
 - 2026-08-25: AUTO-069 — Alpha-readiness polish: coverage threshold, package metadata, compatibility matrix (DONE)
 - 2026-08-25: AUTO-070 — Fix a real race window in acquire_lock's atomicity guarantee (DONE)
+- 2026-08-25: AUTO-071 — Enforce a CI coverage threshold (DONE)

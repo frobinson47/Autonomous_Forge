@@ -14,7 +14,7 @@ The project has two interfaces: a Python CLI (`forge`) and Claude Code skills (`
 
 ## Current implementation status
 
-Roadmaps v1 through v8 are complete (69 tasks). Roadmap v8, a security/completeness hardening pass sourced from an external assessment (see DEC-015), closed out with CI supply-chain pinning, an advisory security-rules CI step, a Python 3.10–3.12 CI matrix, and package-metadata polish. All 476 tests pass at runtime.
+Roadmaps v1 through v8 are complete (69 tasks). Roadmap v9 is in progress: AUTO-070 was a P0 hotfix for a lock-acquisition race CI caught right after v8 shipped; AUTO-071 onward turns items explicitly deferred during v8 (coverage threshold, Ruff security-rule enforcement, Forgejo response validation, cli.py re-split) into real tasks. All 476 tests pass at runtime.
 
 ## Technical debt
 
@@ -960,16 +960,16 @@ The rest of Roadmap v9 turns four items explicitly deferred ("a separate decisio
 
 ### AUTO-071 — Enforce a CI coverage threshold
 Priority: P3
-Status: TODO
+Status: DONE
 
 Goal: AUTO-069 added `pytest --cov` reporting to CI but deliberately left it unenforced ("threshold enforcement optional — decide based on current baseline, don't pick an arbitrary number"). A baseline now exists: 89% overall coverage as of AUTO-069/070.
 Why it matters: A coverage report nobody enforces just becomes ignorable noise in CI output over time — the point of measuring it is to catch regressions, which requires a floor.
 Scope: Add a `--cov-fail-under` threshold (CI step flag, or `[tool.coverage.report] fail_under` in `pyproject.toml`) set with real headroom below the current baseline — not exactly 89%, to avoid blocking on every minor coverage wobble. Document the chosen threshold and rationale in `docs/CI.md`. Per-module minimums are explicitly out of scope even though some modules (`forgejo_client.py` at 63%, `sync.py` at 59%, `validate.py` at 74%) sit well below the overall average — note as a possible follow-up rather than silently expanding this task.
 Expected files or areas: pyproject.toml or .forgejo/workflows/forge-check.yml, docs/CI.md
 Acceptance criteria: CI fails if coverage drops below the chosen threshold; a normal commit that doesn't reduce coverage passes unaffected.
-Validation: `python -m pytest --cov=autonomous_forge --cov-fail-under=<N>` locally; a pushed commit verified to still pass CI.
-Risks or assumptions: The threshold is a judgment call, not a derived fact — too tight creates false-positive CI failures on legitimate small refactors, too loose defeats the purpose. Start conservative (well below current baseline) and tighten later if it proves too permissive, rather than starting strict and generating friction immediately.
-Notes: Closes the "threshold enforcement optional" deferral from AUTO-069.
+Validation: `python -m pytest --cov=autonomous_forge --cov-report=term-missing` — 476 tests pass, "Required test coverage of 80.0% reached. Total coverage: 88.74%". Confirmed the gate actually fails closed: temporarily ran with `--cov-fail-under=99` and got a clean nonzero exit ("FAIL Required test coverage of 99% not reached"), not a silent pass. `ruff check .`/`mypy` — clean. Workflow YAML validated with `yaml.safe_load`.
+Risks or assumptions: The threshold is a judgment call, not a derived fact — too tight creates false-positive CI failures on legitimate small refactors, too loose defeats the purpose. Chose 80% (9 points below the 88.74% actual baseline) — conservative, tighten later if it proves too permissive, rather than starting strict and generating friction immediately. Per-module minimums stayed out of scope as planned.
+Notes: Closes the "threshold enforcement optional" deferral from AUTO-069. Implemented via `[tool.coverage.report] fail_under = 80` in `pyproject.toml` (also added `[tool.coverage.run] source = ["autonomous_forge"]` so the setting applies without needing to remember a CLI flag) rather than a workflow-file flag — `pytest --cov=autonomous_forge` now enforces the floor locally too, not just in CI. docs/CI.md updated with the rationale and a note to adopters not to copy `80` blindly without checking their own baseline.
 
 ### AUTO-072 — Enforce Ruff's S310 rule; document remaining S603/S607 suppressions
 Priority: P3

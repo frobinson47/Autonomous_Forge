@@ -76,6 +76,7 @@ The `python:3.12` image and `actions/checkout` are pinned by digest, not the flo
 - **Drift** — plan/state/changelog/policy files disagreeing with each other or the repo, or (as of AUTO-057) README's stated task/test counts drifting from reality (`forge drift`).
 - **Diff-check** — changed files outside the policy's allowed paths, or touching prohibited paths (`forge diff-check`).
 - **Validation** — the test suite (`python -m pytest` by default, or whatever `.forge/policy.md`'s Validation expectations section specifies).
+- **Coverage** — `pytest --cov=autonomous_forge`, gated by an 80% floor (`fail_under` in `pyproject.toml`'s `[tool.coverage.report]`, AUTO-071).
 - **Ruff security rules (advisory only)** — `ruff check src --select S` (the flake8-bandit rule set), run as a separate, non-blocking step (`continue-on-error: true`). Findings are visible in CI output but never fail the job — adopting the full rule set as blocking would be a separate, deliberate decision (see AUTO-055's note on Ruff's out-of-the-box defaults surfacing 93 unadopted findings).
 
 A failure in any step (except the advisory security-rules step) fails the job.
@@ -96,7 +97,7 @@ python_version = "3.10"
 files = ["src/your_package"]
 ```
 
-`pytest-cov` is declared for local coverage runs (`pytest --cov=your_package`) but not wired into CI as an enforced threshold — an arbitrary percentage gate without baseline data to justify it would be its own, separate decision.
+`pytest-cov` is declared for local coverage runs (`pytest --cov=your_package`). This repo enforces a floor via `[tool.coverage.report]`'s `fail_under` in `pyproject.toml` (AUTO-071) — set to 80%, deliberately well below the 89% baseline measured when it was added, so it catches a real regression (a large new module with no tests at all) rather than blocking ordinary small refactors on every minor coverage wobble. If you adopt this recipe elsewhere, pick your own threshold from your own baseline (`pytest --cov=your_package --cov-report=term-missing` first, then set `fail_under` with real headroom below whatever that reports) — don't copy `80` as a default without checking what your own suite actually covers.
 
 Pin these to exact versions (`pytest==8.3.3`, not `pytest`) once you've settled on a working set — an unpinned `dev` extra means a clean `pip install -e ".[dev]"` can silently pick up a newer tool version and change what CI enforces (AUTO-068 / SEC-007).
 
