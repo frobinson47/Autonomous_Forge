@@ -913,16 +913,16 @@ Notes: Assessment reference: SEC-006. New `ForgejoConfig.forgejo_base_url` field
 
 ### AUTO-068 — Pin CI and dev-dependency supply chain
 Priority: P3
-Status: TODO
+Status: DONE
 
 Goal: The build backend, dev tools, container image, OS packages, and `actions/checkout@v4` are all unpinned (`pyproject.toml:1-3`, `:25-32`; `.forgejo/workflows/forge-check.yml:9-22`), so a clean CI build can change without any repository change. Configured Ruff rules deliberately omit security rules — `ruff check src --select S` (run outside the normal CI config) surfaced 17 findings during this review, including the fail-open exception in check.py that's already AUTO-058 (SEC-007).
 Why it matters: Reproducibility and supply-chain pinning are table stakes before calling CI "hardened" — right now a passing CI run today doesn't guarantee the same result tomorrow.
 Scope: Pin `actions/checkout` by commit digest. Lock or pin dev dependencies (the `dev` extra added in AUTO-055). Pin the container image by digest for releases. Add a security-focused static-analysis CI job — decide whether that means enabling `S` in the existing scoped `[tool.ruff.lint]` selection or running it as a separate advisory job, since AUTO-055 deliberately scoped Ruff down to start CI green.
 Expected files or areas: .forgejo/workflows/forge-check.yml, pyproject.toml, tests (if any pinning is testable)
 Acceptance criteria: CI action and container references are pinned by digest; dev dependencies are locked; a security-rules CI job runs (even if advisory/non-blocking initially).
-Validation: A pushed commit against the updated workflow; `ruff check .`.
-Risks or assumptions: Adding `S` findings as blocking could reopen a large backlog similar to AUTO-055's original 93-finding out-of-the-box Ruff surface — start advisory/non-blocking, decide on enforcement separately.
-Notes: Assessment reference: SEC-007. The one already-fixed-elsewhere finding from the `--select S` run (the check.py fail-open exception) is tracked as AUTO-058, not duplicated here.
+Validation: `python -m pip install -e ".[dev]"` reinstalled cleanly against the newly pinned exact versions (already matched what was installed — no version churn). `python -m pytest` — 476 tests pass (unchanged; no testable Python logic in this task, pure CI/dependency config). `ruff check .` — clean. `mypy` — clean. `ruff check src --select S` — runs cleanly as a standalone command (18 findings, all pre-existing and advisory, none new). `forge lint-plan` — ok. `forge drift` — clean. Validated the workflow YAML parses correctly (`yaml.safe_load`) and manually verified the `python:3.12` digest via two independent lookups against the Docker Hub registry API (confirmed as the multi-arch manifest-list digest, not a single-platform one) and the `actions/checkout@v4` tag's current commit via `git ls-remote --tags`.
+Risks or assumptions: Did not add `S` findings as blocking (kept advisory/non-blocking via `continue-on-error: true`) — matches the original Risks note's plan to avoid reopening a large backlog like AUTO-055's original 93-finding surface; enforcement is a separate future decision. Pinned dev dependencies with exact `==` versions rather than a separate lock file — this project has no existing lockfile tooling (no `pip-tools`/`uv`/`poetry`), and adding one would be new tooling infrastructure beyond this task's scope. Digests must be re-pinned deliberately when bumping the Python version or checkout action — documented in both the workflow file's own comments and docs/CI.md, not just left implicit.
+Notes: Assessment reference: SEC-007. The one already-fixed-elsewhere finding from the `--select S` run (the check.py fail-open exception) is tracked as AUTO-058, not duplicated here. docs/CI.md updated to show the pinned workflow and the new advisory security-rules step, plus a note to pin dev extras when adopting this recipe elsewhere.
 
 ### AUTO-069 — Alpha-readiness polish: coverage threshold, package metadata, compatibility matrix
 Priority: P3

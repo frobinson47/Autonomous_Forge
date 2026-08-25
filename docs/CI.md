@@ -35,19 +35,19 @@ jobs:
         run: forge check
 ```
 
-The minimal version above works as a starting point on a GitHub-hosted-style runner. This repo's actual workflow (`.forgejo/workflows/forge-check.yml`) looks different because of the two self-hosted-runner gotchas above, plus two more steps ahead of `forge check` gated by a `dev` extra declared in `pyproject.toml`:
+The minimal version above works as a starting point on a GitHub-hosted-style runner. This repo's actual workflow (`.forgejo/workflows/forge-check.yml`) looks different because of the two self-hosted-runner gotchas above, plus two more steps ahead of `forge check` gated by a `dev` extra declared in `pyproject.toml`, plus an advisory security-rules step and digest-pinned action/image references (AUTO-068 / SEC-007 — see the workflow file itself for the full comments explaining each pin):
 
 ```yaml
 jobs:
   check:
     runs-on: docker
     container:
-      image: python:3.12
+      image: python:3.12@sha256:ef1735ee20f31133880795148379e68f8fe12f4b7a1872075477567f022edc1f
     steps:
       - name: Install git and node
         run: apt-get update && apt-get install -y --no-install-recommends git nodejs
 
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262  # v4.4.0
 
       - name: Install
         run: python -m pip install -e ".[dev]"
@@ -60,7 +60,13 @@ jobs:
 
       - name: forge check
         run: forge check
+
+      - name: Ruff security rules (advisory)
+        continue-on-error: true
+        run: ruff check src --select S
 ```
+
+The `python:3.12` image and `actions/checkout` are pinned by digest, not the floating `python:3.12`/`v4` tags — a clean CI run today should build the same environment tomorrow, and neither reference changes without a deliberate repository commit. Re-pin (bump the digest) intentionally, e.g. to pick up a Python patch release or a newer checkout action — never let it drift silently.
 
 ## What this catches
 
@@ -70,8 +76,9 @@ jobs:
 - **Drift** — plan/state/changelog/policy files disagreeing with each other or the repo, or (as of AUTO-057) README's stated task/test counts drifting from reality (`forge drift`).
 - **Diff-check** — changed files outside the policy's allowed paths, or touching prohibited paths (`forge diff-check`).
 - **Validation** — the test suite (`python -m pytest` by default, or whatever `.forge/policy.md`'s Validation expectations section specifies).
+- **Ruff security rules (advisory only)** — `ruff check src --select S` (the flake8-bandit rule set), run as a separate, non-blocking step (`continue-on-error: true`). Findings are visible in CI output but never fail the job — adopting the full rule set as blocking would be a separate, deliberate decision (see AUTO-055's note on Ruff's out-of-the-box defaults surfacing 93 unadopted findings).
 
-A failure in any step fails the job.
+A failure in any step (except the advisory security-rules step) fails the job.
 
 ## Adopting Ruff/mypy in your own repo
 
@@ -90,6 +97,8 @@ files = ["src/your_package"]
 ```
 
 `pytest-cov` is declared for local coverage runs (`pytest --cov=your_package`) but not wired into CI as an enforced threshold — an arbitrary percentage gate without baseline data to justify it would be its own, separate decision.
+
+Pin these to exact versions (`pytest==8.3.3`, not `pytest`) once you've settled on a working set — an unpinned `dev` extra means a clean `pip install -e ".[dev]"` can silently pick up a newer tool version and change what CI enforces (AUTO-068 / SEC-007).
 
 ## Notes
 

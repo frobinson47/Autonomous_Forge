@@ -7,8 +7,13 @@ on:
 jobs:
   check:
     runs-on: docker
+    # Pinned by digest (AUTO-068 / SEC-007), not the floating `python:3.12`
+    # tag — a clean CI run today should build the same environment tomorrow.
+    # This is the multi-arch manifest-list digest, not a single-platform
+    # one, so it still resolves correctly on any runner architecture.
+    # Re-pin deliberately (e.g. for a Python patch release), not silently.
     container:
-      image: python:3.12
+      image: python:3.12@sha256:ef1735ee20f31133880795148379e68f8fe12f4b7a1872075477567f022edc1f
     steps:
       # actions/checkout@v4 is a Node.js action; the plain python:3.12 image
       # has neither git nor node, so both must be installed before checkout
@@ -16,7 +21,9 @@ jobs:
       - name: Install git and node
         run: apt-get update && apt-get install -y --no-install-recommends git nodejs
 
-      - uses: actions/checkout@v4
+      # Pinned by commit digest (AUTO-068 / SEC-007), not the floating `v4`
+      # tag — this is actions/checkout@v4.4.0.
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
 
       - name: Install
         run: python -m pip install -e ".[dev]"
@@ -29,3 +36,15 @@ jobs:
 
       - name: forge check
         run: forge check
+
+      # Advisory only (AUTO-068 / SEC-007): this repo's [tool.ruff.lint]
+      # selection is deliberately scoped to E4/E7/E9/F/I (see AUTO-055) —
+      # Ruff's security-rule plugin (S / flake8-bandit) is not part of that
+      # enforced set and is run here separately, non-blocking, so findings
+      # are visible without silently reopening a large backlog the way
+      # adopting the full out-of-the-box rule set would (AUTO-055 found 93
+      # findings that way). continue-on-error means this step never fails
+      # the job even if it reports findings.
+      - name: Ruff security rules (advisory)
+        continue-on-error: true
+        run: ruff check src --select S
