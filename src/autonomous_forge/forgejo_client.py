@@ -61,7 +61,7 @@ def _detect_forgejo_repo(root: Path, base_url: str = _DEFAULT_BASE_URL) -> str |
     """Extract owner/repo from the git remote URL, matching base_url's host."""
     try:
         result = subprocess.run(
-            ["git", "remote", "get-url", "origin"],
+            ["git", "remote", "get-url", "origin"],  # noqa: S607 — "git" via PATH is intentional
             capture_output=True, text=True, cwd=root, timeout=10,
         )
         url = result.stdout.strip()
@@ -108,8 +108,14 @@ class ForgejoClient:
         self, method: str, path: str, data: dict | None = None
     ) -> dict | list | None:
         url = f"{self.base}{path}"
+        # Re-checked here, not just trusted from resolve_base_url's caller-side
+        # validation (AUTO-067) — this is the one place that actually opens
+        # the connection, so it's the right place for the guarantee to hold
+        # regardless of how ForgejoClient was constructed (AUTO-072 / S310).
+        if not url.startswith("https://"):
+            raise RuntimeError(f"Refusing to request a non-https URL: {url}")
         body = json.dumps(data).encode() if data else None
-        req = urllib.request.Request(
+        req = urllib.request.Request(  # noqa: S310 — scheme checked immediately above
             url,
             data=body,
             method=method,
@@ -120,7 +126,7 @@ class ForgejoClient:
             },
         )
         try:
-            with urllib.request.urlopen(req, timeout=30) as resp:
+            with urllib.request.urlopen(req, timeout=30) as resp:  # noqa: S310 — see above
                 raw = resp.read()
         except urllib.error.HTTPError as exc:
             error_body = exc.read().decode() if exc.fp else ""

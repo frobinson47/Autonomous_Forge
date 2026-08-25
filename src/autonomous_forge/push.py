@@ -19,7 +19,7 @@ class PushResult:
 
 
 def _run_git(args: list[str], root: Path) -> subprocess.CompletedProcess[str]:
-    return subprocess.run(
+    return subprocess.run(  # noqa: S603 — fixed argv list, no shell/user-controlled input
         ["git"] + args,
         capture_output=True, text=True, cwd=root, timeout=30,
     )

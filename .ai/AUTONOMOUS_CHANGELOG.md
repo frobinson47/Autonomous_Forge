@@ -288,3 +288,4 @@
 - 2026-08-25: AUTO-069 — Alpha-readiness polish: coverage threshold, package metadata, compatibility matrix (DONE)
 - 2026-08-25: AUTO-070 — Fix a real race window in acquire_lock's atomicity guarantee (DONE)
 - 2026-08-25: AUTO-071 — Enforce a CI coverage threshold (DONE)
+- 2026-08-25: AUTO-072 — Enforce Ruff's S310 rule; document remaining S603/S607 suppressions (DONE)

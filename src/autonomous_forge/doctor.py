@@ -47,7 +47,7 @@ class DoctorReport:
 def _check_git_available() -> DoctorCheck:
     try:
         result = subprocess.run(
-            ["git", "--version"], capture_output=True, text=True, timeout=10
+            ["git", "--version"], capture_output=True, text=True, timeout=10  # noqa: S607
         )
         if result.returncode == 0:
             return DoctorCheck("git available", True, result.stdout.strip())

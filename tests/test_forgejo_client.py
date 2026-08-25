@@ -110,6 +110,19 @@ class TestForgejoClientRequest:
         client = ForgejoClient("owner/repo", "tok", base_url="https://git.example.com")
         assert client.base == "https://git.example.com/api/v1/repos/owner/repo"
 
+    def test_refuses_non_https_url_at_request_time(self):
+        # Defense in depth (AUTO-072 / S310): even if ForgejoClient is
+        # constructed directly with an unvalidated base_url (bypassing
+        # resolve_base_url's own https-only check), _request must still
+        # refuse rather than open a non-https connection.
+        client = ForgejoClient("owner/repo", "tok", base_url="http://insecure.example.com")
+        try:
+            client.list_labels()
+        except RuntimeError as exc:
+            assert "non-https" in str(exc).lower()
+        else:
+            raise AssertionError("expected RuntimeError for a non-https URL")
+
     def test_defaults_to_project_instance(self):
         client = ForgejoClient("owner/repo", "tok")
         assert client.base == "https://forgejo.familytechlab.com/api/v1/repos/owner/repo"

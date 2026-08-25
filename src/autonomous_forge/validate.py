@@ -119,7 +119,9 @@ def run_validation(
             )
 
     try:
-        result = subprocess.run(
+        result = subprocess.run(  # noqa: S603 — the validation command IS meant to run
+            # arbitrary code by design (that's what a validation step is); see
+            # SECURITY.md's "not a sandbox" section, not a fixed-argv exemption.
             to_run,
             shell=needs_shell,
             cwd=str(root),

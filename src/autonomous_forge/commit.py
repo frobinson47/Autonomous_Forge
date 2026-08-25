@@ -56,7 +56,7 @@ def _safe_read(path: Path) -> str | None:
 
 
 def _run_git(args: list[str], root: Path) -> str:
-    result = subprocess.run(
+    result = subprocess.run(  # noqa: S603 — fixed argv list, no shell/user-controlled input
         ["git"] + args,
         capture_output=True, text=True, cwd=root, timeout=30,
     )
@@ -65,8 +65,8 @@ def _run_git(args: list[str], root: Path) -> str:
 
 def _git_add(path: Path, root: Path) -> bool:
     """Stage a file with `git add`, returning whether it succeeded."""
-    result = subprocess.run(
-        ["git", "add", str(path)],
+    result = subprocess.run(  # noqa: S603 — fixed argv list, no shell/user-controlled input
+        ["git", "add", str(path)],  # noqa: S607 — "git" via PATH is intentional
         capture_output=True, text=True, cwd=root, timeout=30,
     )
     return result.returncode == 0
@@ -375,8 +375,8 @@ def execute_commit(
                     )
 
     try:
-        result = subprocess.run(
-            ["git", "commit", "-m", message],
+        result = subprocess.run(  # noqa: S603 — fixed argv list, no shell/user-controlled input
+            ["git", "commit", "-m", message],  # noqa: S607 — "git" via PATH is intentional
             capture_output=True, text=True, cwd=root, timeout=30,
         )
         if result.returncode != 0:

@@ -48,7 +48,7 @@ def get_status(
 def _git_branch(root: Path) -> str:
     try:
         result = subprocess.run(
-            ["git", "rev-parse", "--abbrev-ref", "HEAD"],
+            ["git", "rev-parse", "--abbrev-ref", "HEAD"],  # noqa: S607 — "git" via PATH is intentional
             cwd=root,
             capture_output=True,
             text=True,
@@ -62,7 +62,7 @@ def _git_branch(root: Path) -> str:
 def _git_dirty_count(root: Path) -> int:
     try:
         result = subprocess.run(
-            ["git", "status", "--porcelain", "-u"],
+            ["git", "status", "--porcelain", "-u"],  # noqa: S607 — "git" via PATH is intentional
             cwd=root,
             capture_output=True,
             text=True,

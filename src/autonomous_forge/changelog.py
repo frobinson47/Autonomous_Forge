@@ -32,8 +32,8 @@ def _read_head_text(root: Path, relpath: str) -> str | None:
     text mode, and the first place this class of bug can surface.
     """
     try:
-        result = subprocess.run(
-            ["git", "show", f"HEAD:{relpath}"],
+        result = subprocess.run(  # noqa: S603 — fixed argv list, no shell/user-controlled input
+            ["git", "show", f"HEAD:{relpath}"],  # noqa: S607 — "git" via PATH is intentional
             capture_output=True, cwd=root, timeout=10,
         )
     except (subprocess.SubprocessError, FileNotFoundError):

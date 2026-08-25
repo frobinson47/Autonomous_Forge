@@ -32,7 +32,7 @@ class DiffViolation:
 def _run_git(args: list[str], cwd: Path) -> str:
     command = ["git"] + args
     try:
-        result = subprocess.run(
+        result = subprocess.run(  # noqa: S603 — fixed argv list, no shell/user-controlled input
             command,
             cwd=str(cwd),
             capture_output=True,
