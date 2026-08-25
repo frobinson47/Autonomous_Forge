@@ -7,13 +7,24 @@ on:
 jobs:
   check:
     runs-on: docker
-    # Pinned by digest (AUTO-068 / SEC-007), not the floating `python:3.12`
-    # tag — a clean CI run today should build the same environment tomorrow.
-    # This is the multi-arch manifest-list digest, not a single-platform
-    # one, so it still resolves correctly on any runner architecture.
+    # Matrix covers the full range pyproject.toml's classifiers claim
+    # (AUTO-069 / COMP-005) — previously only 3.12 ran, silently narrower
+    # than the advertised 3.10-3.12 support. Each image is pinned by its
+    # current multi-arch manifest-list digest (AUTO-068 / SEC-007), not a
+    # floating tag — still resolves correctly on any runner architecture.
     # Re-pin deliberately (e.g. for a Python patch release), not silently.
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - python-version: "3.10"
+            image: python:3.10@sha256:579ae5f216574b07fdc36ccbb5bbc5d58d588659eede8a057cfdeb6d6e54a50f
+          - python-version: "3.11"
+            image: python:3.11@sha256:a8677eb08a56d04e75df938f9d2af3d50c0f0fba17af8eb9c8e41b65fa32938d
+          - python-version: "3.12"
+            image: python:3.12@sha256:ef1735ee20f31133880795148379e68f8fe12f4b7a1872075477567f022edc1f
     container:
-      image: python:3.12@sha256:ef1735ee20f31133880795148379e68f8fe12f4b7a1872075477567f022edc1f
+      image: ${{ matrix.image }}
     steps:
       # actions/checkout@v4 is a Node.js action; the plain python:3.12 image
       # has neither git nor node, so both must be installed before checkout
@@ -36,6 +47,15 @@ jobs:
 
       - name: forge check
         run: forge check
+
+      # Coverage report only, no enforced threshold (AUTO-069 / COMP-005) —
+      # an arbitrary percentage gate without baseline data to justify it
+      # would be its own, separate decision. Runs the suite a second time
+      # (forge check already ran it above via its own validation step);
+      # accepted as a small, deliberate CI-time cost for visibility, not
+      # worth the complexity of threading --cov through forge check itself.
+      - name: Coverage
+        run: pytest --cov=autonomous_forge --cov-report=term-missing
 
       # Advisory only (AUTO-068 / SEC-007): this repo's [tool.ruff.lint]
       # selection is deliberately scoped to E4/E7/E9/F/I (see AUTO-055) —

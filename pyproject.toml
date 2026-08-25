@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "autonomous-forge"
 version = "0.1.0"
-description = "Local-first tools for safe autonomous repository maintenance loops."
+description = "Local-first workflow guardrails — planning, policy checks, validation, and auditable run records — around repository changes made by a human or a coding agent."
 readme = "README.md"
 requires-python = ">=3.10"
 license = { text = "Apache-2.0" }
@@ -21,6 +21,10 @@ classifiers = [
     "Programming Language :: Python :: 3.12",
 ]
 dependencies = []
+
+[project.urls]
+Repository = "https://forgejo.familytechlab.com/frank/Autonomous_Forge"
+Issues = "https://forgejo.familytechlab.com/frank/Autonomous_Forge/issues"
 
 [project.optional-dependencies]
 # Pinned to exact versions (AUTO-068 / SEC-007): a clean `pip install -e ".[dev]"`

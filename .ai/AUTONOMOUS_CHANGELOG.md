@@ -285,3 +285,4 @@
 - 2026-08-25: AUTO-066 — Redact secrets from persisted validation output (DONE)
 - 2026-08-25: AUTO-067 — Make the Forgejo client configurable and harden its error handling (DONE)
 - 2026-08-25: AUTO-068 — Pin CI and dev-dependency supply chain (DONE)
+- 2026-08-25: AUTO-069 — Alpha-readiness polish: coverage threshold, package metadata, compatibility matrix (DONE)

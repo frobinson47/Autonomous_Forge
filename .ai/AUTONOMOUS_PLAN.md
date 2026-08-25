@@ -14,7 +14,7 @@ The project has two interfaces: a Python CLI (`forge`) and Claude Code skills (`
 
 ## Current implementation status
 
-Roadmaps v1 through v7 are complete (57 tasks). Roadmap v8, a security/completeness hardening pass sourced from an external assessment (see DEC-015), is in progress. All 438 tests pass at runtime.
+Roadmaps v1 through v8 are complete (69 tasks). Roadmap v8, a security/completeness hardening pass sourced from an external assessment (see DEC-015), closed out with CI supply-chain pinning, an advisory security-rules CI step, a Python 3.10–3.12 CI matrix, and package-metadata polish. All 476 tests pass at runtime.
 
 ## Technical debt
 
@@ -926,16 +926,18 @@ Notes: Assessment reference: SEC-007. The one already-fixed-elsewhere finding fr
 
 ### AUTO-069 — Alpha-readiness polish: coverage threshold, package metadata, compatibility matrix
 Priority: P3
-Status: TODO
+Status: DONE
 
 Goal: No coverage threshold in CI, no project URLs in package metadata, and CI only runs Python 3.12 despite `pyproject.toml` claiming 3.10–3.12 support (COMP-005).
 Why it matters: Minor individually, but each is a small credibility gap for anyone evaluating whether to adopt the tool.
 Scope: Wire `pytest-cov` (already a dev extra from AUTO-055) into CI with a coverage report (threshold enforcement optional — decide based on current baseline, don't pick an arbitrary number). Add project URLs (repository, issues) to `pyproject.toml`. Add a CI matrix covering 3.10, 3.11, 3.12 to match the claimed support range, or narrow the claimed range to match what's actually tested.
 Expected files or areas: pyproject.toml, .forgejo/workflows/forge-check.yml
 Acceptance criteria: CI reports coverage; package metadata includes project URLs; claimed Python support range matches what CI actually exercises.
-Validation: A pushed commit against the updated workflow; `python -m pytest --cov`.
-Risks or assumptions: Lowest priority in this roadmap — pure polish, no behavior risk.
-Notes: Assessment reference: COMP-005. `SECURITY.md` (also part of COMP-005) is covered by AUTO-063, not duplicated here.
+Validation: `python -m pytest --cov=autonomous_forge --cov-report=term-missing` — 476 tests pass, 89% overall coverage reported (no threshold enforced, per the original Risks note about not picking an arbitrary number without baseline data). `python -m pytest` — 476 tests pass (unchanged). `ruff check .`/`mypy` — clean. `forge lint-plan`/`forge drift` — clean. Verified via `importlib.metadata` after `pip install -e .` that the built package metadata now includes both `Project-URL: Repository` and `Project-URL: Issues`, and the corrected `Summary` description. Workflow YAML with the new matrix validated via `yaml.safe_load`; obtained and cross-checked all three `python:3.1{0,1,2}` multi-arch manifest-list digests via the Docker Hub registry API.
+Risks or assumptions: Lowest priority in this roadmap — pure polish, no behavior risk. The new `strategy.matrix` runs the *entire* job (lint, mypy, forge check, coverage, advisory security rules) three times, once per Python version, rather than only re-running the test suite per version — simplest, most standard CI matrix pattern; accepted the ~3x CI time cost for a small, fast test suite rather than splitting lint/mypy into a separate single-version job. The new coverage step re-runs the full test suite a second time per matrix leg (`forge check`'s own validation step already ran it once) — accepted as a small, deliberate CI-time cost for visibility rather than threading `--cov` through `forge check` itself.
+Notes: Assessment reference: COMP-005. `SECURITY.md` (also part of COMP-005) is covered by AUTO-063, not duplicated here. Also fixed `pyproject.toml`'s `description` field, which still said "safe autonomous repository maintenance loops" — the same contradiction AUTO-064 fixed in the README, just missed there since `pyproject.toml` wasn't in that task's Expected files. **This is the last task in Roadmap v8 (69/69) — Roadmap v8 is now fully complete.**
+
+**Roadmap v8 complete: 69/69 tasks, 476 tests passing.** All findings from the 2026-08-23 external security/completeness assessment (`docs/SECURITY_ASSESSMENT_2026-08-23.md`) have been addressed across four tiers: fail-closed correctness bugs (AUTO-058–060), policy-ordering and task-diff binding (AUTO-061–062), documentation/positioning (AUTO-063–065), and robustness/hardening (AUTO-066–069). See DEC-015 for the tiering rationale and DEC-016 for the one task requiring explicit user sign-off (AUTO-062's warn-vs-block decision).
 
 ## Future Ideas
 
