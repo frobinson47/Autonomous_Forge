@@ -8,8 +8,11 @@ from pathlib import Path
 
 from autonomous_forge.forgejo_client import (
     ForgejoClient,
+    ForgejoConfigError,
     _detect_forgejo_repo,
     _load_token,
+    normalize_repo,
+    resolve_base_url,
 )
 from autonomous_forge.plan import PlanTask, parse_plan_tasks
 
@@ -216,19 +219,39 @@ def execute_sync(
     dry_run: bool = False,
     repo_override: str | None = None,
     token_override: str | None = None,
+    base_url_override: str | None = None,
 ) -> SyncResult:
-    """Sync plan tasks to Forgejo issues."""
+    """Sync plan tasks to Forgejo issues.
+
+    The Forgejo instance is configurable (AUTO-067 / SEC-006): explicit
+    ``base_url_override`` > ``FORGEJO_BASE_URL`` env var >
+    ``.forge/config.toml``'s ``forgejo_base_url`` > this project's own
+    instance (unchanged default for existing repos that configure nothing).
+    """
     plan_p = plan_path or (root / ".ai/AUTONOMOUS_PLAN.md")
     plan_text = plan_p.read_text(encoding="utf-8")
     tasks = parse_plan_tasks(plan_text)
 
-    repo = repo_override or _detect_forgejo_repo(root)
+    try:
+        base_url = resolve_base_url(root, base_url_override)
+    except ForgejoConfigError as exc:
+        return SyncResult(actions=(), repo="unknown", errors=(str(exc),))
+
+    repo = repo_override or _detect_forgejo_repo(root, base_url)
     if not repo:
         return SyncResult(
             actions=(),
             repo="unknown",
             errors=("Could not detect Forgejo repo from git remote.",),
         )
+    normalized_repo = normalize_repo(repo)
+    if normalized_repo is None:
+        return SyncResult(
+            actions=(),
+            repo=repo,
+            errors=(f"Invalid Forgejo repo name: {repo!r} (expected 'owner/repo').",),
+        )
+    repo = normalized_repo
 
     token = token_override or _load_token()
     if not token:
@@ -241,7 +264,7 @@ def execute_sync(
             ),
         )
 
-    client = ForgejoClient(repo, token)
+    client = ForgejoClient(repo, token, base_url=base_url)
 
     if dry_run:
         # Query real issue state so "would-create" vs "would-sync" reflects

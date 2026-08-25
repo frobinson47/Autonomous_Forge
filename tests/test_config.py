@@ -19,13 +19,15 @@ class TestLoadConfig:
             '[defaults]\n'
             'plan = ".ai/CUSTOM_PLAN.md"\n'
             'policy = ".forge/custom-policy.md"\n'
-            'cmd = "make test"\n',
+            'cmd = "make test"\n'
+            'forgejo_base_url = "https://forgejo.example.com"\n',
             encoding="utf-8",
         )
         config = load_config(tmp_path)
         assert config.plan == ".ai/CUSTOM_PLAN.md"
         assert config.policy == ".forge/custom-policy.md"
         assert config.cmd == "make test"
+        assert config.forgejo_base_url == "https://forgejo.example.com"
 
     def test_ignores_keys_outside_defaults_section(self, tmp_path: Path):
         (tmp_path / ".forge").mkdir()

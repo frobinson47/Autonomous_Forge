@@ -7,13 +7,58 @@ import os
 import re
 import subprocess
 import urllib.error
+import urllib.parse
 import urllib.request
 from pathlib import Path
 from typing import cast
 
+from autonomous_forge.config import load_config
 
-def _detect_forgejo_repo(root: Path) -> str | None:
-    """Extract owner/repo from the git remote URL."""
+_DEFAULT_BASE_URL = "https://forgejo.familytechlab.com"
+_REPO_RE = re.compile(r"^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$")
+
+
+class ForgejoConfigError(ValueError):
+    """Raised when a configured Forgejo base URL or repo name is invalid."""
+
+
+def _validate_base_url(url: str) -> str:
+    """Require a well-formed https:// URL; strip any trailing slash."""
+    parsed = urllib.parse.urlparse(url)
+    if parsed.scheme != "https" or not parsed.netloc:
+        raise ForgejoConfigError(
+            f"Forgejo base URL must be a well-formed https:// URL, got: {url!r}"
+        )
+    return url.rstrip("/")
+
+
+def resolve_base_url(root: Path = Path("."), override: str | None = None) -> str:
+    """Resolve the Forgejo base URL.
+
+    Precedence: explicit ``override`` > ``FORGEJO_BASE_URL`` environment
+    variable > ``.forge/config.toml``'s ``forgejo_base_url`` default >
+    this project's own Forgejo instance (unchanged default behavior for
+    existing repos that configure nothing).
+    """
+    if override:
+        return _validate_base_url(override)
+    env_url = os.environ.get("FORGEJO_BASE_URL")
+    if env_url:
+        return _validate_base_url(env_url)
+    config_url = load_config(root).forgejo_base_url
+    if config_url:
+        return _validate_base_url(config_url)
+    return _DEFAULT_BASE_URL
+
+
+def normalize_repo(repo: str) -> str | None:
+    """Return a validated ``owner/repo`` string, or None if malformed."""
+    repo = repo.strip().strip("/")
+    return repo if _REPO_RE.match(repo) else None
+
+
+def _detect_forgejo_repo(root: Path, base_url: str = _DEFAULT_BASE_URL) -> str | None:
+    """Extract owner/repo from the git remote URL, matching base_url's host."""
     try:
         result = subprocess.run(
             ["git", "remote", "get-url", "origin"],
@@ -23,7 +68,10 @@ def _detect_forgejo_repo(root: Path) -> str | None:
     except (subprocess.SubprocessError, FileNotFoundError):
         return None
 
-    match = re.search(r"forgejo\.familytechlab\.com[/:](.+?)(?:\.git)?$", url)
+    host = urllib.parse.urlparse(base_url).netloc
+    if not host:
+        return None
+    match = re.search(rf"{re.escape(host)}[/:](.+?)(?:\.git)?$", url)
     if match:
         return match.group(1)
     return None
@@ -52,8 +100,8 @@ def _load_token() -> str | None:
 class ForgejoClient:
     """Minimal Forgejo API client using only stdlib."""
 
-    def __init__(self, repo: str, token: str):
-        self.base = f"https://forgejo.familytechlab.com/api/v1/repos/{repo}"
+    def __init__(self, repo: str, token: str, base_url: str = _DEFAULT_BASE_URL):
+        self.base = f"{base_url}/api/v1/repos/{repo}"
         self.token = token
 
     def _request(
@@ -73,11 +121,28 @@ class ForgejoClient:
         )
         try:
             with urllib.request.urlopen(req, timeout=30) as resp:
-                return json.loads(resp.read().decode())
+                raw = resp.read()
         except urllib.error.HTTPError as exc:
             error_body = exc.read().decode() if exc.fp else ""
             raise RuntimeError(
                 f"Forgejo API {method} {path} returned {exc.code}: {error_body}"
+            ) from exc
+        except TimeoutError as exc:
+            raise RuntimeError(f"Forgejo API {method} {path} timed out") from exc
+        except urllib.error.URLError as exc:
+            raise RuntimeError(
+                f"Forgejo API {method} {path} could not connect: {exc.reason}"
+            ) from exc
+
+        try:
+            return json.loads(raw.decode())
+        except UnicodeDecodeError as exc:
+            raise RuntimeError(
+                f"Forgejo API {method} {path} returned an undecodable response: {exc}"
+            ) from exc
+        except json.JSONDecodeError as exc:
+            raise RuntimeError(
+                f"Forgejo API {method} {path} returned malformed JSON: {exc}"
             ) from exc
 
     def list_issues(self, state: str = "all", limit: int = 50) -> list[dict]:

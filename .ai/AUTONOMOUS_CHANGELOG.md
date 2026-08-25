@@ -283,3 +283,4 @@
 - 2026-08-24: AUTO-064 — Reframe README positioning away from "autonomous executor" (DONE)
 - 2026-08-24: AUTO-065 — Fix stale test-count and roadmap-count metadata across docs (DONE)
 - 2026-08-25: AUTO-066 — Redact secrets from persisted validation output (DONE)
+- 2026-08-25: AUTO-067 — Make the Forgejo client configurable and harden its error handling (DONE)

@@ -8,8 +8,11 @@ from pathlib import Path
 
 from autonomous_forge.forgejo_client import (
     ForgejoClient,
+    ForgejoConfigError,
     _detect_forgejo_repo,
     _load_token,
+    normalize_repo,
+    resolve_base_url,
 )
 from autonomous_forge.plan import PlanTask, parse_plan_tasks
 from autonomous_forge.planadd import add_task
@@ -53,22 +56,38 @@ def execute_orphan_report(
     plan_path: Path | None = None,
     repo_override: str | None = None,
     token_override: str | None = None,
+    base_url_override: str | None = None,
 ) -> OrphanReport:
     """Read-only scan for open Forgejo issues with no matching plan task.
 
     Makes GET calls only — never creates, updates, or comments on issues.
+    The Forgejo instance is configurable the same way as `execute_sync`
+    (AUTO-067 / SEC-006).
     """
     plan_p = plan_path or (root / ".ai/AUTONOMOUS_PLAN.md")
     plan_text = plan_p.read_text(encoding="utf-8")
     tasks = parse_plan_tasks(plan_text)
 
-    repo = repo_override or _detect_forgejo_repo(root)
+    try:
+        base_url = resolve_base_url(root, base_url_override)
+    except ForgejoConfigError as exc:
+        return OrphanReport(orphans=(), repo="unknown", errors=(str(exc),))
+
+    repo = repo_override or _detect_forgejo_repo(root, base_url)
     if not repo:
         return OrphanReport(
             orphans=(),
             repo="unknown",
             errors=("Could not detect Forgejo repo from git remote.",),
         )
+    normalized_repo = normalize_repo(repo)
+    if normalized_repo is None:
+        return OrphanReport(
+            orphans=(),
+            repo=repo,
+            errors=(f"Invalid Forgejo repo name: {repo!r} (expected 'owner/repo').",),
+        )
+    repo = normalized_repo
 
     token = token_override or _load_token()
     if not token:
@@ -81,7 +100,7 @@ def execute_orphan_report(
             ),
         )
 
-    client = ForgejoClient(repo, token)
+    client = ForgejoClient(repo, token, base_url=base_url)
     try:
         issues = client.list_issues(state="open")
     except RuntimeError as exc:
@@ -150,6 +169,7 @@ def execute_import_orphans(
     plan_path: Path | None = None,
     repo_override: str | None = None,
     token_override: str | None = None,
+    base_url_override: str | None = None,
 ) -> ImportResult:
     """Convert current orphan Forgejo issues into AUTO-xxx plan task stubs.
 
@@ -165,6 +185,7 @@ def execute_import_orphans(
     plan_p = plan_path or (root / ".ai/AUTONOMOUS_PLAN.md")
     report = execute_orphan_report(
         root, plan_path=plan_p, repo_override=repo_override, token_override=token_override,
+        base_url_override=base_url_override,
     )
     if report.errors:
         return ImportResult(

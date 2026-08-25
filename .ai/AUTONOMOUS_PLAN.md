@@ -900,16 +900,16 @@ Notes: Assessment reference: SEC-004. New `src/autonomous_forge/redact.py` modul
 
 ### AUTO-067 — Make the Forgejo client configurable and harden its error handling
 Priority: P3
-Status: TODO
+Status: DONE
 
 Goal: Repository detection and API URLs are hardcoded to `forgejo.familytechlab.com` (`src/autonomous_forge/forgejo_client.py:15-29`, `:55-75`), making the advertised Forgejo integration unusable for external adopters. The HTTP layer only catches `HTTPError`; DNS failures, refused connections, TLS failures, timeouts, malformed JSON, and unexpected response shapes can escape as raw tracebacks, since `sync.py` generally only catches `RuntimeError` (SEC-006).
 Why it matters: Hardcoding one operator's own instance is fine for dogfooding but blocks anyone else from using `forge sync` at all — and unhandled transport errors surface as unfriendly stack traces instead of CLI errors.
 Scope: Make the base URL configurable (repo config or env var, consistent with AUTO-039's config-defaults pattern). Validate it's HTTPS and well-formed. Normalize/validate owner and repo names. Catch `URLError`, timeout, JSON-decode, and unexpected-schema failures alongside `HTTPError`, returning consistent CLI-level errors.
 Expected files or areas: src/autonomous_forge/forgejo_client.py, src/autonomous_forge/sync.py, src/autonomous_forge/config.py (if that's where AUTO-039's config lives), tests, docs/COMMANDS.md
 Acceptance criteria: `forge sync` works against a configured non-default Forgejo instance in tests; simulated DNS/timeout/malformed-JSON failures produce a clean CLI error, not a traceback.
-Validation: `python -m pytest`, `ruff check .`, `mypy`.
-Risks or assumptions: Retry/backoff should only be added for idempotent reads, or with carefully scoped operation-specific semantics — do not blanket-retry mutating calls.
-Notes: Assessment reference: SEC-006.
+Validation: `python -m pytest` — 476 tests pass (454 baseline + 22 new: `resolve_base_url` precedence/validation, `normalize_repo` shape checks, `_detect_forgejo_repo` with a custom base URL, `ForgejoClient._request`'s URLError/TimeoutError/malformed-JSON handling, plus `execute_sync`'s invalid-repo/invalid-base-url/custom-base-url paths and a `forgejo_base_url` config-parsing test). `ruff check .` — clean. `mypy` — clean. `forge lint-plan` — ok. Manually verified live: `forge sync --base-url https://<unreachable-host> --dry-run` produced a clean `ERROR: ... could not connect: [Errno ...] getaddrinfo failed` line, not a traceback; `--base-url http://insecure...` and `--repo not-valid` both produced clean validation errors.
+Risks or assumptions: Did not add retry/backoff (out of scope per the original Risks note — no operation-specific semantics were designed for it this task). Did not add per-endpoint response-shape validation beyond "is it valid JSON" — each `ForgejoClient` method's `cast(dict/list, ...)` still trusts the API's documented shape; a schema-conformant-but-semantically-wrong response (e.g. missing an expected key) would still raise `KeyError` rather than a clean `RuntimeError`, same gap as before this task, not fully closed. Kept `ForgejoClient`/`_detect_forgejo_repo`/`_load_token` imported directly into `sync.py`'s and `sync_orphans.py`'s namespaces (rather than centralizing behind a single `resolve_client()` helper in `forgejo_client.py`) specifically to preserve existing tests' `patch("autonomous_forge.sync.ForgejoClient...")`-style mocking — a shared helper would have broken that without a clear benefit big enough to justify updating every existing mock.
+Notes: Assessment reference: SEC-006. New `ForgejoConfig.forgejo_base_url` field (config.py) follows AUTO-039's `[defaults]` section convention. New CLI flag `--base-url` on `forge sync` (wired through `--report-orphans`/`--import-orphans` too). `_REPO_RE` validation rejects shell-metacharacter-bearing repo names as a side effect of requiring the strict `owner/repo` shape, not as a deliberate injection defense (repo names are only ever used to build a URL path, never passed to a shell).
 
 ### AUTO-068 — Pin CI and dev-dependency supply chain
 Priority: P3

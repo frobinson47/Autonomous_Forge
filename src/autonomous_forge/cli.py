@@ -409,6 +409,15 @@ def build_parser() -> argparse.ArgumentParser:
         help="Forgejo owner/repo (auto-detected from git remote)",
     )
     sync_parser.add_argument(
+        "--base-url",
+        default=None,
+        help=(
+            "Forgejo instance base URL, e.g. https://forgejo.example.com "
+            "(default: FORGEJO_BASE_URL env var, then .forge/config.toml's "
+            "forgejo_base_url, then this project's own instance)"
+        ),
+    )
+    sync_parser.add_argument(
         "--dry-run",
         action="store_true",
         help="show what would be synced without making API calls",
@@ -1229,6 +1238,7 @@ def _cmd_sync(args: argparse.Namespace) -> int:
                 root,
                 plan_path=plan_path,
                 repo_override=args.repo,
+                base_url_override=args.base_url,
             )
         except FileNotFoundError as exc:
             print(f"File not found: {exc}")
@@ -1241,6 +1251,7 @@ def _cmd_sync(args: argparse.Namespace) -> int:
                 root,
                 plan_path=plan_path,
                 repo_override=args.repo,
+                base_url_override=args.base_url,
             )
         except FileNotFoundError as exc:
             print(f"File not found: {exc}")
@@ -1253,6 +1264,7 @@ def _cmd_sync(args: argparse.Namespace) -> int:
             plan_path=plan_path,
             dry_run=args.dry_run,
             repo_override=args.repo,
+            base_url_override=args.base_url,
         )
     except FileNotFoundError as exc:
         print(f"File not found: {exc}")

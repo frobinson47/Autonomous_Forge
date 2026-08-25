@@ -22,6 +22,7 @@ DEFAULT_CONFIG_TEMPLATE = """\
 # plan = ".ai/AUTONOMOUS_PLAN.md"
 # policy = ".forge/policy.md"
 # cmd = "PYTHONPATH=src python -m pytest"
+# forgejo_base_url = "https://forgejo.example.com"
 """
 
 
@@ -32,6 +33,7 @@ class ForgeConfig:
     plan: str | None = None
     policy: str | None = None
     cmd: str | None = None
+    forgejo_base_url: str | None = None
 
 
 def load_config(root: Path = Path(".")) -> ForgeConfig:
@@ -70,13 +72,14 @@ def load_config(root: Path = Path(".")) -> ForgeConfig:
         value = value.strip()
         if len(value) >= 2 and value[0] == value[-1] and value[0] in "\"'":
             value = value[1:-1]
-        if key in ("plan", "policy", "cmd") and value:
+        if key in ("plan", "policy", "cmd", "forgejo_base_url") and value:
             values[key] = value
 
     return ForgeConfig(
         plan=values.get("plan"),
         policy=values.get("policy"),
         cmd=values.get("cmd"),
+        forgejo_base_url=values.get("forgejo_base_url"),
     )
 
 

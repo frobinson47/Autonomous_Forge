@@ -210,6 +210,39 @@ class TestExecuteSync:
         assert result.errors
         assert "token" in result.errors[0].lower()
 
+    def test_invalid_repo_name_rejected(self, tmp_path: Path):
+        self._setup_plan(tmp_path)
+        result = execute_sync(
+            root=tmp_path,
+            repo_override="not-a-valid-repo-name",
+            token_override="fake-token",
+        )
+        assert result.errors
+        assert "invalid forgejo repo name" in result.errors[0].lower()
+
+    def test_invalid_base_url_rejected(self, tmp_path: Path):
+        self._setup_plan(tmp_path)
+        result = execute_sync(
+            root=tmp_path,
+            repo_override="frank/Test",
+            token_override="fake-token",
+            base_url_override="http://not-https.example.com",
+        )
+        assert result.errors
+        assert "https" in result.errors[0].lower()
+
+    def test_custom_base_url_used_by_client(self, tmp_path: Path):
+        self._setup_plan(tmp_path)
+        with patch("autonomous_forge.sync.ForgejoClient.list_issues", return_value=[]):
+            result = execute_sync(
+                root=tmp_path,
+                dry_run=True,
+                repo_override="frank/Test",
+                token_override="fake-token",
+                base_url_override="https://git.example.com",
+            )
+        assert not result.errors
+
 
 class TestFormatSyncResult:
     def test_format_dry_run(self):
