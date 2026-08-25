@@ -10,7 +10,6 @@ import urllib.error
 import urllib.parse
 import urllib.request
 from pathlib import Path
-from typing import cast
 
 from autonomous_forge.config import load_config
 
@@ -97,6 +96,45 @@ def _load_token() -> str | None:
     return None
 
 
+def _expect_dict(value: object, context: str, required_keys: tuple[str, ...] = ()) -> dict:
+    """Validate a Forgejo API response is an object with the fields callers read.
+
+    AUTO-073 / SEC-006 follow-up: a schema-conformant-but-wrong response
+    (a JSON value that parses fine but is the wrong shape) previously
+    escaped as a raw KeyError/TypeError once a caller indexed into it —
+    exactly the failure mode AUTO-067 closed for transport-level errors.
+    Shallow on purpose: type plus presence of the specific keys each
+    method actually reads, not full schema validation against Forgejo's
+    API spec.
+    """
+    if not isinstance(value, dict):
+        raise RuntimeError(
+            f"Forgejo API {context}: expected an object, got {type(value).__name__}"
+        )
+    missing = [k for k in required_keys if k not in value]
+    if missing:
+        raise RuntimeError(
+            f"Forgejo API {context}: response missing expected field(s): {', '.join(missing)}"
+        )
+    return value
+
+
+def _expect_list_of_dicts(
+    value: object, context: str, item_required_keys: tuple[str, ...] = ()
+) -> list[dict]:
+    """Validate a Forgejo API response is an array of objects with expected fields.
+
+    See `_expect_dict` — same rationale, list-shaped endpoints.
+    """
+    if not isinstance(value, list):
+        raise RuntimeError(
+            f"Forgejo API {context}: expected an array, got {type(value).__name__}"
+        )
+    for item in value:
+        _expect_dict(item, f"{context} (array element)", item_required_keys)
+    return value
+
+
 class ForgejoClient:
     """Minimal Forgejo API client using only stdlib."""
 
@@ -155,11 +193,12 @@ class ForgejoClient:
         page = 1
         all_issues: list[dict] = []
         while True:
-            issues = self._request(
+            raw_issues = self._request(
                 "GET", f"/issues?state={state}&type=issues&limit={limit}&page={page}"
             )
-            if not issues:
+            if not raw_issues:
                 break
+            issues = _expect_list_of_dicts(raw_issues, "GET /issues")
             all_issues.extend(issues)
             if len(issues) < limit:
                 break
@@ -173,31 +212,51 @@ class ForgejoClient:
             data["labels"] = labels
         if milestone:
             data["milestone"] = milestone
-        # _request's return type is intentionally loose (mirrors arbitrary
-        # JSON) — these casts assert the documented shape of each specific
-        # Forgejo endpoint, which the API contract guarantees but the
-        # generic _request signature can't express.
-        return cast(dict, self._request("POST", "/issues", data))
+        return _expect_dict(
+            self._request("POST", "/issues", data), "POST /issues", required_keys=("number",)
+        )
 
     def update_issue(self, number: int, **kwargs) -> dict:
-        return cast(dict, self._request("PATCH", f"/issues/{number}", kwargs))
+        return _expect_dict(
+            self._request("PATCH", f"/issues/{number}", kwargs), f"PATCH /issues/{number}"
+        )
 
     def add_comment(self, number: int, body: str) -> dict:
-        return cast(dict, self._request("POST", f"/issues/{number}/comments", {"body": body}))
+        return _expect_dict(
+            self._request("POST", f"/issues/{number}/comments", {"body": body}),
+            f"POST /issues/{number}/comments",
+        )
 
     def list_labels(self) -> list[dict]:
-        return cast(list, self._request("GET", "/labels?limit=50")) or []
+        raw = self._request("GET", "/labels?limit=50")
+        if not raw:
+            return []
+        return _expect_list_of_dicts(raw, "GET /labels", item_required_keys=("id", "name"))
 
     def create_label(self, name: str, color: str) -> dict:
-        return cast(dict, self._request("POST", "/labels", {"name": name, "color": color}))
+        return _expect_dict(
+            self._request("POST", "/labels", {"name": name, "color": color}),
+            "POST /labels",
+            required_keys=("id",),
+        )
 
     def list_milestones(self, state: str = "all") -> list[dict]:
-        return cast(list, self._request("GET", f"/milestones?state={state}&limit=50")) or []
+        raw = self._request("GET", f"/milestones?state={state}&limit=50")
+        if not raw:
+            return []
+        return _expect_list_of_dicts(
+            raw, "GET /milestones", item_required_keys=("id", "title")
+        )
 
     def create_milestone(self, title: str) -> dict:
-        return cast(dict, self._request("POST", "/milestones", {"title": title}))
+        return _expect_dict(
+            self._request("POST", "/milestones", {"title": title}),
+            "POST /milestones",
+            required_keys=("id",),
+        )
 
     def replace_labels(self, issue_number: int, label_ids: list[int]) -> list[dict]:
-        return cast(
-            list, self._request("PUT", f"/issues/{issue_number}/labels", {"labels": label_ids})
+        return _expect_list_of_dicts(
+            self._request("PUT", f"/issues/{issue_number}/labels", {"labels": label_ids}),
+            f"PUT /issues/{issue_number}/labels",
         )

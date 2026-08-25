@@ -1,12 +1,12 @@
 # Autonomous State
 
 - Current roadmap version: v9
-- Current task ID: AUTO-072 — Enforce Ruff's S310 rule; document remaining S603/S607 suppressions
+- Current task ID: AUTO-073 — Validate Forgejo API response shapes instead of trusting cast()
 - Current task status: DONE
 - Current branch: main
 - Last run timestamp: 2026-08-25T00:00:00+00:00
 - Last successful commit hash: (this task's commit — see git log)
-- Latest run summary: AUTO-068's `ruff check src --select S` step was fully advisory (18 findings, never acted on). Broke it down: 9 `S603` + 7 `S607` are effectively unavoidable in a CLI that shells out to `git` by design; 2 `S310` (URL-scheme check, both in `forgejo_client.py`) were genuinely worth enforcing. Added a real runtime `https://` check inside `ForgejoClient._request` itself (defense in depth beyond AUTO-067's caller-side `resolve_base_url` validation — holds regardless of how the client is constructed), then moved `S310` into the blocking `[tool.ruff.lint]` selection. For the 16 `S603`/`S607` findings, added inline `# noqa` with a one-line reason each — `validate.py`'s is honestly different from the rest (it's the one place meant to run arbitrary code by design; noqa'd with a pointer to SECURITY.md rather than a "fixed argv" claim that wouldn't be true there).
-- Validation commands and results: `ruff check .` — clean, now includes S310. `ruff check src --select S` — clean, zero un-annotated findings. `python -m pytest --cov=autonomous_forge` — 477 tests pass (1 new), 88.75% coverage. `mypy` — clean. Manually verified the S310 fix is a real runtime guarantee: constructed a `ForgejoClient` directly with `http://`, confirmed `_request` refuses with a clean `RuntimeError`.
+- Latest run summary: `ForgejoClient`'s methods used `cast(dict, ...)`/`cast(list, ...)` to assert response shape, so a schema-conformant-but-wrong response still raised a raw `KeyError`/`TypeError` once a caller indexed into it — the exact failure mode AUTO-067 closed for transport-level errors, still open at the shape level. `list_issues` was the worst case: it never used `cast()` at all, so a dict response would have silently iterated over dict *keys* via `.extend()` instead of raising anything, corrupting the issue list with garbage strings. Added two shared helpers, `_expect_dict`/`_expect_list_of_dicts`, and routed all 8 response-parsing methods through them — checking type plus presence of the specific keys each method actually reads (`"number"` for issues, `"id"`/`"name"` for labels, `"id"`/`"title"` for milestones). `typing.cast` import removed, no longer used.
+- Validation commands and results: `python -m pytest --cov=autonomous_forge` — 484 tests pass (7 new), 89.10% coverage. `ruff check .`/`mypy` — clean.
 - Current blockers: None.
-- Recommended next task: AUTO-073 — validate Forgejo API response shapes instead of trusting cast().
+- Recommended next task: AUTO-074 — re-split cli.py (last task in Roadmap v9).

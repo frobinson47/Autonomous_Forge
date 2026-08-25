@@ -986,16 +986,16 @@ Notes: Narrows "adopt Ruff security rules more broadly" (deferred in AUTO-055, m
 
 ### AUTO-073 — Validate Forgejo API response shapes instead of trusting cast()
 Priority: P3
-Status: TODO
+Status: DONE
 
 Goal: `ForgejoClient`'s methods (`list_issues`, `create_issue`, `list_labels`, etc.) use `cast(dict, ...)`/`cast(list, ...)` to assert the documented shape of each Forgejo endpoint's response, per AUTO-067's own Risks note: "a schema-conformant-but-semantically-wrong response ... would still raise KeyError rather than a clean RuntimeError."
 Why it matters: AUTO-067 already hardened transport-level failures (DNS, timeout, malformed JSON) into clean `RuntimeError`s; a response that's valid JSON but the wrong shape (an unexpected API version, a proxy returning an HTML error page that happens to parse as some other JSON value, a field renamed in a future Forgejo release) currently still escapes as a raw `KeyError`/`TypeError` traceback — the exact failure mode AUTO-067 was about closing.
 Scope: Add lightweight shape checks in `_request` or at each call site — verify the parsed response is the expected type (dict/list) and, where cheap to check, that required keys are present — before returning it to the caller. Raise the same `RuntimeError` convention every call site in `sync.py`/`sync_orphans.py` already catches.
 Expected files or areas: src/autonomous_forge/forgejo_client.py, tests
 Acceptance criteria: A simulated response with an unexpected shape (a dict where a list was expected, or a list of dicts missing an expected key like `"number"`) produces a clean CLI error, not a traceback.
-Validation: `python -m pytest`, `ruff check .`, `mypy`.
-Risks or assumptions: Keep shape validation shallow (type + presence of the specific keys each method actually reads) rather than full JSON-schema validation against Forgejo's API spec — the latter would be real scope creep for a stdlib-only client and would need to track upstream API changes.
-Notes: Closes the specific gap flagged in AUTO-067's own Risks note, not duplicated there.
+Validation: `python -m pytest --cov=autonomous_forge` — 484 tests pass (477 baseline + 7 new: `list_issues` rejecting a dict-instead-of-array and an array-of-non-dicts, `create_issue` rejecting a response missing `"number"` and an array-instead-of-object, `list_labels` rejecting an item missing `"name"`, `create_label`/`list_milestones` accepting well-formed responses), 89.10% coverage (above AUTO-071's 80% floor). `ruff check .`/`mypy` — clean.
+Risks or assumptions: Kept shape validation shallow as planned (type + presence of the specific keys each method actually reads: `"number"` for issues, `"id"`/`"name"` for labels, `"id"`/`"title"` for milestones) rather than full JSON-schema validation against Forgejo's API spec. `list_issues` was the most dangerous of the untouched call sites before this task — it never used `cast()` at all, so a dict response instead of an array would have silently iterated over dict *keys* via `.extend()` rather than raising anything, corrupting the issue list with garbage strings instead of failing loudly. Now explicitly validated like every other method.
+Notes: Closes the specific gap flagged in AUTO-067's own Risks note, not duplicated there. Added two shared helpers (`_expect_dict`, `_expect_list_of_dicts`) rather than inlining checks per method — all 8 `ForgejoClient` methods that parse a response now go through one of these two, replacing every `cast()` call (the `typing.cast` import is no longer needed and was removed).
 
 ### AUTO-074 — Re-split cli.py
 Priority: P3

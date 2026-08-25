@@ -163,3 +163,79 @@ class TestForgejoClientRequest:
             raise AssertionError("raw JSONDecodeError leaked instead of RuntimeError")
         else:
             raise AssertionError("expected RuntimeError for malformed JSON")
+
+
+def _set_response_body(mock_urlopen: MagicMock, body: bytes) -> None:
+    """Configure a mocked urlopen() to return the given raw response body."""
+    mock_response = MagicMock()
+    mock_response.read.return_value = body
+    mock_urlopen.return_value.__enter__.return_value = mock_response
+
+
+class TestForgejoClientResponseShapeValidation:
+    """AUTO-073: a schema-conformant-but-wrong response must raise a clean
+    RuntimeError, not a raw KeyError/TypeError once a caller indexes into it."""
+
+    @patch("autonomous_forge.forgejo_client.urllib.request.urlopen")
+    def test_list_issues_rejects_dict_instead_of_array(self, mock_urlopen):
+        _set_response_body(mock_urlopen, json.dumps({"message": "not an array"}).encode())
+        try:
+            ForgejoClient("owner/repo", "tok").list_issues()
+        except RuntimeError as exc:
+            assert "expected an array" in str(exc).lower()
+        else:
+            raise AssertionError("expected RuntimeError for a dict where an array was expected")
+
+    @patch("autonomous_forge.forgejo_client.urllib.request.urlopen")
+    def test_list_issues_rejects_array_of_non_dicts(self, mock_urlopen):
+        _set_response_body(mock_urlopen, json.dumps(["not", "objects"]).encode())
+        try:
+            ForgejoClient("owner/repo", "tok").list_issues()
+        except RuntimeError as exc:
+            assert "expected an object" in str(exc).lower()
+        else:
+            raise AssertionError("expected RuntimeError for an array of non-objects")
+
+    @patch("autonomous_forge.forgejo_client.urllib.request.urlopen")
+    def test_create_issue_rejects_response_missing_number(self, mock_urlopen):
+        _set_response_body(mock_urlopen, json.dumps({"title": "x"}).encode())
+        try:
+            ForgejoClient("owner/repo", "tok").create_issue("title", "body")
+        except RuntimeError as exc:
+            assert "number" in str(exc).lower()
+        else:
+            raise AssertionError("expected RuntimeError for a response missing 'number'")
+
+    @patch("autonomous_forge.forgejo_client.urllib.request.urlopen")
+    def test_create_issue_rejects_array_instead_of_object(self, mock_urlopen):
+        _set_response_body(mock_urlopen, json.dumps([1, 2, 3]).encode())
+        try:
+            ForgejoClient("owner/repo", "tok").create_issue("title", "body")
+        except RuntimeError as exc:
+            assert "expected an object" in str(exc).lower()
+        else:
+            raise AssertionError("expected RuntimeError for an array where an object was expected")
+
+    @patch("autonomous_forge.forgejo_client.urllib.request.urlopen")
+    def test_list_labels_rejects_item_missing_required_key(self, mock_urlopen):
+        _set_response_body(mock_urlopen, json.dumps([{"id": 1}]).encode())  # missing "name"
+        try:
+            ForgejoClient("owner/repo", "tok").list_labels()
+        except RuntimeError as exc:
+            assert "name" in str(exc).lower()
+        else:
+            raise AssertionError("expected RuntimeError for a label missing 'name'")
+
+    @patch("autonomous_forge.forgejo_client.urllib.request.urlopen")
+    def test_create_label_accepts_well_formed_response(self, mock_urlopen):
+        _set_response_body(
+            mock_urlopen, json.dumps({"id": 5, "name": "bug", "color": "#ff0000"}).encode()
+        )
+        result = ForgejoClient("owner/repo", "tok").create_label("bug", "#ff0000")
+        assert result["id"] == 5
+
+    @patch("autonomous_forge.forgejo_client.urllib.request.urlopen")
+    def test_list_milestones_accepts_well_formed_response(self, mock_urlopen):
+        _set_response_body(mock_urlopen, json.dumps([{"id": 1, "title": "v1"}]).encode())
+        result = ForgejoClient("owner/repo", "tok").list_milestones()
+        assert result[0]["title"] == "v1"

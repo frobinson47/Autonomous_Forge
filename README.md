@@ -22,7 +22,7 @@ Autonomous Forge is built for **one trusted operator working in a repository and
 
 ## Current status
 
-Autonomous Forge is pre-1.0 but functional end-to-end: Roadmap v1–v8 are complete and Roadmap v9 is in progress (72/74 tasks done) — v8 was a security/completeness hardening pass sourced from an external assessment, v9 is follow-on hardening and cleanup — with the full pipeline, fail-closed policy enforcement, drift detection, session handoff, run metrics, dogfooded CI, and Forgejo sync all implemented and tested (477 tests passing). See `.ai/AUTONOMOUS_PLAN.md` and `.ai/AUTONOMOUS_STATE.md` for the current roadmap and state.
+Autonomous Forge is pre-1.0 but functional end-to-end: Roadmap v1–v8 are complete and Roadmap v9 is in progress (73/74 tasks done) — v8 was a security/completeness hardening pass sourced from an external assessment, v9 is follow-on hardening and cleanup — with the full pipeline, fail-closed policy enforcement, drift detection, session handoff, run metrics, dogfooded CI, and Forgejo sync all implemented and tested (484 tests passing). See `.ai/AUTONOMOUS_PLAN.md` and `.ai/AUTONOMOUS_STATE.md` for the current roadmap and state.
 
 `forge drift`/`forge check` flag it automatically if these counts ever drift out of sync with the plan file, `.ai/AUTONOMOUS_STATE.md`, or a live validation run again (see AUTO-057, AUTO-065) — the `(N/M tasks done)` and `(N tests passing)` phrasing above is load-bearing, not just prose.
 
