@@ -956,6 +956,60 @@ Validation: `python -m pytest` — 476 tests pass (unchanged count; fix + doc up
 Risks or assumptions: `os.link` requires the temp file and the lock path to be on the same filesystem/volume — true here since both live in `.forge/` under the same repo root, never configurable to span volumes. Windows NTFS supports hard links (unlike FAT), so this works cross-platform consistent with the project's existing Windows-aware liveness-check code in the same module. The 200-trial/4-thread stress test was run manually, not added to the committed suite — an expensive stress loop running on every CI invocation wasn't judged worth the added CI time given the existing test already exercises the exact race. CI-green confirmation on all three Python versions is pending this commit's push (see `.ai/AUTONOMOUS_STATE.md` for the outcome).
 Notes: Filed as a P0 hotfix outside the normal roadmap-tier sequencing (Roadmap v8 was already complete) because it's a correctness bug in a safety-relevant guarantee, caught while verifying CI ahead of a planned public post referencing that exact guarantee.
 
+The rest of Roadmap v9 turns four items explicitly deferred ("a separate decision," "left for later") during Roadmap v8 into real, right-sized tasks — not a fresh assessment, just picking up threads already left dangling. One candidate item (extending policy-diff gating to `forge mark`/`plan add`/`import-orphans`) was considered and dropped: those commands only ever write to `.ai/AUTONOMOUS_PLAN.md`, an always-allowed path by construction, so there is no actual gap for a diff-policy check to close there.
+
+### AUTO-071 — Enforce a CI coverage threshold
+Priority: P3
+Status: TODO
+
+Goal: AUTO-069 added `pytest --cov` reporting to CI but deliberately left it unenforced ("threshold enforcement optional — decide based on current baseline, don't pick an arbitrary number"). A baseline now exists: 89% overall coverage as of AUTO-069/070.
+Why it matters: A coverage report nobody enforces just becomes ignorable noise in CI output over time — the point of measuring it is to catch regressions, which requires a floor.
+Scope: Add a `--cov-fail-under` threshold (CI step flag, or `[tool.coverage.report] fail_under` in `pyproject.toml`) set with real headroom below the current baseline — not exactly 89%, to avoid blocking on every minor coverage wobble. Document the chosen threshold and rationale in `docs/CI.md`. Per-module minimums are explicitly out of scope even though some modules (`forgejo_client.py` at 63%, `sync.py` at 59%, `validate.py` at 74%) sit well below the overall average — note as a possible follow-up rather than silently expanding this task.
+Expected files or areas: pyproject.toml or .forgejo/workflows/forge-check.yml, docs/CI.md
+Acceptance criteria: CI fails if coverage drops below the chosen threshold; a normal commit that doesn't reduce coverage passes unaffected.
+Validation: `python -m pytest --cov=autonomous_forge --cov-fail-under=<N>` locally; a pushed commit verified to still pass CI.
+Risks or assumptions: The threshold is a judgment call, not a derived fact — too tight creates false-positive CI failures on legitimate small refactors, too loose defeats the purpose. Start conservative (well below current baseline) and tighten later if it proves too permissive, rather than starting strict and generating friction immediately.
+Notes: Closes the "threshold enforcement optional" deferral from AUTO-069.
+
+### AUTO-072 — Enforce Ruff's S310 rule; document remaining S603/S607 suppressions
+Priority: P3
+Status: TODO
+
+Goal: AUTO-068 added `ruff check src --select S` as a fully advisory, non-blocking CI step. Of its 18 current findings, 9 are `S603` (subprocess call, untrusted-input check) and 7 are `S607` (partial executable path — invoking `git`/`python` by bare name) — both effectively unavoidable and intentional in a CLI whose entire job is shelling out to git, so blanket-enforcing them would just be noise. The remaining 2 are `S310` (URL-open scheme check), both in `forgejo_client.py`, and genuinely relevant to network egress safety — small and meaningful enough to actually enforce.
+Why it matters: An advisory-only security-rules step nobody ever acts on isn't meaningfully different from not having it — either enforce what's worth enforcing, or explicitly document why a finding is accepted, so "S was run and 18 things showed up" doesn't quietly become permanent background noise.
+Scope: Move `S310` into the blocking `[tool.ruff.lint]` selection (or a separate blocking CI step scoped to just `S310`) and fix or justify its 2 findings. For the 9 `S603` + 7 `S607` findings, add inline `# noqa: S603`/`# noqa: S607` with a one-line reason at each site (e.g. "git invoked by name, intentional — see SECURITY.md"), converting silent advisory findings into explicit, reviewed decisions.
+Expected files or areas: pyproject.toml, .forgejo/workflows/forge-check.yml, the 16 sites in src/ with S603/S607/S310 findings
+Acceptance criteria: `ruff check .` (the main, blocking selection) now includes `S310` and passes; `ruff check src --select S603,S607` shows zero un-annotated findings (all either fixed or noqa'd with a reason); the advisory step still runs and would surface any newly introduced S-rule finding outside these three codes.
+Validation: `ruff check .`, `ruff check src --select S`, `python -m pytest`.
+Risks or assumptions: Blanket-noqa'ing `S603`/`S607` risks masking a genuinely unsafe new subprocess call added later at one of the 16 existing sites, if a future edit changes what's passed to it — each noqa comment must state precisely why the *current* call is safe (fixed argv list, no shell interpolation), not just suppress the category. A truly new subprocess call site elsewhere in the codebase still surfaces via the advisory step, since noqa only silences the specific annotated line.
+Notes: Narrows "adopt Ruff security rules more broadly" (deferred in AUTO-055, made advisory-only in AUTO-068) into a right-sized enforcement decision instead of an all-or-nothing one.
+
+### AUTO-073 — Validate Forgejo API response shapes instead of trusting cast()
+Priority: P3
+Status: TODO
+
+Goal: `ForgejoClient`'s methods (`list_issues`, `create_issue`, `list_labels`, etc.) use `cast(dict, ...)`/`cast(list, ...)` to assert the documented shape of each Forgejo endpoint's response, per AUTO-067's own Risks note: "a schema-conformant-but-semantically-wrong response ... would still raise KeyError rather than a clean RuntimeError."
+Why it matters: AUTO-067 already hardened transport-level failures (DNS, timeout, malformed JSON) into clean `RuntimeError`s; a response that's valid JSON but the wrong shape (an unexpected API version, a proxy returning an HTML error page that happens to parse as some other JSON value, a field renamed in a future Forgejo release) currently still escapes as a raw `KeyError`/`TypeError` traceback — the exact failure mode AUTO-067 was about closing.
+Scope: Add lightweight shape checks in `_request` or at each call site — verify the parsed response is the expected type (dict/list) and, where cheap to check, that required keys are present — before returning it to the caller. Raise the same `RuntimeError` convention every call site in `sync.py`/`sync_orphans.py` already catches.
+Expected files or areas: src/autonomous_forge/forgejo_client.py, tests
+Acceptance criteria: A simulated response with an unexpected shape (a dict where a list was expected, or a list of dicts missing an expected key like `"number"`) produces a clean CLI error, not a traceback.
+Validation: `python -m pytest`, `ruff check .`, `mypy`.
+Risks or assumptions: Keep shape validation shallow (type + presence of the specific keys each method actually reads) rather than full JSON-schema validation against Forgejo's API spec — the latter would be real scope creep for a stdlib-only client and would need to track upstream API changes.
+Notes: Closes the specific gap flagged in AUTO-067's own Risks note, not duplicated there.
+
+### AUTO-074 — Re-split cli.py
+Priority: P3
+Status: TODO
+
+Goal: AUTO-054 split `cli.py`/`sync.py` once already, but `cli.py` has grown back to 1560 lines / 29 command handlers as every Roadmap v7/v8 task added its own flags (`--no-policy-required`, `--advisory-paths`, `--no-persist-output`, `--base-url`, etc.) directly into the single file.
+Why it matters: A single 1560-line file mixing argparse wiring for 29 subcommands with their handler logic is hard to navigate and increases the odds of an inconsistent flag/option pattern slipping through review — the same class of risk AUTO-054 originally cited.
+Scope: Group related subcommands' parser-building and `_cmd_*` handlers into separate modules by domain (e.g. plan/task commands, run-commit-push-pipeline commands, sync/Forgejo commands, read-only reporting commands, session pause/resume), leaving `cli.py` as thin argument-parsing wiring plus the dispatch table and `main()`. Preserve every existing command's behavior, flags, and help text exactly — this is a structural move, not a behavior change.
+Expected files or areas: src/autonomous_forge/cli.py, new module(s) under src/autonomous_forge/, tests
+Acceptance criteria: `forge --help` and every subcommand's `--help` output is byte-identical to before; the full test suite passes unchanged; `cli.py` itself is substantially smaller.
+Validation: `python -m pytest`, `ruff check .`, `mypy`, manual `forge --help`/`forge <cmd> --help` diff against pre-refactor output for every subcommand.
+Risks or assumptions: Purely structural — no behavior change, so the main risk is an accidental behavior change slipping through despite the intent; the help-text-diff check in Acceptance criteria exists specifically to catch that. Lowest priority of this roadmap's four tasks — no user-facing correctness or safety impact, pure maintainability.
+Notes: A second pass at what AUTO-054 already did once; the file will likely grow back again as new commands are added, which is expected and fine — this isn't meant to be a permanent fix, just periodic upkeep.
+
 ## Future Ideas
 
 - (empty — all previously listed ideas were promoted into Roadmap v4, v5, or v6)
