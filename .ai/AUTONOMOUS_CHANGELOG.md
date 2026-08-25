@@ -282,3 +282,4 @@
 - 2026-08-24: AUTO-063 — Add SECURITY.md and a threat-model section to the README (DONE)
 - 2026-08-24: AUTO-064 — Reframe README positioning away from "autonomous executor" (DONE)
 - 2026-08-24: AUTO-065 — Fix stale test-count and roadmap-count metadata across docs (DONE)
+- 2026-08-25: AUTO-066 — Redact secrets from persisted validation output (DONE)

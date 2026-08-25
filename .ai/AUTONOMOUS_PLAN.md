@@ -887,16 +887,16 @@ Notes: Assessment reference: COMP-004. `docs/CODEBASE_ASSESSMENT.md` marked arch
 
 ### AUTO-066 — Redact secrets from persisted validation output
 Priority: P3
-Status: TODO
+Status: DONE
 
 Goal: Validation captures stdout/stderr (`src/autonomous_forge/validate.py:122-137`), `execute_run` retains their tail (`src/autonomous_forge/run.py:301-318`), and run summaries write that output verbatim (`src/autonomous_forge/run.py:416-427`). The run directory is gitignored, but a test or tool that prints a token leaves it on disk, exposed to anyone with local file access or a copied diagnostic bundle (SEC-004).
 Why it matters: Defense in depth for the one class of local risk this tool doesn't already gitignore-away.
 Scope: Add best-effort redaction for common credential formats (API key prefixes, bearer tokens, etc.) and any configured secret values, before persisting validation output. Restrict run-file permissions where the platform supports it. Add an opt-in no-output-persistence mode.
 Expected files or areas: src/autonomous_forge/validate.py, src/autonomous_forge/run.py, tests, README.md/SECURITY.md
 Acceptance criteria: Known credential-shaped patterns are redacted in persisted run files; docs explicitly state this is best-effort, not complete secret detection.
-Validation: `python -m pytest`, `ruff check .`, `mypy`.
-Risks or assumptions: Must not overclaim — document as best-effort only, since arbitrary program output can leak secrets in unpredictable shapes no regex will catch.
-Notes: Assessment reference: SEC-004.
+Validation: `python -m pytest` — 454 tests pass (438 baseline + 16 new: 12 in `tests/test_redact.py` covering every pattern class plus env-value redaction and short-value/non-secret-name exclusions, 4 in `tests/test_run.py` covering end-to-end redaction through `execute_run`, `--no-persist-output` omitting/including the raw block, and owner-only file permissions on POSIX). `ruff check .` — clean. `mypy` — clean. `forge lint-plan` — ok. Manually verified live in a throwaway repo: a validation command that printed `sk-ant-...` produced `[REDACTED]` in the saved `.forge/runs/*.md` file; `--no-persist-output` omitted the block entirely while still recording PASSED/task/policy info.
+Risks or assumptions: Deliberately did not add redaction to `validate.py` itself (only `run.py`, which is the actual persistence path) — `ValidationResult`'s raw `stdout`/`stderr` stay unredacted in memory so `commit.py`/`check.py`'s own (non-persisted, terminal-only) validation printouts are unaffected; only reached `run.py`'s Expected files scope as originally planned. Applied redaction once, where `validation_output` is built in `execute_run`, so both the CLI printout and the persisted file get the same redacted string — a superset of "persisted only," not a gap. Env-based redaction only matches values `>= 8` characters whose variable name contains key/token/secret/password/credential, to avoid false positives on short, common values.
+Notes: Assessment reference: SEC-004. New `src/autonomous_forge/redact.py` module, not folded into `validate.py`/`run.py` directly — kept as a standalone, independently testable concept (docstring explicitly states "best-effort, not secret detection" per the acceptance criteria's overclaim warning). SECURITY.md and docs/COMMANDS.md (`forge run`/`forge pipeline` sections) updated with the new `--no-persist-output` flag and redaction/permission behavior.
 
 ### AUTO-067 — Make the Forgejo client configurable and harden its error handling
 Priority: P3

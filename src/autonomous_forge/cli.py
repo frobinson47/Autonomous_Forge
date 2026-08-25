@@ -356,6 +356,14 @@ def build_parser() -> argparse.ArgumentParser:
         help="do not persist the run outcome to .forge/runs/",
     )
     run_parser.add_argument(
+        "--no-persist-output",
+        action="store_true",
+        help=(
+            "persist the run outcome as usual, but omit the raw validation "
+            "output block (task/policy/diff info is still saved)"
+        ),
+    )
+    run_parser.add_argument(
         "--no-policy-required",
         action="store_true",
         help="allow a missing or malformed policy file instead of blocking (default: blocks)",
@@ -583,6 +591,14 @@ def build_parser() -> argparse.ArgumentParser:
         "--no-lint-required",
         action="store_true",
         help="allow a plan with forge lint-plan diagnostics instead of blocking (default: blocks)",
+    )
+    pipeline_parser.add_argument(
+        "--no-persist-output",
+        action="store_true",
+        help=(
+            "persist the run outcome as usual, but omit the raw validation "
+            "output block (task/policy/diff info is still saved)"
+        ),
     )
     pipeline_parser.add_argument(
         "--timestamp",
@@ -1199,7 +1215,7 @@ def _cmd_run(args: argparse.Namespace) -> int:
         return 2
     print(format_run_outcome(outcome))
     if not args.no_save:
-        path = save_run_outcome(outcome, root)
+        path = save_run_outcome(outcome, root, persist_output=not args.no_persist_output)
         print(f"\nRun saved: {path}")
     return 1 if outcome.blocked else 0
 
@@ -1265,6 +1281,7 @@ def _cmd_pipeline(args: argparse.Namespace) -> int:
             advisory_paths=args.advisory_paths,
             allow_shell_command=args.allow_shell_command,
             require_lint_pass=not args.no_lint_required,
+            persist_output=not args.no_persist_output,
         )
     except FileNotFoundError as exc:
         print(f"File not found: {exc}")

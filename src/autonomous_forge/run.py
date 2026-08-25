@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
@@ -25,6 +26,7 @@ from autonomous_forge.policy import (
     parse_repository_policy,
     validate_policy_text,
 )
+from autonomous_forge.redact import redact_secrets
 from autonomous_forge.validate import run_validation
 
 
@@ -336,6 +338,7 @@ def _execute_run_body(
             validation_output = val_result.stdout.strip()
         if val_result.stderr.strip():
             validation_output += "\n" + val_result.stderr.strip()
+        validation_output = redact_secrets(validation_output, env=os.environ)
     elif dry_run:
         validation_command = "skipped (dry run)"
         validation_output = "dry run — validation not executed"
@@ -400,8 +403,23 @@ def format_run_outcome(outcome: RunOutcome) -> str:
     return "\n".join(lines)
 
 
-def save_run_outcome(outcome: RunOutcome, root: Path = Path(".")) -> Path:
-    """Persist a run outcome to .forge/runs/ as a Markdown file."""
+def save_run_outcome(
+    outcome: RunOutcome,
+    root: Path = Path("."),
+    persist_output: bool = True,
+) -> Path:
+    """Persist a run outcome to .forge/runs/ as a Markdown file.
+
+    Validation output is best-effort redacted before this is called (see
+    `execute_run`) — not a complete secret-detection guarantee. Pass
+    ``persist_output=False`` (CLI: ``--no-persist-output``) to omit the raw
+    validation output block entirely while still recording the run's
+    outcome (task, policy status, diff violations, pass/fail).
+
+    Restricts the written file to owner-only permissions where the
+    platform supports it (POSIX); best-effort, silently skipped where it
+    doesn't apply (e.g. Windows, or a filesystem that rejects chmod).
+    """
     runs_dir = root / _SUMMARY_DIR
     runs_dir.mkdir(parents=True, exist_ok=True)
     safe_ts = outcome.timestamp.replace(":", "-").replace("+", "p").replace("T", "_")
@@ -437,14 +455,20 @@ def save_run_outcome(outcome: RunOutcome, root: Path = Path(".")) -> Path:
         status = "PASSED" if outcome.validation_passed else "FAILED"
         lines.append(f"\nValidation: {status}")
         lines.append(f"Command: {outcome.validation_command}")
-        if outcome.validation_output:
+        if outcome.validation_output and persist_output:
             lines.append(f"\n```\n{outcome.validation_output}\n```")
+        elif outcome.validation_output:
+            lines.append("\n(validation output omitted — --no-persist-output)")
 
     if outcome.blocked:
         lines.append(f"\nBLOCKED: {outcome.block_reason}")
 
     lines.append("")
     path.write_text("\n".join(lines), encoding="utf-8")
+    try:
+        path.chmod(0o600)
+    except OSError:
+        pass
     return path
 
 

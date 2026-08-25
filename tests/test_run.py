@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import stat
+import sys
 from pathlib import Path
 from unittest.mock import patch
 
@@ -168,6 +170,23 @@ class TestExecuteRun:
         )
         assert outcome.blocked
         assert "Could not determine changed files" in outcome.block_reason
+
+    @patch("autonomous_forge.run.get_changed_files", return_value=["src/foo.py"])
+    def test_validation_output_is_redacted(self, mock_git, tmp_path: Path):
+        _setup_metadata(tmp_path, MINIMAL_PLAN, MINIMAL_POLICY)
+        # Built via concatenation so this fixture isn't itself a
+        # contiguous credential-shaped literal a secret scanner would flag.
+        fake_key = "sk-ant-" + "abc123DEF456ghi789JKL012mno"
+        outcome = execute_run(
+            root=tmp_path,
+            timestamp="2026-01-01T00:00:00+00:00",
+            validate=True,
+            dry_run=False,
+            validate_command=f'python -c "print(\'token {fake_key}\')"',
+        )
+        assert outcome.validation_passed is True
+        assert "sk-ant-" not in outcome.validation_output
+        assert "[REDACTED]" in outcome.validation_output
 
     @patch("autonomous_forge.run.get_changed_files", return_value=[".env"])
     def test_blocked_by_prohibited_file(self, mock_git, tmp_path: Path):
@@ -437,6 +456,67 @@ class TestSaveRunOutcome:
         )
         save_run_outcome(outcome, tmp_path)
         assert (tmp_path / ".forge" / "runs").is_dir()
+
+    def test_persist_output_false_omits_raw_output(self, tmp_path: Path):
+        outcome = RunOutcome(
+            timestamp="2026-01-01T00:00:00+00:00",
+            selected_task=None,
+            validation_passed=True,
+            validation_command="pytest",
+            validation_output="10 passed in 1.23s",
+            diff_violations=0,
+            diff_details=(),
+            drift_signals=0,
+            changed_files=(),
+            policy_status="present",
+            blocked=False,
+            block_reason="",
+        )
+        path = save_run_outcome(outcome, tmp_path, persist_output=False)
+        content = path.read_text(encoding="utf-8")
+        assert "10 passed in 1.23s" not in content
+        assert "--no-persist-output" in content
+        assert "Validation: PASSED" in content  # outcome itself still recorded
+
+    def test_persist_output_true_includes_raw_output(self, tmp_path: Path):
+        outcome = RunOutcome(
+            timestamp="2026-01-01T00:00:00+00:00",
+            selected_task=None,
+            validation_passed=True,
+            validation_command="pytest",
+            validation_output="10 passed in 1.23s",
+            diff_violations=0,
+            diff_details=(),
+            drift_signals=0,
+            changed_files=(),
+            policy_status="present",
+            blocked=False,
+            block_reason="",
+        )
+        path = save_run_outcome(outcome, tmp_path)
+        content = path.read_text(encoding="utf-8")
+        assert "10 passed in 1.23s" in content
+
+    def test_run_file_restricted_to_owner_on_posix(self, tmp_path: Path):
+        if sys.platform == "win32":
+            return  # os.chmod has no meaningful effect on Windows filesystems
+        outcome = RunOutcome(
+            timestamp="2026-01-01T00:00:00+00:00",
+            selected_task=None,
+            validation_passed=None,
+            validation_command="",
+            validation_output="",
+            diff_violations=0,
+            diff_details=(),
+            drift_signals=0,
+            changed_files=(),
+            policy_status="not found",
+            blocked=False,
+            block_reason="",
+        )
+        path = save_run_outcome(outcome, tmp_path)
+        mode = stat.S_IMODE(path.stat().st_mode)
+        assert mode == 0o600
 
 
 class TestRecordCommitHash:

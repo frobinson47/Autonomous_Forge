@@ -428,6 +428,7 @@ Inputs:
 - `--dry-run`: skip validation execution but still check policy and drift.
 - `--no-validate`: skip validation entirely.
 - `--no-save`: do not persist the run outcome to `.forge/runs/`.
+- `--no-persist-output`: persist the run outcome as usual, but omit the raw validation output block (task/policy/diff info is still saved) — see AUTO-066.
 - `--no-policy-required`: allow a missing or malformed `.forge/policy.md` instead of blocking (see DEC-012 — blocking is the default).
 - `--advisory-paths`: report files outside `Allowed paths` instead of blocking (see DEC-012 — blocking is the default).
 - `--allow-shell-command`: allow the validation command to run through the shell (pipes, redirects, chaining); rejected by default (see AUTO-051).
@@ -458,7 +459,7 @@ Exit codes:
 - `1` when the run is blocked (prohibited files, error-level drift, or a concurrent run already holding the lock — see below).
 - `2` when required input files are missing.
 
-Safety limits: **this command runs external commands** (validation suite via subprocess) and **writes files** to `.forge/runs/`. It runs `git` to detect changed files. It does NOT auto-commit, push, or modify tracked repository files. Blocked runs halt before validation. Run outcome files are local working state and should be gitignored. If git itself cannot be run to detect changed files (not a repository, git missing, timeout), the run blocks with "Could not determine changed files" rather than silently proceeding as if nothing changed (AUTO-060 / SEC-008).
+Safety limits: **this command runs external commands** (validation suite via subprocess) and **writes files** to `.forge/runs/`. It runs `git` to detect changed files. It does NOT auto-commit, push, or modify tracked repository files. Blocked runs halt before validation. Run outcome files are local working state and should be gitignored. If git itself cannot be run to detect changed files (not a repository, git missing, timeout), the run blocks with "Could not determine changed files" rather than silently proceeding as if nothing changed (AUTO-060 / SEC-008). Validation output is best-effort redacted before being written to disk (known credential formats, secret-like env var values) and the run file is restricted to owner-only permissions where the platform supports it — not a guarantee, see SECURITY.md (AUTO-066).
 
 Locking: `forge run` (and `forge pipeline`, which calls it internally) acquires a `.forge/.lock` file for the duration of the run, so two concurrent invocations against the same repo — e.g. a human and an agent, or two agent sessions — cannot race or double-commit. Acquisition itself is atomic (`O_CREAT | O_EXCL` — see AUTO-052): the check for an existing lock and creation of a new one are a single OS-level operation, so two near-simultaneous acquire attempts can never both succeed. A second concurrent invocation reports `BLOCKED: already running (pid <N>, since <timestamp>)` and exits `1` without touching the lock. A stale lock (its recorded process is no longer alive) is detected and cleared automatically — no manual cleanup needed. `.forge/.lock` is gitignored local working state, same as `.forge/runs/` and `.forge/sessions/`.
 
@@ -677,6 +678,7 @@ Inputs:
 - `--advisory-paths`: report files outside `Allowed paths` instead of blocking (see DEC-012 — blocking is the default).
 - `--allow-shell-command`: allow the validation command to run through the shell (pipes, redirects, chaining); rejected by default (see AUTO-051).
 - `--no-lint-required`: allow a plan with `forge lint-plan` diagnostics instead of blocking (see AUTO-053 — blocking is the default).
+- `--no-persist-output`: persist the run outcome as usual, but omit the raw validation output block (task/policy/diff info is still saved) — see AUTO-066.
 - `--timestamp`: optional ISO-8601 timestamp for deterministic output.
 
 Note: each flag gates only its own stage — `--sync` does **not** imply `--commit` or `--push`; pass all the flags you need explicitly.
