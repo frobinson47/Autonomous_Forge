@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import sys
 from pathlib import Path
 from typing import Callable
 
@@ -112,6 +113,14 @@ def main(argv: list[str] | None = None) -> int:
     Returns an exit code. When called as a console script, wraps with
     sys.exit via the ``_entry_point`` wrapper.
     """
+    # Windows' default console codepage (cp1252) can't encode non-ASCII
+    # characters that legitimately show up in plan content (e.g. a task
+    # title containing "→") — force UTF-8 so output never crashes on
+    # Windows regardless of how this process's stdout ended up encoded.
+    for stream in (sys.stdout, sys.stderr):
+        if hasattr(stream, "reconfigure"):
+            stream.reconfigure(encoding="utf-8", errors="replace")
+
     parser = build_parser()
     args = parser.parse_args(argv)
 
@@ -137,6 +146,4 @@ def main(argv: list[str] | None = None) -> int:
 
 def _entry_point() -> None:
     """Console script entry point — wraps main() with sys.exit()."""
-    import sys
-
     sys.exit(main())

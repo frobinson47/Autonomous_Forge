@@ -161,6 +161,10 @@ class ForgejoClient:
                 "Authorization": f"token {self.token}",
                 "Content-Type": "application/json",
                 "Accept": "application/json",
+                # Cloudflare's WAF blocks the stdlib default UA outright
+                # ("Python-urllib/3.x" trips error 1010, browser_signature_banned) —
+                # a real UA string is required, not just any non-empty value.
+                "User-Agent": "autonomous-forge-cli",
             },
         )
         try:
