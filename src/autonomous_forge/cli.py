@@ -119,7 +119,13 @@ def main(argv: list[str] | None = None) -> int:
     # Windows regardless of how this process's stdout ended up encoded.
     for stream in (sys.stdout, sys.stderr):
         if hasattr(stream, "reconfigure"):
-            stream.reconfigure(encoding="utf-8", errors="replace")
+            # A closed or replaced stream (e.g. under a test harness) can
+            # refuse reconfiguration; output encoding is best-effort, so
+            # never let that crash the CLI before argument parsing.
+            try:
+                stream.reconfigure(encoding="utf-8", errors="replace")
+            except (OSError, ValueError):
+                pass
 
     parser = build_parser()
     args = parser.parse_args(argv)
