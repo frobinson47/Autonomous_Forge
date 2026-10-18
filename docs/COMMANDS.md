@@ -476,7 +476,7 @@ Inputs:
 - `--repo`: Forgejo `owner/repo` (auto-detected from git remote if omitted); validated against `^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$`, rejected otherwise (AUTO-067).
 - `--base-url`: Forgejo instance base URL, e.g. `https://forgejo.example.com` (default: `FORGEJO_BASE_URL` env var, then `.forge/config.toml`'s `forgejo_base_url`, then this project's own instance — see AUTO-067 / SEC-006). Must be a well-formed `https://` URL.
 - `--dry-run`: show what would be synced without making API calls.
-- `--report-orphans`: read-only — list open Forgejo issues that have no matching `[AUTO-###]` task in the current plan, instead of running a sync. Skips the sync entirely; makes GET calls only.
+- `--report-orphans`: read-only — list open Forgejo issues that no current plan task accounts for, instead of running a sync. An issue is accounted for if its title names a current task (`[AUTO-###]` / `AUTO-###:`) **or** a current task's Notes field links to it with a `Forgejo issue #N` backlink (the same link sync uses, which never retitles the issue — so an issue brought in by `--import-orphans` drops out of the report right away). Skips the sync entirely; makes GET calls only.
 - `--import-orphans`: write a new `AUTO-###` plan task stub for each current orphan issue, instead of running a sync. See DEC-010 in `.ai/DECISIONS.md`.
 
 Expected successful output:

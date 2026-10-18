@@ -16,6 +16,7 @@ from autonomous_forge.forgejo_client import (
 )
 from autonomous_forge.plan import PlanTask, parse_plan_tasks
 from autonomous_forge.planadd import add_task
+from autonomous_forge.sync import _backlinked_issue_number
 
 _ANY_AUTO_ID_RE = re.compile(r"AUTO-\d+")
 
@@ -38,12 +39,35 @@ class OrphanReport:
     errors: tuple[str, ...] = ()
 
 
-def find_orphan_issues(issues: list[dict], tasks: list[PlanTask]) -> list[dict]:
-    """Return open issues with no AUTO-### reference matching a current plan task."""
+def _backlinked_issue_numbers(tasks: list[PlanTask], plan_text: str) -> set[int]:
+    """Issue numbers that some current plan task links to via a Notes ``Forgejo issue #N`` backlink."""
+    numbers: set[int] = set()
+    for task in tasks:
+        number = _backlinked_issue_number(task.task_id, plan_text)
+        if number is not None:
+            numbers.add(number)
+    return numbers
+
+
+def find_orphan_issues(
+    issues: list[dict], tasks: list[PlanTask], plan_text: str | None = None
+) -> list[dict]:
+    """Return open issues with no AUTO-### reference matching a current plan task.
+
+    An issue counts as tracked when its title names a current task, or — when ``plan_text`` is
+    given — when a current task's Notes backlink (``Forgejo issue #N``) points at it. Sync treats
+    that backlink as the authoritative link and never retitles the issue, so an orphan check that
+    only reads titles would flag a linked issue forever (frank/Autonomous_Forge#60). Without
+    ``plan_text`` the check is title-only, which ``--import-orphans`` relies on to report issues
+    it has already imported.
+    """
     task_ids = {task.task_id for task in tasks}
+    linked = _backlinked_issue_numbers(tasks, plan_text) if plan_text else set()
     orphans = []
     for issue in issues:
         if issue.get("state") != "open":
+            continue
+        if issue.get("number") in linked:
             continue
         match = _ANY_AUTO_ID_RE.search(issue.get("title", ""))
         if not match or match.group(0) not in task_ids:
@@ -57,12 +81,17 @@ def execute_orphan_report(
     repo_override: str | None = None,
     token_override: str | None = None,
     base_url_override: str | None = None,
+    honor_backlinks: bool = True,
 ) -> OrphanReport:
     """Read-only scan for open Forgejo issues with no matching plan task.
 
     Makes GET calls only — never creates, updates, or comments on issues.
     The Forgejo instance is configurable the same way as `execute_sync`
     (AUTO-067 / SEC-006).
+
+    An issue is tracked if its title names a current task OR a current task's Notes backlink
+    (``Forgejo issue #N``) points at it; ``honor_backlinks=False`` gives the title-only view
+    that ``--import-orphans`` uses so it can still report issues it already imported.
     """
     plan_p = plan_path or (root / ".ai/AUTONOMOUS_PLAN.md")
     plan_text = plan_p.read_text(encoding="utf-8")
@@ -108,7 +137,7 @@ def execute_orphan_report(
 
     orphans = tuple(
         OrphanIssue(number=i["number"], title=i["title"], url=i.get("html_url", ""))
-        for i in find_orphan_issues(issues, tasks)
+        for i in find_orphan_issues(issues, tasks, plan_text=plan_text if honor_backlinks else None)
     )
     return OrphanReport(orphans=orphans, repo=repo)
 
@@ -186,6 +215,8 @@ def execute_import_orphans(
     report = execute_orphan_report(
         root, plan_path=plan_p, repo_override=repo_override, token_override=token_override,
         base_url_override=base_url_override,
+        # Title-only view: a backlinked issue is "already imported" (reported as such), not invisible.
+        honor_backlinks=False,
     )
     if report.errors:
         return ImportResult(

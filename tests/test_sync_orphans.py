@@ -78,6 +78,39 @@ class TestFindOrphanIssues:
         issues = [{"number": 2, "state": "open", "title": "AUTO-001: Build the widget"}]
         assert find_orphan_issues(issues, tasks) == []
 
+    # --- plan backlinks (frank/Autonomous_Forge#60) -------------------------------------------
+    # A task's Notes backlink ("Forgejo issue #N") is the authoritative issue<->task link for sync
+    # (see sync._find_issue_for_task), so the orphan report must honor it too instead of flagging
+    # a linked issue forever just because its title never gets an AUTO tag.
+
+    BACKLINK_PLAN = (
+        "### AUTO-001 — Build the widget\n"
+        "Priority: P1\n"
+        "Status: TODO\n"
+        "\n"
+        "Notes: Imported from Forgejo issue #42 (https://example/issues/42).\n"
+    )
+
+    def test_excludes_issue_backlinked_by_a_plan_task(self):
+        tasks = [_make_task("AUTO-001")]
+        issues = [{"number": 42, "state": "open", "title": "Untagged title that never matches"}]
+        assert find_orphan_issues(issues, tasks, plan_text=self.BACKLINK_PLAN) == []
+
+    def test_backlink_to_another_issue_does_not_hide_this_one(self):
+        tasks = [_make_task("AUTO-001")]
+        issues = [
+            {"number": 42, "state": "open", "title": "Linked, untagged"},
+            {"number": 43, "state": "open", "title": "Not linked by anything"},
+        ]
+        orphans = find_orphan_issues(issues, tasks, plan_text=self.BACKLINK_PLAN)
+        assert [i["number"] for i in orphans] == [43]
+
+    def test_without_plan_text_behavior_is_unchanged(self):
+        # --import-orphans relies on the title-only view to report already_imported.
+        tasks = [_make_task("AUTO-001")]
+        issues = [{"number": 42, "state": "open", "title": "Untagged title that never matches"}]
+        assert len(find_orphan_issues(issues, tasks)) == 1
+
 
 class TestExecuteOrphanReport:
     def _setup_plan(self, tmp_path: Path):
@@ -129,6 +162,51 @@ class TestExecuteOrphanReport:
                 root=tmp_path, repo_override="frank/Test", token_override="fake-token",
             )
         assert report.orphans == ()
+
+    def test_issue_linked_by_a_plan_backlink_is_not_reported(self, tmp_path: Path):
+        ai_dir = tmp_path / ".ai"
+        ai_dir.mkdir()
+        (ai_dir / "AUTONOMOUS_PLAN.md").write_text(
+            SYNC_PLAN
+            + "\n### AUTO-004 — Adopted bug\n"
+            "Priority: P2\n"
+            "Status: TODO\n"
+            "\n"
+            "Notes: Imported from Forgejo issue #5 (https://forgejo.example/frank/Test/issues/5).\n",
+            encoding="utf-8",
+        )
+        mock_client = MagicMock()
+        mock_client.list_issues.return_value = [
+            {"number": 5, "state": "open", "title": "Manually filed bug"},
+            {"number": 6, "state": "open", "title": "Another manually filed bug"},
+        ]
+        with patch("autonomous_forge.sync_orphans.ForgejoClient", return_value=mock_client):
+            report = execute_orphan_report(
+                root=tmp_path, repo_override="frank/Test", token_override="fake-token",
+            )
+        assert [o.number for o in report.orphans] == [6]
+
+    def test_report_is_clean_right_after_import_orphans(self, tmp_path: Path):
+        """frank/Autonomous_Forge#60: import used to leave every imported issue in the report forever."""
+        self._setup_plan(tmp_path)
+        mock_client = MagicMock()
+        mock_client.list_issues.return_value = [
+            {"number": 5, "state": "open", "title": "Manually filed bug",
+             "html_url": "https://forgejo.example/frank/Test/issues/5"},
+            {"number": 1, "state": "open", "title": "[AUTO-001] Build the widget"},
+        ]
+        with patch("autonomous_forge.sync_orphans.ForgejoClient", return_value=mock_client):
+            before = execute_orphan_report(
+                root=tmp_path, repo_override="frank/Test", token_override="fake-token",
+            )
+            execute_import_orphans(
+                root=tmp_path, repo_override="frank/Test", token_override="fake-token",
+            )
+            after = execute_orphan_report(
+                root=tmp_path, repo_override="frank/Test", token_override="fake-token",
+            )
+        assert [o.number for o in before.orphans] == [5]
+        assert after.orphans == ()
 
 
 class TestFormatOrphanReport:
