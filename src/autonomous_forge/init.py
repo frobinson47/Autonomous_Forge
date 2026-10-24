@@ -43,6 +43,8 @@ None documented yet.
 
 ## Roadmap v1
 
+Task format: write each task's `Validation:` field BEFORE the work starts. It names the real checks that decide pass or fail (tests, commands, a real output or measurement to inspect) and a target number where one exists. Work from raw outputs, not summaries. `TBD` is a placeholder, not an answer.
+
 ## Future Ideas
 
 ## Do Not Change Without Explicit Human Approval

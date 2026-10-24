@@ -267,3 +267,11 @@ class TestPlanAddCLI:
 
         with pytest.raises(SystemExit):
             main(["plan", "add", "--goal", "No title", "--plan", str(plan_path)])
+
+
+class TestValidationPlaceholder:
+    def test_new_task_validation_asks_for_real_checks(self, tmp_path):
+        plan_path = _setup(tmp_path)
+        add_task("Ship widget", goal="Ship it", plan_path=plan_path)
+        text = plan_path.read_text(encoding="utf-8")
+        assert "Validation: TBD (name the real checks and any target number before starting work)" in text

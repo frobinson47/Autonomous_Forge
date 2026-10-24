@@ -74,3 +74,14 @@ def test_init_cli_command(tmp_path, capsys):
     output = capsys.readouterr().out
     assert "Forge initialized" in output
     assert (tmp_path / ".ai" / "AUTONOMOUS_PLAN.md").exists()
+
+
+def test_init_plan_tells_authors_to_write_validation_first(tmp_path):
+    init_forge(tmp_path, project_name="test-project", date="2026-07-07")
+
+    plan = (tmp_path / ".ai" / "AUTONOMOUS_PLAN.md").read_text(encoding="utf-8")
+    assert "write each task's `Validation:` field BEFORE the work starts" in plan
+    # The note sits under the roadmap heading and must not be mistaken for a task.
+    from autonomous_forge.plan import parse_plan_tasks
+
+    assert parse_plan_tasks(plan) == []

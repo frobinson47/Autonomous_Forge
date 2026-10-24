@@ -138,7 +138,7 @@ def _build_task_block(
         f"Scope: {scope}\n"
         f"Expected files or areas: {files}\n"
         f"Acceptance criteria: {acceptance}\n"
-        f"Validation: TBD\n"
+        f"Validation: TBD (name the real checks and any target number before starting work)\n"
         f"Risks or assumptions: None.\n"
         f"Notes: {notes}\n"
         f"\n"
