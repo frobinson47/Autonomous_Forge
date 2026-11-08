@@ -24,7 +24,7 @@ _CHANGELOG_TASK_RE = re.compile(r"^## \d{4}-\d{2}-\d{2} — (AUTO-\d{3,}|.+)$")
 _README_TASK_STATS_RE = re.compile(r"\((\d+)/(\d+) tasks done\)")
 _README_TEST_COUNT_RE = re.compile(r"\((\d+) tests passing\)")
 _STATE_TEST_COUNT_RE = re.compile(
-    r"Validation commands and results:.*?(\d+)\s+tests?\s+pass", re.IGNORECASE
+    r"Validation commands and results:.*?(\d+)\s+(?:tests?\s+)?pass", re.IGNORECASE
 )
 _PYTEST_PASSED_RE = re.compile(r"(\d+)\s+passed", re.IGNORECASE)
 

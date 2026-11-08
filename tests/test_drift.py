@@ -272,6 +272,18 @@ class TestReadmeVsPlanAndState:
         assert "999" in signals[0].message
         assert "10" in signals[0].message
 
+    def test_signal_when_state_says_n_pass_without_the_word_tests(self):
+        # The autonomous runs write "489 pass (was 484)", not "489 tests pass".
+        readme = "Status: (1/2 tasks done), tested (999 tests passing)."
+        state = (
+            "- Validation commands and results: 5 new tests written first; "
+            "`python -m pytest` — 10 pass (was 5). `ruff check` clean.\n"
+        )
+        signals = collect_drift_signals(self.PLAN, state_text=state, readme_text=readme)
+        assert len(signals) == 1
+        assert signals[0].category == "readme-state"
+        assert "10" in signals[0].message
+
     def test_no_check_when_readme_format_not_found(self):
         readme = "Status: still under construction."
         state = "- Validation commands and results: `python -m pytest` — 10 tests pass.\n"
