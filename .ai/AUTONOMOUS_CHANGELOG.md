@@ -291,3 +291,5 @@
 - 2026-08-25: AUTO-072 — Enforce Ruff's S310 rule; document remaining S603/S607 suppressions (DONE)
 - 2026-08-25: AUTO-073 — Validate Forgejo API response shapes instead of trusting cast() (DONE)
 - 2026-08-25: AUTO-074 — Re-split cli.py (DONE)
+- 2026-10-18: AUTO-075 — `--report-orphans` must honor plan backlinks (DONE)
+- 2026-11-09: AUTO-076 — Guard against duplicate and dropped Forgejo backlinks; fix readme-state phrasing (DONE)

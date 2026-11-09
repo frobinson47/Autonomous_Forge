@@ -1024,6 +1024,19 @@ Validation: 5 new tests (3 on `find_orphan_issues`, 2 end-to-end including impor
 Risks or assumptions: A backlink anywhere in a task block counts, matching `_backlinked_issue_number`; a stale backlink to a closed or deleted issue is harmless (only open issues are listed). Not done here: warn when two tasks backlink to the same issue (hookhouse-pro AUTO-037/038 shared #80 undetected), and detect a Notes edit that drops the backlink phrase (the next sync then plans a duplicate issue).
 Notes: Filed as Forgejo issue #60 (https://forgejo.familytechlab.com/frank/Autonomous_Forge/issues/60). The issue text proposed retitling linked issues in sync as one option; rejected because docs/COMMANDS.md and `_backlinked_issue_number` document the backlink as authoritative precisely so issue titles can stay as they are.
 
+### AUTO-076 — Guard against duplicate and dropped Forgejo backlinks; fix readme-state phrasing
+Priority: P2
+Status: DONE
+
+Goal: Close the two gaps AUTO-075's Risks left open and the readme-state regex miss: warn when two tasks backlink one issue, refuse to create an issue when an uncommitted Notes edit drops a committed backlink, and make drift's README-vs-State test-count check match 'N pass' phrasing.
+Why it matters: A Notes edit that drops the backlink silently makes the next sync create a duplicate issue (seen in Cookslate), two tasks sharing one issue went unnoticed (hookhouse-pro AUTO-037/038 on #80), and drift's README-vs-State check never fired on the State file's real phrasing.
+Scope: forge drift gains a duplicate-backlink signal; forge sync (dry-run and live) errors on a task whose HEAD plan backlinked an issue the working copy no longer does; drift's State test-count regex accepts 'N pass'. No change to matching order.
+Expected files or areas: src/autonomous_forge/drift.py, src/autonomous_forge/sync.py, tests/test_backlink_guards.py, tests/test_drift.py, docs/COMMANDS.md
+Acceptance criteria: Each guard has a test that failed before the change; full suite, ruff and mypy pass; real-repo sync dry-run and drift behave as documented.
+Validation: tests/test_backlink_guards.py written first; its two guard tests failed (no signal / would-create) before the code, the five control tests passed. `python -m pytest` — 499 pass (492 before: 1 readme-state regression test from the earlier fix plus 7 new). `ruff check .` and `mypy src` clean. Real-repo `forge sync --dry-run` shows no errors and no would-create; `forge drift` still reports only the stale State test count.
+Risks or assumptions: The dropped-backlink guard only catches an uncommitted removal; once the removal is committed it reads as deliberate, so a committed accidental removal is still undetected. It refuses to create an issue rather than just warning, because a warning on a live run would still create the duplicate. Any `HEAD`-plan read failure (no git, plan not tracked) disables the guard silently rather than blocking sync.
+Notes: The README-vs-State regex part was tracked as issue 61 (closed). Sync wording avoids the backlink phrase here on purpose, so this task is not itself backlinked to that closed issue.
+
 ## Future Ideas
 
 - (empty — all previously listed ideas were promoted into Roadmap v4, v5, or v6)

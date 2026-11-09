@@ -6,6 +6,7 @@ import re
 from dataclasses import dataclass
 from pathlib import Path
 
+from autonomous_forge.diffcheck import GitCommandError, _run_git
 from autonomous_forge.forgejo_client import (
     ForgejoClient,
     ForgejoConfigError,
@@ -140,6 +141,32 @@ def _backlinked_issue_number(task_id: str, plan_text: str) -> int | None:
         return None
     match = _ISSUE_BACKLINK_RE.search(block)
     return int(match.group(1)) if match else None
+
+
+def _dropped_backlink(task_id: str, plan_p: Path, root: Path, plan_text: str) -> int | None:
+    """Issue number the committed plan backlinks for ``task_id`` but the working copy no longer does.
+
+    A Notes edit that drops ``Forgejo issue #N`` makes the next sync plan a
+    duplicate issue. Only an *uncommitted* removal is caught: once the
+    removal is committed it reads as deliberate. Returns None when there is
+    no git history to compare against.
+    """
+    if _backlinked_issue_number(task_id, plan_text) is not None:
+        return None
+    try:
+        rel = plan_p.resolve().relative_to(root.resolve()).as_posix()
+        head_text = _run_git(["show", f"HEAD:{rel}"], root)
+    except (ValueError, GitCommandError):
+        return None
+    return _backlinked_issue_number(task_id, head_text)
+
+
+def _dropped_backlink_message(task_id: str, number: int) -> str:
+    return (
+        f"the committed plan links {task_id} to Forgejo issue #{number}, but the "
+        "working copy's Notes no longer do; creating an issue would duplicate it. "
+        "Restore the `Forgejo issue #N` line, or commit the removal if intended."
+    )
 
 
 def _find_issue_for_task(
@@ -279,15 +306,27 @@ def execute_sync(
             return SyncResult(actions=(), repo=repo, errors=(str(exc),))
 
         dry_run_actions: list[SyncAction] = []
+        dry_run_errors: list[str] = []
         for task in tasks:
             issue = _find_issue_for_task(task.task_id, existing_issues, plan_text)
+            if issue is None:
+                dropped = _dropped_backlink(task.task_id, plan_p, root, plan_text)
+                if dropped is not None:
+                    message = _dropped_backlink_message(task.task_id, dropped)
+                    dry_run_errors.append(f"{task.task_id}: {message}")
+                    dry_run_actions.append(SyncAction(
+                        task_id=task.task_id, action="error", detail=message,
+                    ))
+                    continue
             dry_run_actions.append(SyncAction(
                 task_id=task.task_id,
                 action="would-create" if issue is None else "would-sync",
                 issue_number=issue["number"] if issue else None,
                 detail=f"{task.title} [{task.priority}/{task.status}]",
             ))
-        return SyncResult(actions=tuple(dry_run_actions), repo=repo)
+        return SyncResult(
+            actions=tuple(dry_run_actions), repo=repo, errors=tuple(dry_run_errors)
+        )
     errors: list[str] = []
     actions: list[SyncAction] = []
 
@@ -317,6 +356,14 @@ def execute_sync(
                 milestone_id = milestone_cache[roadmap_version]
 
             if issue is None:
+                dropped = _dropped_backlink(task.task_id, plan_p, root, plan_text)
+                if dropped is not None:
+                    message = _dropped_backlink_message(task.task_id, dropped)
+                    errors.append(f"{task.task_id}: {message}")
+                    actions.append(SyncAction(
+                        task_id=task.task_id, action="error", detail=message,
+                    ))
+                    continue
                 body = _task_issue_body(task, plan_text)
                 create_kwargs: dict = {
                     "title": _task_issue_title(task),

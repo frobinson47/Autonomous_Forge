@@ -288,6 +288,10 @@ Signal categories: `state-plan`, `stale-state`, `changelog-plan`, `policy-repo`,
 
 `readme-plan`/`readme-state` (AUTO-057): if README.md's status line states its counts as `(N/M tasks done)` and `(N tests passing)`, drift compares them against the plan file's actual DONE/total task counts and the test count last recorded in `AUTONOMOUS_STATE.md`'s "Validation commands and results" line. If README doesn't use that exact phrasing, this check silently does nothing — it never guesses at a different format. Also surfaced (non-fatal, `warn` severity) by `forge check`.
 
+`readme-state` reads the State file's test count in either phrasing, "N tests pass" or the shorter "N pass (was M)" that autonomous runs write.
+
+`duplicate-backlink` (AUTO-076): two or more tasks whose Notes carry the same `Forgejo issue #N` backlink. Sync treats a backlink as authoritative, so the tasks would silently share one issue. Detected from the plan text alone.
+
 `readme-actual-tests` (AUTO-065 / COMP-004): `forge check`-only, not emitted by `forge drift` itself — `forge drift` has no subprocess access to a live validation run. When `forge check` runs validation, it parses the actual `N passed` count out of that run's own pytest output and compares it directly against README's `(N tests passing)` line. Unlike `readme-state` above (which compares two hand-maintained numbers to each other and can agree by coincidence if both go stale together), this is derived from a real, just-executed test run — silently does nothing if the validation command isn't pytest-shaped or README doesn't use the documented phrasing.
 
 Exit codes:
@@ -468,6 +472,8 @@ Locking: `forge run` (and `forge pipeline`, which calls it internally) acquires 
 Purpose: sync AUTO-xxx tasks from the plan file to Forgejo issues. One-way: plan is the source of truth, Forgejo is the mirror.
 
 Issue matching: a task is matched to an existing Forgejo issue by, in order, (1) a `Forgejo issue #N` backlink in the task's Notes field — written by `--import-orphans`, or present in repos bulk-imported by hand before `forge sync` existed — which wins regardless of the issue's title, then (2) the issue title starting with `[AUTO-xxx]` or the legacy unbracketed `AUTO-xxx:`. Without a title or backlink match, sync creates a new issue. This means repos with pre-existing issues that don't follow either title convention need a one-time `Forgejo issue #N` note added to the corresponding task (or run `--import-orphans` first) to avoid duplicate issues on the next sync.
+
+Dropped-backlink guard (AUTO-076): if a task has no matching issue now, but the plan as committed at `HEAD` backlinked it to issue #N, sync refuses to create an issue for that task (reported as an error, in both `--dry-run` and live runs; other tasks still sync). That pattern means a Notes edit removed the `Forgejo issue #N` line, and creating the issue would duplicate #N. Restore the line, or commit the removal if it is intended — a committed removal is treated as deliberate. Only uncommitted removals are caught, and the guard does nothing outside a git repo.
 
 Inputs:
 

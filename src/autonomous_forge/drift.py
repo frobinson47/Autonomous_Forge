@@ -8,6 +8,7 @@ from pathlib import Path
 
 from autonomous_forge.plan import PlanTask, parse_plan_tasks
 from autonomous_forge.policy import PolicyParseError, parse_repository_policy
+from autonomous_forge.sync import _backlinked_issue_number
 
 
 @dataclass(frozen=True)
@@ -208,6 +209,34 @@ def check_readme_test_count_against_validation(
     )
 
 
+def _check_duplicate_backlinks(
+    plan_text: str,
+    tasks: list[PlanTask],
+) -> list[DriftSignal]:
+    """Flag two or more tasks whose Notes backlink the same Forgejo issue.
+
+    Sync treats a ``Forgejo issue #N`` backlink as authoritative, so two
+    tasks pointing at one issue silently share (and fight over) its state.
+    """
+    by_issue: dict[int, list[str]] = {}
+    for task in tasks:
+        number = _backlinked_issue_number(task.task_id, plan_text)
+        if number is not None:
+            by_issue.setdefault(number, []).append(task.task_id)
+    return [
+        DriftSignal(
+            category="duplicate-backlink",
+            severity="warn",
+            message=(
+                f"{' and '.join(ids)} both backlink to Forgejo issue #{number}; "
+                "sync would treat them as the same issue."
+            ),
+        )
+        for number, ids in sorted(by_issue.items())
+        if len(ids) > 1
+    ]
+
+
 def _check_policy_path_existence(
     policy_text: str,
     root: Path,
@@ -251,6 +280,7 @@ def collect_drift_signals(
     """Collect all drift signals without changing any files."""
     signals: list[DriftSignal] = []
     tasks = parse_plan_tasks(plan_text)
+    signals.extend(_check_duplicate_backlinks(plan_text, tasks))
 
     if state_text is not None:
         state_fields = _parse_state_fields(state_text)
