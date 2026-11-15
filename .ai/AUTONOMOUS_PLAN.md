@@ -1041,16 +1041,16 @@ Notes: The README-vs-State regex part was tracked as issue 61 (closed). Sync wor
 
 ### AUTO-077 — Test the live forge sync write path
 Priority: P2
-Status: TODO
+Status: DONE
 
 Goal: Cover the live (non-dry-run) branch of execute_sync, which creates issues, closes or reopens them, replaces labels and sets milestones. It is the only code in the tool that writes to Forgejo, and sync.py lines 330-448 have no direct test (sync.py is at 60% coverage, the lowest in the package).
-Why it matters: TBD
+Why it matters: A regression in the live branch (closing the wrong issues, rewriting labels every run, creating duplicates) would hit a real tracker, and nothing in the suite would have caught it.
 Scope: Add tests using a mocked ForgejoClient for: creating an issue for a new TODO task; creating then closing (with comment) for a new DONE task; closing an open issue whose task became DONE; reopening a closed issue whose task went back to TODO; label replacement only when labels differ; milestone assignment from the Roadmap heading; an up-to-date task making no write calls; a RuntimeError on one task being recorded as an error without stopping the remaining tasks. No production code change unless a test exposes a real bug.
 Expected files or areas: tests/test_sync.py (or a new tests/test_sync_live.py), src/autonomous_forge/sync.py only if a bug is found
 Acceptance criteria: Each listed behavior has a test that asserts the exact client calls made. sync.py coverage rises well above 60%. Full suite, ruff and mypy pass.
-Validation: TBD (name the real checks and any target number before starting work)
-Risks or assumptions: None.
-Notes: Found during the Roadmap v10 survey: the dry-run branch and the backlink guards are tested, but nothing asserts what a live run actually writes.
+Validation: `python -m pytest --cov=src` — 517 pass (was 499; 18 new in tests/test_sync_live.py). sync.py coverage 60% to 96%; package total 89% to 92%. The tests passed first time, so to check they can fail I temporarily flipped three conditions in sync.py (close-when-open, milestone comparison, label-order comparison): 8 of the 18 failed, then the file was restored (git shows no change to src). `ruff check .` and `mypy src` clean.
+Risks or assumptions: No production bug was found, so sync.py is unchanged. The ForgejoClient is mocked, so these tests prove which calls sync makes, not that Forgejo accepts them. The remaining 9 uncovered sync.py lines are in the early config and token error paths. Order within a task's writes is asserted only through the final call set, not call order.
+Notes: Found during the Roadmap v10 survey: the dry-run branch and the backlink guards are tested, but nothing asserted what a live run actually writes.
 
 ### AUTO-078 — Cover untested error branches in status, validate and forgejo_client
 Priority: P3

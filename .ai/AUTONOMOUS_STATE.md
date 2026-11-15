@@ -1,12 +1,12 @@
 # Autonomous State
 
-- Current roadmap version: v9
-- Current task ID: AUTO-076 — Guard against duplicate and dropped Forgejo backlinks; fix readme-state phrasing
+- Current roadmap version: v10
+- Current task ID: AUTO-077 — Test the live forge sync write path
 - Current task status: DONE
 - Current branch: main
-- Last run timestamp: 2026-11-09T00:00:00+00:00
+- Last run timestamp: 2026-11-15T00:00:00+00:00
 - Last successful commit hash: (this task's commit — see git log)
-- Latest run summary: Closed the two follow-ups AUTO-075 left open, plus a silent miss in drift. (1) `forge drift` now emits `duplicate-backlink` when two tasks backlink the same Forgejo issue. (2) `forge sync` (dry-run and live) now errors on, and does not create an issue for, a task whose HEAD plan backlinked an issue that the working copy no longer does (an uncommitted Notes edit dropped the backlink). (3) drift's `readme-state` regex required "N tests pass" and so never matched the State line's "N pass (was M)" phrasing; "tests" is now optional (tracked as issue 61, closed). Also ran the long-pending real `forge sync`: AUTO-058..074 now have closed Forgejo issues (#62..#78).
-- Validation commands and results: tests written first, the two guard tests seen failing for the right reason; `python -m pytest` — 499 pass (was 491 at the start of this session). `ruff check .` and `mypy src` clean (41 source files). `forge lint-plan` ok. Real-repo `forge sync --dry-run` — no errors, nothing to create; `forge drift` clean after this update. CI green on 3ad0fe5 (`forge check`, Python 3.10/3.11/3.12 — all success per the Forgejo commit-status API).
+- Latest run summary: Added tests/test_sync_live.py (18 tests) for the live, non-dry-run branch of `execute_sync`, which had no direct tests: issue creation (TODO, and DONE then closed with a comment), label setup, milestone reuse and creation, closing and reopening, label replacement only when the set differs, milestone updates, up-to-date and BLOCKED tasks making no writes, and one task's error not stopping the rest. sync.py coverage went from 60% to 96%. No production bug was found, so sync.py is unchanged. AUTO-078 (error-branch coverage for status, validate and forgejo_client) is the only open v10 task.
+- Validation commands and results: `python -m pytest --cov=src` — 517 pass (was 499), package coverage 92%. To check the new tests can fail, three conditions in sync.py were flipped temporarily: 8 of 18 failed, then the file was restored. `ruff check .` and `mypy src` clean (41 source files). `forge lint-plan` ok; `forge drift` clean after this update. CI not yet checked for this commit.
 - Current blockers: None.
-- Recommended next task: Ready for the next direction from the user. Known limit worth a follow-up only if it bites: the dropped-backlink guard cannot see a removal that was already committed.
+- Recommended next task: AUTO-078 (P3). Known limit worth a follow-up only if it bites: the dropped-backlink guard cannot see a removal that was already committed.
