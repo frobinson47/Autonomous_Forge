@@ -1065,6 +1065,21 @@ Validation: `python -m pytest --cov=src` — 562 pass (was 517; 45 new in tests/
 Risks or assumptions: Tests only, so no production code changed and no bug was found. Subprocess and urllib are mocked, so these prove how each branch reacts to a failure, not that real git or Forgejo fail that way. Not fixed here, but noticed: `list_labels` and `list_milestones` request `limit=50` and never page, so a repo with more than 50 labels or milestones would have the extra ones silently missing (sync could then try to recreate a label that exists). That is a possible bug, not confirmed against a live instance; it needs its own task.
 Notes: Lower priority than the live sync tests: these are failure fallbacks, not write paths.
 
+## Roadmap v11
+
+### AUTO-079 — Page through all labels and milestones in the Forgejo client
+Priority: P2
+Status: TODO
+
+Goal: list_labels and list_milestones request limit=50 and never fetch page 2, so a repo with more than 50 labels or milestones has the extras silently dropped. list_issues already pages.
+Why it matters: TBD
+Scope: Make list_labels and list_milestones loop over pages until a short or empty page, the same way list_issues does, using a shared helper so the three can not drift apart again. Add tests with a mocked client that returns 50 items then a short second page, for both methods. No change to sync matching.
+Expected files or areas: src/autonomous_forge/forgejo_client.py, tests/test_forgejo_client.py
+Acceptance criteria: With more than 50 labels (or milestones) on the server, sync sees all of them and does not try to recreate one that exists. Suite, ruff and mypy pass.
+Validation: TBD (name the real checks and any target number before starting work)
+Risks or assumptions: None.
+Notes: Confirmed against the live API on 2026-11-15: page=2 returns the next labels (this repo has 10 in total, X-Total-Count header present) and the server reports a maximum page size of 50. Not yet reproduced with more than 50 labels, since no repo here has that many. Found while writing AUTO-078's tests.
+
 ## Future Ideas
 
 - (empty — all previously listed ideas were promoted into Roadmap v4, v5, or v6)
