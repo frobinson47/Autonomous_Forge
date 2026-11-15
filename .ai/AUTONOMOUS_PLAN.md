@@ -1054,15 +1054,15 @@ Notes: Found during the Roadmap v10 survey: the dry-run branch and the backlink 
 
 ### AUTO-078 — Cover untested error branches in status, validate and forgejo_client
 Priority: P3
-Status: TODO
+Status: DONE
 
 Goal: Add tests for the error and fallback branches that coverage shows are never run: status.py git helpers (git missing, timeout, nonzero exit), validate.py timeout and failure handling, and forgejo_client.py request error paths.
 Why it matters: TBD
 Scope: Tests only, using mocked subprocess and urllib calls. Target the specific uncovered lines reported by pytest --cov-report=term-missing. No behavior change; if a test shows a branch is wrong, record it as a separate task.
-Expected files or areas: tests/test_status.py, tests/test_validate.py, tests/test_forgejo_client.py
+Expected files or areas: tests/test_error_branches.py (one new file covering all three modules, instead of editing the three existing test files)
 Acceptance criteria: status.py, validate.py and forgejo_client.py each reach at least 90% coverage. Suite, ruff and mypy pass.
-Validation: TBD (name the real checks and any target number before starting work)
-Risks or assumptions: None.
+Validation: `python -m pytest --cov=src` — 562 pass (was 517; 45 new in tests/test_error_branches.py). status.py 75% to 100%, validate.py 74% to 100%, forgejo_client.py 75% to 100%; package total 92% to 94%. To check the tests can fail, I temporarily broke the unknown-branch fallback, the long-output cutoff, the command-not-found message, the pagination stop and the token quote stripping: 6 tests failed, and the files were restored (git shows no change to src). `ruff check .` and `mypy src` clean.
+Risks or assumptions: Tests only, so no production code changed and no bug was found. Subprocess and urllib are mocked, so these prove how each branch reacts to a failure, not that real git or Forgejo fail that way. Not fixed here, but noticed: `list_labels` and `list_milestones` request `limit=50` and never page, so a repo with more than 50 labels or milestones would have the extra ones silently missing (sync could then try to recreate a label that exists). That is a possible bug, not confirmed against a live instance; it needs its own task.
 Notes: Lower priority than the live sync tests: these are failure fallbacks, not write paths.
 
 ## Future Ideas
