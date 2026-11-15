@@ -1037,6 +1037,34 @@ Validation: tests/test_backlink_guards.py written first; its two guard tests fai
 Risks or assumptions: The dropped-backlink guard only catches an uncommitted removal; once the removal is committed it reads as deliberate, so a committed accidental removal is still undetected. It refuses to create an issue rather than just warning, because a warning on a live run would still create the duplicate. Any `HEAD`-plan read failure (no git, plan not tracked) disables the guard silently rather than blocking sync.
 Notes: The README-vs-State regex part was tracked as issue 61 (closed). Sync wording avoids the backlink phrase here on purpose, so this task is not itself backlinked to that closed issue.
 
+## Roadmap v10
+
+### AUTO-077 — Test the live forge sync write path
+Priority: P2
+Status: TODO
+
+Goal: Cover the live (non-dry-run) branch of execute_sync, which creates issues, closes or reopens them, replaces labels and sets milestones. It is the only code in the tool that writes to Forgejo, and sync.py lines 330-448 have no direct test (sync.py is at 60% coverage, the lowest in the package).
+Why it matters: TBD
+Scope: Add tests using a mocked ForgejoClient for: creating an issue for a new TODO task; creating then closing (with comment) for a new DONE task; closing an open issue whose task became DONE; reopening a closed issue whose task went back to TODO; label replacement only when labels differ; milestone assignment from the Roadmap heading; an up-to-date task making no write calls; a RuntimeError on one task being recorded as an error without stopping the remaining tasks. No production code change unless a test exposes a real bug.
+Expected files or areas: tests/test_sync.py (or a new tests/test_sync_live.py), src/autonomous_forge/sync.py only if a bug is found
+Acceptance criteria: Each listed behavior has a test that asserts the exact client calls made. sync.py coverage rises well above 60%. Full suite, ruff and mypy pass.
+Validation: TBD (name the real checks and any target number before starting work)
+Risks or assumptions: None.
+Notes: Found during the Roadmap v10 survey: the dry-run branch and the backlink guards are tested, but nothing asserts what a live run actually writes.
+
+### AUTO-078 — Cover untested error branches in status, validate and forgejo_client
+Priority: P3
+Status: TODO
+
+Goal: Add tests for the error and fallback branches that coverage shows are never run: status.py git helpers (git missing, timeout, nonzero exit), validate.py timeout and failure handling, and forgejo_client.py request error paths.
+Why it matters: TBD
+Scope: Tests only, using mocked subprocess and urllib calls. Target the specific uncovered lines reported by pytest --cov-report=term-missing. No behavior change; if a test shows a branch is wrong, record it as a separate task.
+Expected files or areas: tests/test_status.py, tests/test_validate.py, tests/test_forgejo_client.py
+Acceptance criteria: status.py, validate.py and forgejo_client.py each reach at least 90% coverage. Suite, ruff and mypy pass.
+Validation: TBD (name the real checks and any target number before starting work)
+Risks or assumptions: None.
+Notes: Lower priority than the live sync tests: these are failure fallbacks, not write paths.
+
 ## Future Ideas
 
 - (empty — all previously listed ideas were promoted into Roadmap v4, v5, or v6)
