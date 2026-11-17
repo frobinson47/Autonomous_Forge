@@ -1069,15 +1069,15 @@ Notes: Lower priority than the live sync tests: these are failure fallbacks, not
 
 ### AUTO-079 — Page through all labels and milestones in the Forgejo client
 Priority: P2
-Status: TODO
+Status: DONE
 
 Goal: list_labels and list_milestones request limit=50 and never fetch page 2, so a repo with more than 50 labels or milestones has the extras silently dropped. list_issues already pages.
-Why it matters: TBD
+Why it matters: `forge sync` decides whether to create a label or milestone by looking it up in these lists. A list cut off at 50 makes an existing one look missing, so sync would try to recreate it and fail or duplicate it.
 Scope: Make list_labels and list_milestones loop over pages until a short or empty page, the same way list_issues does, using a shared helper so the three can not drift apart again. Add tests with a mocked client that returns 50 items then a short second page, for both methods. No change to sync matching.
-Expected files or areas: src/autonomous_forge/forgejo_client.py, tests/test_forgejo_client.py
+Expected files or areas: src/autonomous_forge/forgejo_client.py, tests/test_forgejo_paging.py (new file instead of tests/test_forgejo_client.py)
 Acceptance criteria: With more than 50 labels (or milestones) on the server, sync sees all of them and does not try to recreate one that exists. Suite, ruff and mypy pass.
-Validation: TBD (name the real checks and any target number before starting work)
-Risks or assumptions: None.
+Validation: Tests written first: 5 of the 9 new tests in tests/test_forgejo_paging.py failed on the old code (the other 4 are controls for behavior that already worked). After the change `python -m pytest --cov=src` — 571 pass (was 562); forgejo_client.py stays at 100%, package 94%. `ruff check .` and `mypy src` clean. Read-only run against the real Forgejo API: with a page size of 4, `/labels` returned all 10 labels over 3 requests; with a page size of 10, `/issues` returned all 82 issues with no duplicates over 9 requests; the normal list calls return 10 labels, 11 milestones and 82 issues.
+Risks or assumptions: Still not reproduced against a server holding more than 50 labels or milestones; the mocked 50-then-7 tests and the small-page real-server run are the evidence. `list_issues` now goes through the same helper, so its URL and error messages are unchanged but it is touched code. A 200-page cap (10,000 items) raises an error rather than looping if a server ignores the page parameter; no real repo should hit it.
 Notes: Confirmed against the live API on 2026-11-15: page=2 returns the next labels (this repo has 10 in total, X-Total-Count header present) and the server reports a maximum page size of 50. Not yet reproduced with more than 50 labels, since no repo here has that many. Found while writing AUTO-078's tests.
 
 ## Future Ideas

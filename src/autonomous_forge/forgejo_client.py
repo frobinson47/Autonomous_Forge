@@ -14,6 +14,8 @@ from pathlib import Path
 from autonomous_forge.config import load_config
 
 _DEFAULT_BASE_URL = "https://forgejo.familytechlab.com"
+_PAGE_SIZE = 50  # Forgejo's maximum page size
+_MAX_PAGES = 200  # runaway guard: 10,000 items is far beyond any realistic repo
 _REPO_RE = re.compile(r"^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$")
 
 
@@ -193,21 +195,39 @@ class ForgejoClient:
                 f"Forgejo API {method} {path} returned malformed JSON: {exc}"
             ) from exc
 
-    def list_issues(self, state: str = "all", limit: int = 50) -> list[dict]:
-        page = 1
-        all_issues: list[dict] = []
-        while True:
-            raw_issues = self._request(
-                "GET", f"/issues?state={state}&type=issues&limit={limit}&page={page}"
-            )
-            if not raw_issues:
-                break
-            issues = _expect_list_of_dicts(raw_issues, "GET /issues")
-            all_issues.extend(issues)
-            if len(issues) < limit:
-                break
-            page += 1
-        return all_issues
+    def _get_all_pages(
+        self,
+        path: str,
+        context: str,
+        item_required_keys: tuple[str, ...] = (),
+        limit: int = _PAGE_SIZE,
+    ) -> list[dict]:
+        """GET a list endpoint, following pages until a short or empty one.
+
+        Forgejo caps a page at 50 items, so a single request silently drops
+        the rest (AUTO-079). Every list call goes through here so none of
+        them can forget to page. ``path`` must already contain a ``?``;
+        ``limit`` and ``page`` are appended to its query string.
+        """
+        sep = "" if path.endswith("?") else "&"
+        items: list[dict] = []
+        for page in range(1, _MAX_PAGES + 1):
+            raw = self._request("GET", f"{path}{sep}limit={limit}&page={page}")
+            if not raw:
+                return items
+            batch = _expect_list_of_dicts(raw, context, item_required_keys)
+            items.extend(batch)
+            if len(batch) < limit:
+                return items
+        raise RuntimeError(
+            f"Forgejo API {context}: still returning full pages after {_MAX_PAGES} pages; "
+            "the server may be ignoring the page parameter"
+        )
+
+    def list_issues(self, state: str = "all", limit: int = _PAGE_SIZE) -> list[dict]:
+        return self._get_all_pages(
+            f"/issues?state={state}&type=issues", "GET /issues", limit=limit
+        )
 
     def create_issue(self, title: str, body: str, labels: list[int] | None = None,
                      milestone: int | None = None) -> dict:
@@ -232,10 +252,9 @@ class ForgejoClient:
         )
 
     def list_labels(self) -> list[dict]:
-        raw = self._request("GET", "/labels?limit=50")
-        if not raw:
-            return []
-        return _expect_list_of_dicts(raw, "GET /labels", item_required_keys=("id", "name"))
+        return self._get_all_pages(
+            "/labels?", "GET /labels", item_required_keys=("id", "name")
+        )
 
     def create_label(self, name: str, color: str) -> dict:
         return _expect_dict(
@@ -245,11 +264,8 @@ class ForgejoClient:
         )
 
     def list_milestones(self, state: str = "all") -> list[dict]:
-        raw = self._request("GET", f"/milestones?state={state}&limit=50")
-        if not raw:
-            return []
-        return _expect_list_of_dicts(
-            raw, "GET /milestones", item_required_keys=("id", "title")
+        return self._get_all_pages(
+            f"/milestones?state={state}", "GET /milestones", item_required_keys=("id", "title")
         )
 
     def create_milestone(self, title: str) -> dict:

@@ -1,12 +1,12 @@
 # Autonomous State
 
-- Current roadmap version: v10
-- Current task ID: AUTO-078 — Cover untested error branches in status, validate and forgejo_client
+- Current roadmap version: v11
+- Current task ID: AUTO-079 — Page through all labels and milestones in the Forgejo client
 - Current task status: DONE
 - Current branch: main
-- Last run timestamp: 2026-11-15T00:00:00+00:00
+- Last run timestamp: 2026-11-16T00:00:00+00:00
 - Last successful commit hash: (this task's commit — see git log)
-- Latest run summary: Added tests/test_error_branches.py (45 tests) for the failure and fallback branches in status.py (git missing, timeout, nonzero exit, run-history lookup), validate.py (policy command extraction, command not found, unparsable command, PYTHONPATH handling, output truncation) and forgejo_client.py (HTTP and undecodable-response errors, pagination, client method endpoints, repo and token detection). All three modules went from about 75% to 100% coverage. No production bug was found, so no source file changed. Roadmap v10 is now complete (AUTO-077 and AUTO-078).
-- Validation commands and results: `python -m pytest --cov=src` — 562 pass (was 517), package coverage 94%. To check the new tests can fail, five behaviors were broken temporarily: 6 tests failed, then the files were restored. `ruff check .` and `mypy src` clean (41 source files). `forge lint-plan` ok; `forge drift` clean after this update. CI not yet checked for this commit.
+- Latest run summary: Fixed a real gap: `list_labels` and `list_milestones` asked Forgejo for 50 items once and never fetched page 2, so a repo with more than 50 of either would have the extras silently dropped and sync could try to recreate ones that exist. Added a shared `_get_all_pages` helper in forgejo_client.py (follows pages until a short or empty one, validates each page, and stops with an error after 200 pages) and routed `list_issues`, `list_labels` and `list_milestones` through it. Roadmap v11 is complete.
+- Validation commands and results: tests written first (5 of 9 new tests failed on the old code, 4 were controls). `python -m pytest --cov=src` — 571 pass (was 562), package coverage 94%, forgejo_client.py 100%. `ruff check .` and `mypy src` clean (41 source files). Read-only run against the real Forgejo API paged correctly (10 labels over 3 pages at size 4; 82 unique issues at size 10). `forge lint-plan` ok; `forge drift` clean after this update. CI not yet checked for this commit.
 - Current blockers: None.
-- Recommended next task: Check whether `list_labels` and `list_milestones` need pagination (both request `limit=50` and never page), and file it as a task if confirmed. Also still open only if it bites: the dropped-backlink guard cannot see a removal that was already committed.
+- Recommended next task: None queued; plan the next roadmap batch or take direction from the user. Only if it bites: the dropped-backlink guard cannot see a removal that was already committed.
